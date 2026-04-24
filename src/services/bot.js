@@ -24,8 +24,8 @@ async function createCasier({ discordId, firstName, lastName, username, password
   return call('/casier', { discordId, firstName, lastName, username, password });
 }
 
-async function archiveCasier({ channelId, discordId }) {
-  return call('/casier/archive', { channelId, discordId });
+async function archiveCasier({ channelId, discordId, firstName, lastName }) {
+  return call('/casier/archive', { channelId, discordId, firstName, lastName });
 }
 
 async function notifyWeeklyStats(payload) {

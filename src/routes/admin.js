@@ -263,7 +263,12 @@ router.post('/salaries/:id/delete', async (req, res) => {
     const channelId = employee.channelId || employee.casierId || null;
     if (channelId || employee.discordId) {
       try {
-        await archiveCasier({ channelId, discordId: employee.discordId });
+        await archiveCasier({
+          channelId,
+          discordId: employee.discordId,
+          firstName: employee.firstName,
+          lastName: employee.lastName,
+        });
       } catch (botErr) {
         console.warn('[salaries/delete] archiveCasier failed:', botErr.message);
         botWarning = botErr.message;
