@@ -67,7 +67,7 @@
                                 <i class="fa-solid <%= e.isAdmin ? 'fa-shield-halved' : 'fa-shield' %>"></i>
                             </button>
                         </td>
-                        <td class="mono" style="color:var(--text-secondary)"><%= e.hireDate ? new Date(e.hireDate).toISOString().split('T')[0] : '—' %></td>
+                        <td class="mono" style="color:var(--text-secondary)"><%= e.hireDate ? new Date(e.hireDate).toLocaleDateString('fr-FR') : '—' %></td>
                         <td class="mono" style="color:var(--text-secondary)"><%= e.phone || '—' %></td>
                         <td>
                             <div class="table-actions">

@@ -107,7 +107,7 @@
                         <td class="mono" style="font-weight:600"><%= v.plate %></td>
                         <td><%= v.type %></td>
                         <td><span class="status-badge <%= v.status === 'active' ? 'active' : 'inactive' %>"><%= v.status === 'active' ? 'En service' : 'Hors service' %></span></td>
-                        <td class="mono" style="color:var(--text-secondary)"><%= v.maintenances && v.maintenances.length > 0 ? new Date(v.maintenances[0].date).toISOString().split('T')[0] : '—' %></td>
+                        <td class="mono" style="color:var(--text-secondary)"><%= v.maintenances && v.maintenances.length > 0 ? new Date(v.maintenances[0].date).toLocaleDateString('fr-FR') : '—' %></td>
                         <td>
                             <div class="table-actions">
                                 <button class="btn-edit" onclick="openMaintenance(<%= v.id %>, '<%= v.plate %>')" title="Maintenance"><i class="fa-solid fa-wrench"></i></button>
@@ -267,7 +267,7 @@
                     }
 
                     container.innerHTML = data.maintenances.map(function(m) {
-                        var d = new Date(m.date).toISOString().split('T')[0];
+                        var d = new Date(m.date).toLocaleDateString('fr-FR');
                         var milesDisplay = m.miles ? new Intl.NumberFormat('fr-FR').format(m.miles) + ' miles' : 'Miles non renseign\u00e9s';
                         return '<div class="maint-entry">' +
                             '<div class="maint-dot"></div>' +

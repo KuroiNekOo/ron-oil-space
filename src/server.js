@@ -1,4 +1,12 @@
 require('dotenv').config();
+
+// Timezone du process Node → Europe/Paris par défaut. Garantit que toutes les
+// opérations Date (toLocaleString, getDay, getHours, semaine ISO, schedulers
+// dim. 18h, etc.) soient cohérentes avec Google Sheets côté utilisateur, peu
+// importe la TZ du serveur (typiquement UTC en prod). Peut être surchargé via
+// la variable d'env TZ dans .env si besoin.
+process.env.TZ = process.env.TZ || 'Europe/Paris';
+
 const express = require('express');
 const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
