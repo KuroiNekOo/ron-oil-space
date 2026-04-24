@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const prisma = require('../db');
 const bcrypt = require('bcrypt');
 const { requireAdmin } = require('../middleware/auth');
-const { createCasier, archiveCasier } = require('../services/bot');
+const { createCasier, archiveCasier, deactivateCasier, reactivateCasier } = require('../services/bot');
 const { computeFrozenWeek } = require('../services/rollover');
 const { getWeekFromTimestamp, getYearFromTimestamp, getWeekAndYear } = require('../services/week');
 const { getBonusRates, setBonusRate } = require('../services/bonus');
@@ -229,11 +229,32 @@ router.post('/salaries/:id/toggle', async (req, res) => {
     const id = parseInt(req.params.id);
     const employee = await prisma.employee.findUnique({ where: { id } });
     if (!employee) return res.status(404).json({ error: 'Not found' });
+    const newStatus = employee.status === 'active' ? 'inactive' : 'active';
     const updated = await prisma.employee.update({
       where: { id },
-      data: { status: employee.status === 'active' ? 'inactive' : 'active' },
+      data: { status: newStatus },
     });
-    res.json({ id: updated.id, status: updated.status });
+
+    // Best-effort côté Discord : rename salon + swap rôles selon la transition.
+    // On ne bloque PAS le toggle BDD si le bot est down.
+    let botWarning = null;
+    const channelId = employee.channelId || employee.casierId || null;
+    if (channelId || employee.discordId) {
+      try {
+        const fn = newStatus === 'inactive' ? deactivateCasier : reactivateCasier;
+        await fn({
+          channelId,
+          discordId: employee.discordId,
+          firstName: employee.firstName,
+          lastName: employee.lastName,
+        });
+      } catch (botErr) {
+        console.warn('[salaries/toggle] bot ' + newStatus + ' failed:', botErr.message);
+        botWarning = botErr.message;
+      }
+    }
+
+    res.json({ id: updated.id, status: updated.status, botWarning });
   } catch (err) {
     console.error('POST /salaries/:id/toggle error:', err);
     res.status(500).json({ error: err.message });

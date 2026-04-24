@@ -28,6 +28,14 @@ async function archiveCasier({ channelId, discordId, firstName, lastName }) {
   return call('/casier/archive', { channelId, discordId, firstName, lastName });
 }
 
+async function deactivateCasier({ channelId, discordId, firstName, lastName }) {
+  return call('/casier/deactivate', { channelId, discordId, firstName, lastName });
+}
+
+async function reactivateCasier({ channelId, discordId, firstName, lastName }) {
+  return call('/casier/reactivate', { channelId, discordId, firstName, lastName });
+}
+
 async function notifyWeeklyStats(payload) {
   return call('/notify/weekly-stats', payload);
 }
@@ -36,4 +44,8 @@ async function notifyContractAlert(payload) {
   return call('/notify/contract-alert', payload);
 }
 
-module.exports = { createCasier, archiveCasier, notifyWeeklyStats, notifyContractAlert };
+module.exports = {
+  createCasier, archiveCasier,
+  deactivateCasier, reactivateCasier,
+  notifyWeeklyStats, notifyContractAlert,
+};
