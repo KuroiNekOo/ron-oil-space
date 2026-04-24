@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL Admin — Primes</title>
+    <link rel="stylesheet" href="/css/admin-shared.css">
+</head>
+<body>
+    <%- include('../partials/admin-sidebar', { currentPage: 'primes' }) %>
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title">Primes</div>
+            <div class="page-subtitle">Taux de prime de livraison par rôle + primes spéciales manuelles</div>
+        </div>
+
+        <!-- ══════════ Config paliers ══════════ -->
+        <div class="section-title">Paliers &amp; r&eacute;partition podium</div>
+        <div class="card" style="padding:24px;max-width:860px;margin-bottom:32px;">
+            <form method="POST" id="form-tier-config" action="/admin/tier-config">
+
+                <!-- Équivalence points -->
+                <div style="margin-bottom:24px;">
+                    <label class="f-label">&Eacute;quivalence points</label>
+                    <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary);">
+                        <span>1 point tous les</span>
+                        <input type="number" class="f-input" name="pointsPerGain" value="<%= pointsPerGain %>" min="1" step="1" required style="width:140px;">
+                        <span>$ de gain entreprise (cumul&eacute; sur la semaine)</span>
+                    </div>
+                </div>
+
+                <!-- Quotas livraisons -->
+                <div style="margin-bottom:24px;">
+                    <label class="f-label">Quotas de livraisons</label>
+                    <div style="display:flex;flex-direction:column;gap:10px;">
+                        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary);flex-wrap:wrap;">
+                            <span style="min-width:240px;">Quota minimum hebdo (affichage)</span>
+                            <input type="number" class="f-input" name="weeklyDeliveryQuota" value="<%= weeklyDeliveryQuota %>" min="1" step="1" required style="width:110px;">
+                            <span style="color:var(--text-muted);">livraisons</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary);flex-wrap:wrap;">
+                            <span style="min-width:240px;">Seuil prime de livraisons</span>
+                            <input type="number" class="f-input" name="bonusMinDeliveries" value="<%= bonusMinDeliveries %>" min="0" step="1" required style="width:110px;">
+                            <span style="color:var(--text-muted);">livraisons (0 = pas de seuil)</span>
+                        </div>
+                    </div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">
+                        Au-dessus du seuil, le taux de prime s&#39;applique r&eacute;troactivement sur <strong>tout</strong> le gain entreprise de la semaine.
+                    </div>
+                </div>
+
+                <!-- Répartition podium -->
+                <div style="margin-bottom:24px;">
+                    <label class="f-label">R&eacute;partition de la prime palier sur le podium</label>
+                    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+                        <% [1, 2, 3].forEach(function(r) { %>
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <span style="font-size:12px;color:var(--text-muted);min-width:50px;">Rang <%= r %></span>
+                                <input type="number" class="f-input" name="share.<%= r %>" value="<%= ((tierShares[r] || 0) * 100).toFixed(2).replace(/\.?0+$/, '') %>" min="0" max="100" step="0.1" style="width:90px;">
+                                <span style="font-family:var(--font-mono);color:var(--text-muted);">%</span>
+                            </div>
+                        <% }); %>
+                    </div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Chaque rang re&ccedil;oit ce pourcentage de la prime base du palier atteint.</div>
+                </div>
+
+                <!-- Prix podium -->
+                <div style="margin-bottom:24px;">
+                    <label class="f-label">Prix podium (montant fixe)</label>
+                    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+                        <% [1, 2, 3].forEach(function(r) { %>
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <span style="font-size:12px;color:var(--text-muted);min-width:50px;">Rang <%= r %></span>
+                                <input type="number" class="f-input" name="podium.<%= r %>" value="<%= podiumPrizes[r] || 0 %>" min="0" step="1" style="width:120px;">
+                                <span style="font-family:var(--font-mono);color:var(--text-muted);">$</span>
+                            </div>
+                        <% }); %>
+                    </div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Montant fixe vers&eacute; &agrave; chaque rang du podium, en plus de la prime palier.</div>
+                </div>
+
+                <!-- Grille paliers -->
+                <div style="margin-bottom:16px;">
+                    <label class="f-label">Grille des paliers</label>
+                    <table class="admin-table" id="tiers-table" style="width:100%;">
+                        <thead>
+                            <tr>
+                                <th style="width:18%;">Palier</th>
+                                <th style="width:30%;">Points requis</th>
+                                <th style="width:30%;">Prime base ($)</th>
+                                <th style="width:22%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tiers-body">
+                            <% tiers.forEach(function(t) { %>
+                                <tr class="tier-row">
+                                    <td><input type="number" class="f-input tier-level" name="tier.level" value="<%= t.level %>" min="1" step="1" required></td>
+                                    <td><input type="number" class="f-input" name="tier.points" value="<%= t.points %>" min="0" step="1" required></td>
+                                    <td><input type="number" class="f-input" name="tier.prime" value="<%= t.prime %>" min="0" step="1" required></td>
+                                    <td><button type="button" class="btn-delete" onclick="removeTierRow(this)" title="Supprimer"><i class="fa-solid fa-trash"></i></button></td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                    <div style="margin-top:10px;">
+                        <button type="button" class="btn-add" onclick="addTierRow()"><i class="fa-solid fa-plus"></i> Ajouter un palier</button>
+                    </div>
+                </div>
+
+                <div style="margin-top:20px;display:flex;justify-content:flex-end;gap:8px;">
+                    <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Enregistrer la config</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ══════════ Taux par rôle ══════════ -->
+        <div class="section-title">Taux de prime de livraison par rôle</div>
+        <div class="card" style="padding:24px;max-width:680px;margin-bottom:32px;">
+            <form method="POST" id="form-primes" action="/admin/primes">
+                <table class="admin-table" style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th style="width:55%;">Rôle</th>
+                            <th>Taux</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% if (rows.length === 0) { %>
+                            <tr><td colspan="2" style="text-align:center;padding:32px;color:var(--text-muted);">
+                                Aucun rôle détecté. Crée d'abord des employés dans <a href="/admin/salaries" style="color:var(--accent);">Salariés</a>.
+                            </td></tr>
+                        <% } %>
+                        <% rows.forEach(function(r) { %>
+                            <tr>
+                                <td style="font-weight:500;"><%= r.role %></td>
+                                <td>
+                                    <div style="display:flex;align-items:center;gap:8px;max-width:180px;">
+                                        <input type="number" class="f-input" name="rate.<%= r.role %>" value="<%= r.rate %>" min="0" max="100" step="0.1" required>
+                                        <span style="font-family:var(--font-mono);color:var(--text-muted);">%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+                <% if (rows.length > 0) { %>
+                    <div style="margin-top:20px;display:flex;justify-content:flex-end;gap:8px;">
+                        <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Enregistrer</button>
+                    </div>
+                <% } %>
+            </form>
+        </div>
+
+        <!-- ══════════ Primes spéciales ══════════ -->
+        <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>Primes spéciales</span>
+            <button class="btn-add" onclick="openBonusModal()">
+                <i class="fa-solid fa-plus"></i> Attribuer une prime
+            </button>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Semaine</th>
+                        <th>Employé</th>
+                        <th>Montant</th>
+                        <th>Raison</th>
+                        <th>Attribuée le</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="bonus-body">
+                    <% if (specialBonuses.length === 0) { %>
+                        <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-muted);">Aucune prime spéciale attribuée.</td></tr>
+                    <% } %>
+                    <% specialBonuses.forEach(function(b) { %>
+                    <tr data-bonus-id="<%= b.id %>">
+                        <td><span style="font-family:var(--font-mono);font-size:13px;color:var(--accent)">S<%= b.week %></span></td>
+                        <td style="font-weight:500"><%= b.employee.firstName %> <%= b.employee.lastName %></td>
+                        <td class="mono" style="color:var(--gold);font-weight:600"><%= b.amount.toFixed(2) %>$</td>
+                        <td style="font-size:12px;color:var(--text-secondary);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="<%= b.reason || '' %>"><%= b.reason || '—' %></td>
+                        <td class="mono" style="font-size:11px;color:var(--text-muted)"><%= new Date(b.createdAt).toLocaleString('fr-FR') %></td>
+                        <td>
+                            <div class="table-actions">
+                                <button class="btn-edit" onclick="editBonus(<%= b.id %>)" title="Modifier"><i class="fa-solid fa-pen"></i></button>
+                                <button class="btn-delete" onclick="deleteBonus(<%= b.id %>)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Modal Prime -->
+    <div class="modal-overlay" id="modal-bonus">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title" id="bonus-title">Attribuer une prime spéciale</div>
+                <button class="modal-close" onclick="closeModal('modal-bonus')">&#10005;</button>
+            </div>
+            <form method="POST" id="form-bonus" action="/admin/special-bonus">
+                <div class="modal-body">
+                    <div class="form-grid">
+                        <div>
+                            <label class="f-label f-required">Employé</label>
+                            <select class="f-select" name="employeeId" required>
+                                <option value="" disabled selected>Sélectionner...</option>
+                                <% employees.forEach(function(e) { %>
+                                    <option value="<%= e.id %>"><%= e.firstName %> <%= e.lastName %> &middot; <%= e.role %></option>
+                                <% }); %>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Semaine</label>
+                            <div style="display:flex;gap:6px;">
+                                <input type="number" class="f-input" name="week" value="<%= currentWeek %>" min="1" max="53" required style="flex:1;">
+                                <input type="number" class="f-input" name="year" value="<%= currentYear %>" min="2020" max="2100" required title="Année" style="width:96px;">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Montant ($)</label>
+                            <input type="number" class="f-input" name="amount" placeholder="ex. 10000" min="0" step="1" required>
+                        </div>
+                        <div class="form-group-full">
+                            <label class="f-label">Raison (optionnel)</label>
+                            <input type="text" class="f-input" name="reason" placeholder="ex. Meilleure livraison du mois, record battu...">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('modal-bonus')">Annuler</button>
+                    <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="application/json" id="bonuses-data"><%- JSON.stringify(specialBonuses).replace(/</g, '\\u003c') %></script>
+
+    <div class="toast success" id="toast">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toast-msg">Action effectuée</span>
+    </div>
+
+    <script src="/js/admin-ajax.js"></script>
+    <script>
+        let bonusesData = JSON.parse(document.getElementById('bonuses-data').textContent);
+        window.addEventListener('admin:reloaded', function () {
+            const el = document.getElementById('bonuses-data');
+            if (el) bonusesData = JSON.parse(el.textContent);
+        });
+
+        // Form "taux par rôle"
+        document.getElementById('form-primes')?.addEventListener('submit', function (e) {
+            e.preventDefault();
+            AdminAjax.postForm(e.target).then(function () {
+                showToast('Taux enregistrés');
+                return AdminAjax.reloadMain();
+            }).catch(function (err) { showToast('Erreur : ' + err.message, 'error'); });
+        });
+
+        // Form "config paliers"
+        document.getElementById('form-tier-config')?.addEventListener('submit', function (e) {
+            e.preventDefault();
+            AdminAjax.postForm(e.target).then(function () {
+                showToast('Configuration enregistrée');
+                return AdminAjax.reloadMain();
+            }).catch(function (err) { showToast('Erreur : ' + err.message, 'error'); });
+        });
+
+        function nextTierLevel() {
+            const levels = Array.from(document.querySelectorAll('#tiers-body .tier-level'))
+                .map(el => parseInt(el.value) || 0);
+            return levels.length ? Math.max.apply(null, levels) + 1 : 1;
+        }
+
+        function addTierRow() {
+            const body = document.getElementById('tiers-body');
+            const tr = document.createElement('tr');
+            tr.className = 'tier-row';
+            tr.innerHTML = `
+                <td><input type="number" class="f-input tier-level" name="tier.level" value="${nextTierLevel()}" min="1" step="1" required></td>
+                <td><input type="number" class="f-input" name="tier.points" value="0" min="0" step="1" required></td>
+                <td><input type="number" class="f-input" name="tier.prime" value="0" min="0" step="1" required></td>
+                <td><button type="button" class="btn-delete" onclick="removeTierRow(this)" title="Supprimer"><i class="fa-solid fa-trash"></i></button></td>
+            `;
+            body.appendChild(tr);
+        }
+
+        function removeTierRow(btn) {
+            const tr = btn.closest('tr');
+            if (tr) tr.remove();
+        }
+
+        function openBonusModal() {
+            const f = document.getElementById('form-bonus');
+            f.reset();
+            f.week.value = <%= currentWeek %>;
+            f.year.value = <%= currentYear %>;
+            document.getElementById('bonus-title').textContent = 'Attribuer une prime spéciale';
+            openModal('modal-bonus');
+        }
+
+        function editBonus(id) {
+            const b = bonusesData.find(x => x.id === id);
+            if (!b) { showToast('Prime introuvable', 'error'); return; }
+            const f = document.getElementById('form-bonus');
+            f.employeeId.value = b.employeeId;
+            f.week.value = b.week;
+            f.year.value = b.year || <%= currentYear %>;
+            f.amount.value = b.amount;
+            f.reason.value = b.reason || '';
+            document.getElementById('bonus-title').textContent = 'Modifier la prime spéciale';
+            openModal('modal-bonus');
+        }
+
+        function deleteBonus(id) {
+            if (!confirm('Supprimer cette prime spéciale ?')) return;
+            AdminAjax.post('/admin/special-bonus/' + id + '/delete')
+                .then(function () { return AdminAjax.reloadMain(); })
+                .catch(function (err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+
+        document.getElementById('form-bonus').addEventListener('submit', function (e) {
+            e.preventDefault();
+            AdminAjax.postForm(e.target).then(function () {
+                closeModal('modal-bonus');
+                showToast('Prime enregistrée');
+                return AdminAjax.reloadMain();
+            }).catch(function (err) { showToast('Erreur : ' + err.message, 'error'); });
+        });
+
+        function openModal(id) { const o = document.getElementById(id); o.classList.add('open'); document.body.style.overflow = 'hidden'; }
+        function closeModal(id) { const o = document.getElementById(id); o.classList.remove('open'); document.body.style.overflow = ''; }
+        function showToast(msg, type) {
+            type = type || 'success';
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            t.className = 'toast ' + type + ' show';
+            setTimeout(function () { t.classList.remove('show'); }, 3000);
+        }
+        document.querySelectorAll('.modal-overlay').forEach(function (overlay) {
+            let downTarget = null;
+            overlay.addEventListener('mousedown', function (e) { downTarget = e.target; });
+            overlay.addEventListener('mouseup', function (e) {
+                if (downTarget === overlay && e.target === overlay) {
+                    overlay.classList.remove('open');
+                    document.body.style.overflow = '';
+                }
+                downTarget = null;
+            });
+        });
+    </script>
+    <script src="/js/auto-refresh.js"></script>
+</body>
+</html>

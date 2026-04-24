@@ -1,0 +1,72 @@
+require('dotenv').config();
+const express = require('express');
+const session = require('express-session');
+const SQLiteStore = require('connect-sqlite3')(session);
+const path = require('path');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// View engine
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, '..', 'views'));
+
+// Static files
+app.use('/css', express.static(path.join(__dirname, '..', 'public', 'css')));
+app.use('/js', express.static(path.join(__dirname, '..', 'public', 'js')));
+app.use('/img', express.static(path.join(__dirname, '..', 'public', 'img')));
+
+// Body parsing
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+// Sessions persistées (connect-sqlite3 → sessions.db à la racine du projet).
+// Les sessions survivent aux redémarrages du serveur.
+// Durée configurable via SESSION_DURATION_DAYS dans le .env (défaut 14 jours).
+const SESSION_DURATION_DAYS = parseInt(process.env.SESSION_DURATION_DAYS) || 14;
+app.use(session({
+  store: new SQLiteStore({
+    db: 'sessions.db',
+    dir: path.join(__dirname, '..'),
+  }),
+  secret: process.env.SESSION_SECRET || 'ron-oil-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000 }
+}));
+
+// Make session data available in all views
+app.use((req, res, next) => {
+  res.locals.session = req.session;
+  next();
+});
+
+// Routes
+const authRoutes = require('./routes/auth');
+const employeeRoutes = require('./routes/employee');
+const adminRoutes = require('./routes/admin');
+const apiRoutes = require('./routes/api');
+
+app.use('/', authRoutes);
+app.use('/', employeeRoutes);
+app.use('/admin', adminRoutes);
+app.use('/api', apiRoutes);
+
+// Root redirect
+app.get('/', (req, res) => {
+  if (req.session && req.session.userId) {
+    if (req.session.employeeId) return res.redirect('/dashboard');
+    if (req.session.isAdmin) return res.redirect('/admin/salaries');
+  }
+  res.redirect('/login');
+});
+
+app.listen(PORT, () => {
+  console.log(`RON OIL server running on http://localhost:${PORT}`);
+  // Schedulers : rollover hebdo + alertes contrats (le bot n'a plus de cron)
+  try {
+    require('./services/alerts').startSchedulers();
+  } catch (err) {
+    console.error('[server] startSchedulers failed:', err.message);
+  }
+});

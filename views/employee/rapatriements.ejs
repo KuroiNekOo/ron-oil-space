@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL — Rapatriements</title>
+    <link rel="stylesheet" href="/css/shared.css">
+</head>
+<body>
+    <%- include('../partials/employee-sidebar', { currentPage: 'rapatriements', employee: employee, currentWeek: currentWeek }) %>
+
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title">D&eacute;claration de rapatriement</div>
+            <div class="page-subtitle">Formulaire de d&eacute;claration</div>
+        </div>
+
+        <div class="form-page-layout">
+            <div class="form-page-sidebar">
+                <div class="form-page-icon"><i class="fa-solid fa-truck-arrow-right"></i></div>
+                <div class="form-page-title">Rapatriement</div>
+                <div class="form-page-desc">D&eacute;clarez le retour d'un v&eacute;hicule au d&eacute;p&ocirc;t. Indiquez le niveau de carburant restant et le lieu de d&eacute;part.</div>
+                <div class="form-autofill-stack">
+                    <div class="form-autofill-item">
+                        <div class="form-autofill-label">Semaine</div>
+                        <div class="form-autofill-val" id="f-week"><%= currentWeek %></div>
+                    </div>
+                    <div class="form-autofill-item">
+                        <div class="form-autofill-label">Horodatage</div>
+                        <div class="form-autofill-val" id="f-timestamp">—</div>
+                    </div>
+                    <div class="form-autofill-item">
+                        <div class="form-autofill-label">Employ&eacute;</div>
+                        <div class="form-autofill-val"><%= employee.firstName %> <%= employee.lastName %></div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-page-main">
+                <form class="form-card" id="main-form" method="POST" action="/rapatriements" novalidate>
+                    <div class="form-grid">
+                        <div>
+                            <label class="f-label f-required">Plaque du camion</label>
+                            <input type="text" class="f-input" name="plaqueCamion" placeholder="ex. AA-123-BB" required>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Plaque de la citerne</label>
+                            <input type="text" class="f-input" name="plaqueCiterne" placeholder="ex. AA-456-BB" required>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Niveau d'essence (%)</label>
+                            <input type="number" class="f-input" name="fuel" placeholder="0 – 100" min="0" max="100" required>
+                            <div class="f-hint">Niveau au retour au d&eacute;p&ocirc;t</div>
+                        </div>
+                        <div>
+                            <label class="f-label">Lieu de d&eacute;part</label>
+                            <input type="text" class="f-input" name="departure" placeholder="Depuis...">
+                        </div>
+                        <div class="form-group-full">
+                            <label class="f-label">Commentaire</label>
+                            <textarea class="f-textarea" name="comment" placeholder="Observations &eacute;ventuelles..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-submit-row">
+                        <button type="reset" class="btn-reset-form">R&eacute;initialiser</button>
+                        <button type="submit" class="btn-submit-form">
+                            <i class="fa-solid fa-paper-plane"></i> Envoyer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <div class="toast success" id="toast">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toast-msg">Formulaire envoy&eacute; avec succ&egrave;s</span>
+    </div>
+
+    <script>
+        function pad2(n) { return String(n).padStart(2, '0'); }
+        const now = new Date();
+        document.getElementById('f-timestamp').textContent =
+            now.getDate() + '/' + pad2(now.getMonth()+1) + '/' + now.getFullYear() + ' ' + pad2(now.getHours()) + ':' + pad2(now.getMinutes());
+
+        <% if (success) { %>
+            (function() {
+                const t = document.getElementById('toast');
+                t.className = 'toast success show';
+                setTimeout(() => t.classList.remove('show'), 3500);
+            })();
+        <% } %>
+    </script>
+    <script src="/js/form-guard.js"></script>
+</body>
+</html>

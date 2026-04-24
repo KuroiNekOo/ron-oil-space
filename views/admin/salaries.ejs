@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL Admin — Salari&eacute;s</title>
+    <link rel="stylesheet" href="/css/admin-shared.css">
+</head>
+<body>
+    <%- include('../partials/admin-sidebar', { currentPage: 'salaries' }) %>
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title">Salari&eacute;s</div>
+            <div class="page-subtitle">Gestion des employ&eacute;s Ron Oil</div>
+        </div>
+
+        <% const total = employees.length; %>
+        <% const cdi = employees.filter(e => e.contract === 'CDI').length; %>
+        <% const cdd = employees.filter(e => e.contract === 'CDD').length; %>
+        <% const inactive = employees.filter(e => e.status === 'inactive').length; %>
+
+        <div class="g4" style="margin-bottom:28px;">
+            <div class="card"><div class="card-label">Total employ&eacute;s</div><div class="card-value c-accent"><%= total %></div></div>
+            <div class="card"><div class="card-label">CDI</div><div class="card-value"><%= cdi %></div></div>
+            <div class="card"><div class="card-label">CDD</div><div class="card-value c-gold"><%= cdd %></div></div>
+            <div class="card"><div class="card-label">Inactifs</div><div class="card-value"><%= inactive %></div></div>
+        </div>
+
+        <div class="admin-toolbar">
+            <div class="admin-toolbar-left">
+                <input type="text" class="admin-search" placeholder="Rechercher un salari&eacute;..." id="search-input" oninput="filterTable()">
+            </div>
+            <button class="btn-add" onclick="openModal('modal-add')">
+                <i class="fa-solid fa-plus"></i> Ajouter un salari&eacute;
+            </button>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+            <table class="admin-table" id="salaries-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Nom</th>
+                        <th>Contrat</th>
+                        <th>Poste</th>
+                        <th>Statut</th>
+                        <th>Admin</th>
+                        <th>Embauche</th>
+                        <th>T&eacute;l&eacute;phone</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="salaries-body">
+                    <% employees.forEach(function(e) { %>
+                    <tr class="employee-row" data-employee-id="<%= e.id %>" data-search="<%= (e.firstName + ' ' + e.lastName + ' ' + e.role).toLowerCase() %>">
+                        <td class="mono" style="color:var(--text-muted)"><%= e.id %></td>
+                        <td style="font-weight:500"><%= e.firstName %> <%= e.lastName %></td>
+                        <td><span class="contract-badge <%= e.contract.toLowerCase() %>"><%= e.contract %></span></td>
+                        <td><%= e.role %></td>
+                        <td><span class="status-badge <%= e.status === 'active' ? 'active' : 'inactive' %>"><%= e.status === 'active' ? 'Actif' : 'Inactif' %></span></td>
+                        <td>
+                            <button type="button" class="btn-toggle-admin" onclick="toggleAdmin(<%= e.id %>)" title="<%= e.isAdmin ? 'Révoquer l’accès admin' : 'Donner l’accès admin' %>" style="background:none;border:none;cursor:pointer;padding:0;font-size:16px;color:<%= e.isAdmin ? '#ffb020' : 'var(--text-muted)' %>">
+                                <i class="fa-solid <%= e.isAdmin ? 'fa-shield-halved' : 'fa-shield' %>"></i>
+                            </button>
+                        </td>
+                        <td class="mono" style="color:var(--text-secondary)"><%= e.hireDate ? new Date(e.hireDate).toISOString().split('T')[0] : '—' %></td>
+                        <td class="mono" style="color:var(--text-secondary)"><%= e.phone || '—' %></td>
+                        <td>
+                            <div class="table-actions">
+                                <button class="btn-edit" onclick="editEmployee(<%= e.id %>)" title="Modifier"><i class="fa-solid fa-pen"></i></button>
+                                <button type="button" class="btn-toggle-status" onclick="toggleStatus(<%= e.id %>)" title="<%= e.status === 'active' ? 'Désactiver' : 'Réactiver' %>">
+                                    <i class="fa-solid <%= e.status === 'active' ? 'fa-user-slash' : 'fa-user-check' %>"></i>
+                                </button>
+                                <button type="button" class="btn-delete" onclick="deleteEmployee(<%= e.id %>)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Modal Ajouter -->
+    <div class="modal-overlay" id="modal-add">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">Ajouter un salari&eacute;</div>
+                <button class="modal-close" onclick="closeModal('modal-add')">&#10005;</button>
+            </div>
+            <form method="POST" action="/admin/salaries">
+                <div class="modal-body">
+                    <div class="form-grid">
+                        <div>
+                            <label class="f-label f-required">Pr&eacute;nom</label>
+                            <input type="text" class="f-input" name="firstName" placeholder="Pr&eacute;nom" required>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Nom</label>
+                            <input type="text" class="f-input" name="lastName" placeholder="Nom" required>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Contrat</label>
+                            <select class="f-select" name="contract" required>
+                                <option value="" disabled selected>S&eacute;lectionner...</option>
+                                <option value="CDI">CDI</option>
+                                <option value="CDD">CDD</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Poste</label>
+                            <select class="f-select" name="role" required>
+                                <option value="" disabled selected>S&eacute;lectionner...</option>
+                                <option value="Livreur">Livreur</option>
+                                <option value="Superviseur">Superviseur</option>
+                                <option value="Direction">Direction</option>
+                                <option value="PDG">PDG</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="f-label">T&eacute;l&eacute;phone</label>
+                            <input type="text" class="f-input" name="phone" placeholder="555-0000">
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Date d'embauche</label>
+                            <input type="date" class="f-input" name="hireDate" required>
+                        </div>
+                        <div>
+                            <label class="f-label">Date de fin de contrat</label>
+                            <input type="date" class="f-input" name="endDate">
+                        </div>
+                        <div>
+                            <label class="f-label">IBAN</label>
+                            <input type="text" class="f-input" name="iban" placeholder="IBAN de l'employ&eacute;">
+                        </div>
+                        <div>
+                            <label class="f-label f-required">ID Discord</label>
+                            <input type="text" class="f-input" name="discordId" placeholder="ex. 123456789012345678" required>
+                        </div>
+                        <div class="form-group-full">
+                            <label class="f-label">Notes</label>
+                            <textarea class="f-textarea" name="notes" placeholder="Informations compl&eacute;mentaires sur l'employ&eacute;..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('modal-add')">Annuler</button>
+                    <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Ajouter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Modifier -->
+    <div class="modal-overlay" id="modal-edit">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">Modifier un salari&eacute;</div>
+                <button class="modal-close" onclick="closeModal('modal-edit')">&#10005;</button>
+            </div>
+            <form method="POST" id="form-edit" action="">
+                <div class="modal-body">
+                    <div class="form-grid">
+                        <div>
+                            <label class="f-label f-required">Pr&eacute;nom</label>
+                            <input type="text" class="f-input" name="firstName" required>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Nom</label>
+                            <input type="text" class="f-input" name="lastName" required>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Contrat</label>
+                            <select class="f-select" name="contract" required>
+                                <option value="CDI">CDI</option>
+                                <option value="CDD">CDD</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Poste</label>
+                            <select class="f-select" name="role" required>
+                                <option value="Livreur">Livreur</option>
+                                <option value="Superviseur">Superviseur</option>
+                                <option value="Direction">Direction</option>
+                                <option value="PDG">PDG</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="f-label">T&eacute;l&eacute;phone</label>
+                            <input type="text" class="f-input" name="phone" placeholder="555-0000">
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Date d'embauche</label>
+                            <input type="date" class="f-input" name="hireDate" required>
+                        </div>
+                        <div>
+                            <label class="f-label">Date de fin de contrat</label>
+                            <input type="date" class="f-input" name="endDate">
+                        </div>
+                        <div>
+                            <label class="f-label">IBAN</label>
+                            <input type="text" class="f-input" name="iban" placeholder="IBAN de l'employ&eacute;">
+                        </div>
+                        <div>
+                            <label class="f-label">ID Discord</label>
+                            <input type="text" class="f-input" name="discordId" placeholder="ex. 123456789012345678">
+                        </div>
+                        <div>
+                            <label class="f-label">ID Casier (salon Discord)</label>
+                            <input type="text" class="f-input" name="casierId" placeholder="ex. 123456789012345678">
+                        </div>
+                        <div class="form-group-full">
+                            <label class="f-label">Notes</label>
+                            <textarea class="f-textarea" name="notes" placeholder="Informations compl&eacute;mentaires sur l'employ&eacute;..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('modal-edit')">Annuler</button>
+                    <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="application/json" id="employees-data"><%- JSON.stringify(employees).replace(/</g, '\\u003c') %></script>
+
+    <div class="toast success" id="toast">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toast-msg">Action effectu&eacute;e</span>
+    </div>
+
+    <script src="/js/admin-ajax.js"></script>
+    <script>
+        function filterTable() {
+            var q = document.getElementById('search-input').value.toLowerCase();
+            var rows = document.querySelectorAll('.employee-row');
+            rows.forEach(function(row) {
+                var search = row.getAttribute('data-search');
+                row.style.display = search.includes(q) ? '' : 'none';
+            });
+        }
+
+        var employeesData = JSON.parse(document.getElementById('employees-data').textContent);
+
+        // Re-parse le cache JSON après un soft-reload
+        window.addEventListener('admin:reloaded', function() {
+            var el = document.getElementById('employees-data');
+            if (el) employeesData = JSON.parse(el.textContent);
+        });
+
+        // Interception des submits add/edit en AJAX
+        function hookForm(selector, modalId, successMsg) {
+            var form = document.querySelector(selector);
+            if (!form) return;
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                AdminAjax.postForm(form).then(function(data) {
+                    closeModal(modalId);
+                    if (modalId === 'modal-add') form.reset();
+                    showToast(successMsg);
+                    if (data && data.casierWarning) {
+                        setTimeout(function() {
+                            showToast('Casier Discord non créé : ' + data.casierWarning, 'error');
+                        }, 1500);
+                    }
+                    return AdminAjax.reloadMain();
+                }).catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+            });
+        }
+        hookForm('#modal-add form', 'modal-add', 'Salarié ajouté');
+        hookForm('#form-edit', 'modal-edit', 'Salarié modifié');
+
+        function toDateInput(value) {
+            if (!value) return '';
+            return String(value).split('T')[0];
+        }
+
+        function editEmployee(id) {
+            var emp = employeesData.find(function(e) { return e.id === id; });
+            if (!emp) { showToast('Employé introuvable', 'error'); return; }
+            var form = document.getElementById('form-edit');
+            form.action = '/admin/salaries/' + id + '/edit';
+            form.firstName.value = emp.firstName || '';
+            form.lastName.value  = emp.lastName  || '';
+            form.contract.value  = emp.contract  || 'CDD';
+            form.role.value      = emp.role      || 'Livreur';
+            form.phone.value     = emp.phone     || '';
+            form.hireDate.value  = toDateInput(emp.hireDate);
+            form.endDate.value   = toDateInput(emp.endDate);
+            form.iban.value      = emp.iban      || '';
+            form.discordId.value = emp.discordId || '';
+            form.casierId.value  = emp.casierId  || emp.channelId || '';
+            form.notes.value     = emp.notes     || '';
+            openModal('modal-edit');
+        }
+
+        function toggleStatus(id) {
+            AdminAjax.post('/admin/salaries/' + id + '/toggle')
+                .then(function() { return AdminAjax.reloadMain(); })
+                .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+
+        function toggleAdmin(id) {
+            AdminAjax.post('/admin/salaries/' + id + '/toggle-admin')
+                .then(function() { return AdminAjax.reloadMain(); })
+                .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+
+        function deleteEmployee(id) {
+            if (!confirm('Supprimer définitivement cet employé ?')) return;
+            AdminAjax.post('/admin/salaries/' + id + '/delete')
+                .then(function() { return AdminAjax.reloadMain(); })
+                .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+
+        function openModal(id) {
+            var overlay = document.getElementById(id);
+            overlay.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(id) {
+            var overlay = document.getElementById(id);
+            overlay.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        function showToast(msg, type) {
+            type = type || 'success';
+            var t = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            t.className = 'toast ' + type + ' show';
+            setTimeout(function() { t.classList.remove('show'); }, 3500);
+        }
+
+        // Outside-click-to-close modals
+        document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+            var downTarget = null;
+            overlay.addEventListener('mousedown', function(e) { downTarget = e.target; });
+            overlay.addEventListener('mouseup', function(e) {
+                if (downTarget === overlay && e.target === overlay) {
+                    overlay.classList.remove('open');
+                    document.body.style.overflow = '';
+                }
+                downTarget = null;
+            });
+        });
+    </script>
+    <script src="/js/auto-refresh.js"></script>
+</body>
+</html>

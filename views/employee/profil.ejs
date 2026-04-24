@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL — Mon Profil</title>
+    <link rel="stylesheet" href="/css/shared.css">
+</head>
+<body>
+    <%- include('../partials/employee-sidebar', { currentPage: 'profil', employee: employee, currentWeek: currentWeek }) %>
+
+    <main class="main-content">
+
+        <div class="page-header">
+            <div class="page-title">Mon Profil</div>
+            <div class="page-subtitle">Historique de mes performances semaine par semaine</div>
+        </div>
+
+        <!-- Header carte profil -->
+        <div class="profil-header-card">
+            <div class="profil-ava"><%= employee.firstName.charAt(0) %><%= employee.lastName.charAt(0) %></div>
+            <div style="flex:1;">
+                <div class="profil-name"><%= employee.firstName %> <%= employee.lastName %></div>
+                <div class="profil-meta"><%= employee.contract %> &middot; <%= employee.role %> &middot; Employ&eacute; <%= employee.status === 'active' ? 'actif' : 'inactif' %></div>
+            </div>
+            <div style="text-align:right;">
+                <div style="font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-muted);">Semaine actuelle</div>
+                <div class="card-value c-accent" style="font-size:22px;">S<%= currentWeek %></div>
+            </div>
+        </div>
+
+        <!-- Resume semaine courante -->
+        <% const curTier = getTier(currentStats.points); %>
+        <div class="section-title">Semaine en cours</div>
+        <div class="g4" style="margin-bottom:28px;">
+            <div class="card">
+                <div class="card-label">Livraisons</div>
+                <div class="card-value c-accent"><%= currentStats.deliveries %></div>
+            </div>
+            <div class="card">
+                <div class="card-label">Position</div>
+                <div class="card-value c-gold">#<%= currentStats.rank || '—' %></div>
+            </div>
+            <div class="card">
+                <div class="card-label">Gain employ&eacute;</div>
+                <div class="card-value c-success"><%= fmt(currentStats.gainEmployee) %></div>
+            </div>
+            <div class="card">
+                <div class="card-label">Palier</div>
+                <div class="card-value c-accent"><%= curTier ? 'Palier ' + curTier.level : '—' %></div>
+                <div class="card-sub"><%= currentStats.points %> pts</div>
+            </div>
+        </div>
+
+        <!-- Historique -->
+        <div class="section-title">Semaines pass&eacute;es</div>
+        <div class="history-grid">
+
+            <!-- Liste -->
+            <div>
+                <div class="history-list" id="p-history-list">
+                    <% history.forEach(function(h, i) { %>
+                        <% const rankLabel = h.rank === 1 ? '1' : h.rank === 2 ? '2' : h.rank === 3 ? '3' : '#' + h.rank; %>
+                        <% const rankColor = h.rank <= 3 ? 'var(--gold)' : 'var(--text-secondary)'; %>
+                        <div class="history-item" id="hi-<%= i %>" onclick="showDetail(<%= i %>)">
+                            <div>
+                                <div class="hi-week">Semaine <%= h.week %></div>
+                                <div class="hi-info"><%= h.deliveries %> livraisons &middot; Palier <%= h.tierLevel %></div>
+                            </div>
+                            <div class="hi-rank" style="color:<%= rankColor %>"><%= rankLabel %></div>
+                        </div>
+                    <% }); %>
+                    <% if (history.length === 0) { %>
+                        <div style="padding:20px;color:var(--text-muted);text-align:center;">Aucun historique disponible</div>
+                    <% } %>
+                </div>
+            </div>
+
+            <!-- Detail -->
+            <div>
+                <div class="section-title" style="margin-bottom:14px;">
+                    D&eacute;tail — Semaine <span id="p-detail-label">—</span>
+                </div>
+
+                <div class="g2" id="p-detail-stats" style="display:none;margin-bottom:0;"></div>
+
+                <div class="detail-empty" id="p-detail-empty">
+                    <div class="detail-empty-inner">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        S&eacute;lectionnez une semaine pour afficher le d&eacute;tail
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script type="application/json" id="history-data"><%- JSON.stringify(history).replace(/</g, '\\u003c') %></script>
+    <script src="/js/auto-refresh.js"></script>
+    <script>
+        const fmt = n => new Intl.NumberFormat('fr-FR').format(Math.round(n)) + '$';
+
+        let HISTORY = JSON.parse(document.getElementById('history-data').textContent);
+        let selectedWeek = null;
+
+        // Après chaque soft-reload, on re-parse l'historique frais
+        // et on restaure la sélection sur la même semaine si elle existe toujours.
+        window.addEventListener('admin:reloaded', function () {
+            const el = document.getElementById('history-data');
+            if (el) HISTORY = JSON.parse(el.textContent);
+            if (selectedWeek != null) {
+                const idx = HISTORY.findIndex(h => h.week === selectedWeek);
+                if (idx >= 0) showDetail(idx, { skipTrack: true });
+            }
+        });
+
+        function showDetail(i, opts) {
+            const h = HISTORY[i];
+            if (!h) return;
+            if (!opts || !opts.skipTrack) selectedWeek = h.week;
+
+            document.querySelectorAll('.history-item').forEach(el => el.classList.remove('active'));
+            const row = document.getElementById('hi-' + i);
+            if (row) row.classList.add('active');
+
+            document.getElementById('p-detail-label').textContent = h.week;
+            document.getElementById('p-detail-empty').style.display = 'none';
+
+            const statsEl = document.getElementById('p-detail-stats');
+            statsEl.style.display = 'grid';
+            statsEl.innerHTML = `
+                <div class="card">
+                    <div class="card-label">Livraisons</div>
+                    <div class="card-value c-accent">${h.deliveries}</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Position</div>
+                    <div class="card-value ${h.rank === 1 ? 'c-gold' : ''}">#${h.rank}</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Gain employ\u00e9</div>
+                    <div class="card-value c-success">${fmt(h.gainEmployee)}</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Gain entreprise</div>
+                    <div class="card-value">${fmt(h.gainEnterprise)}</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Points</div>
+                    <div class="card-value">${h.points}</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Palier atteint</div>
+                    <div class="card-value c-accent">${h.tierLevel ? 'Palier ' + h.tierLevel : '—'}</div>
+                    <div class="card-sub">${h.tierBasePoints ? h.tierBasePoints + ' pts requis · base ' + fmt(h.tierBasePrime) : (h.tierLevel ? fmt(h.tierPrime) + ' de prime' : 'Aucun palier')}</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Prime palier reçue</div>
+                    <div class="card-value c-accent">${fmt(h.tierPrime)}</div>
+                    <div class="card-sub">${h.tierPrimeShare > 0 ? (h.tierPrimeShare * 100).toFixed(0) + '% de ' + fmt(h.tierBasePrime) : 'Hors podium'}</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Prime podium reçue</div>
+                    ${h.podiumPrize > 0
+                        ? `<div class="card-value c-gold">${fmt(h.podiumPrize)}</div>
+                           <div class="card-sub">${h.rank}${h.rank === 1 ? 'ère' : 'ème'} place du classement</div>`
+                        : `<div class="card-value c-muted">&mdash;</div>
+                           <div class="card-sub">Hors podium (top 3 requis)</div>`}
+                </div>
+                <div class="card">
+                    <div class="card-label">Prime de livraisons</div>
+                    <div class="card-value c-gold">${fmt(h.bonusSalary)}</div>
+                    <div class="card-sub">${h.bonusRate || 0}% du gain entreprise</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Prime sp\u00e9ciale</div>
+                    ${h.specialBonus > 0
+                        ? `<div class="card-value c-accent">${fmt(h.specialBonus)}</div>
+                           <div class="card-sub">${h.specialBonusReason || "Bonus attribu\u00e9 par la direction"}</div>`
+                        : `<div class="card-value c-muted">&mdash;</div>
+                           <div class="card-sub">Aucune prime cette semaine</div>`}
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

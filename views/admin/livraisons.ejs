@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL Admin — Livraisons</title>
+    <link rel="stylesheet" href="/css/admin-shared.css">
+</head>
+<body>
+    <%- include('../partials/admin-sidebar', { currentPage: 'livraisons' }) %>
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title">Livraisons</div>
+            <div class="page-subtitle">Historique des livraisons effectu&eacute;es</div>
+        </div>
+
+        <form class="admin-toolbar" method="GET" action="/admin/livraisons" style="display:flex;gap:8px;align-items:center;">
+            <input type="text" class="admin-search" placeholder="Rechercher employ&eacute;, station..." name="q" value="<%= query.q || '' %>">
+            <button type="submit" class="btn-primary" style="padding:6px 14px;"><i class="fa-solid fa-magnifying-glass"></i></button>
+            <% if (query.q) { %><a href="/admin/livraisons" style="font-size:12px;color:var(--text-muted);">R&eacute;initialiser</a><% } %>
+        </form>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Semaine</th>
+                        <th>Date / Heure</th>
+                        <th>Employ&eacute;(e)</th>
+                        <th>Station</th>
+                        <th>Quantit&eacute;</th>
+                        <th>Gain employ&eacute;</th>
+                        <th>Gain entreprise</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (rows.length === 0) { %>
+                        <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">Aucun enregistrement</td></tr>
+                    <% } %>
+                    <% rows.forEach(function(r) { %>
+                    <tr>
+                        <td><span style="font-family:var(--font-mono);font-size:13px;color:var(--accent)">S<%= r.week %></span></td>
+                        <td class="mono" style="color:var(--text-secondary);font-size:12px"><%= new Date(r.timestamp).toLocaleString('fr-FR') %></td>
+                        <td style="font-weight:500"><%= r.employee %></td>
+                        <td style="font-size:12px;color:var(--text-secondary)"><%= r.station %></td>
+                        <td class="mono" style="font-size:12px"><%= r.qty %>%</td>
+                        <td class="mono" style="font-size:12px;color:var(--success)"><%= r.gainEmployee.toFixed(2) %>$</td>
+                        <td class="mono" style="font-size:12px;color:var(--gold);font-weight:600"><%= r.gainEnterprise.toFixed(2) %>$</td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+            <%- include('../partials/pagination', { page, totalPages, total, query }) %>
+        </div>
+    </main>
+    <script src="/js/auto-refresh.js"></script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <div class="sidebar-brand">RON <span>OIL</span></div>
+        <div class="sidebar-brand-sub">Espace Employ&eacute;</div>
+    </div>
+    <div class="sidebar-week">
+        <div class="sidebar-week-label">Semaine</div>
+        <div class="sidebar-week-num"><%= currentWeek %></div>
+    </div>
+    <nav class="sidebar-nav">
+        <div class="nav-section-label">Navigation</div>
+        <a class="nav-item<%= currentPage === 'dashboard' ? ' active' : '' %>" id="nav-dashboard" href="/dashboard">
+            <i class="fa-solid fa-gauge-high"></i> Dashboard
+        </a>
+        <a class="nav-item<%= currentPage === 'profil' ? ' active' : '' %>" id="nav-profil" href="/profil">
+            <i class="fa-solid fa-user"></i> Mon Profil
+        </a>
+        <a class="nav-item<%= currentPage === 'classement' ? ' active' : '' %>" id="nav-classement" href="/classement">
+            <i class="fa-solid fa-trophy"></i> Classement
+        </a>
+        <div class="nav-section-label" style="margin-top:12px;">Formulaires</div>
+        <a class="nav-item<%= currentPage === 'absences' ? ' active' : '' %>" id="nav-absences" href="/absences">
+            <i class="fa-solid fa-calendar-xmark"></i> Absences
+        </a>
+        <a class="nav-item<%= currentPage === 'frais' ? ' active' : '' %>" id="nav-frais" href="/frais">
+            <i class="fa-solid fa-receipt"></i> Notes de frais
+        </a>
+        <a class="nav-item<%= currentPage === 'pannes' ? ' active' : '' %>" id="nav-pannes" href="/pannes">
+            <i class="fa-solid fa-triangle-exclamation"></i> Pannes
+        </a>
+        <a class="nav-item<%= currentPage === 'rapatriements' ? ' active' : '' %>" id="nav-rapatriements" href="/rapatriements">
+            <i class="fa-solid fa-truck-arrow-right"></i> Rapatriements
+        </a>
+        <% if (session && session.isAdmin) { %>
+            <div class="nav-section-label" style="margin-top:12px;">Administration</div>
+            <a class="nav-item" href="/admin/salaries">
+                <i class="fa-solid fa-shield-halved"></i> Panel Admin
+            </a>
+        <% } %>
+    </nav>
+    <div class="sidebar-user">
+        <div class="user-avatar"><%= employee.firstName.charAt(0) %><%= employee.lastName.charAt(0) %></div>
+        <div>
+            <div class="user-name"><%= employee.firstName %> <%= employee.lastName %></div>
+            <div class="user-role"><%= employee.role %> &middot; <%= employee.contract %></div>
+        </div>
+        <a class="btn-logout" href="/logout" title="D&eacute;connexion">
+            <i class="fa-solid fa-right-from-bracket"></i>
+        </a>
+    </div>
+</aside>

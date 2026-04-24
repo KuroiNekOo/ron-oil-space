@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL Admin — Achats</title>
+    <link rel="stylesheet" href="/css/admin-shared.css">
+    <style>
+        .type-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
+        .type-row {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 14px;
+            background: var(--bg-card); border: 1px solid var(--border);
+        }
+        .type-row-name {
+            flex: 1; font-size: 14px; font-weight: 500;
+        }
+        .type-row-input {
+            flex: 1; background: var(--bg-input); border: 1px solid var(--border);
+            color: var(--text-primary); font-family: var(--font-body); font-size: 14px;
+            padding: 6px 10px; outline: none;
+        }
+        .type-row-input:focus { border-color: var(--accent); }
+        .type-row-actions { display: flex; gap: 6px; }
+        .type-add-row {
+            display: flex; gap: 10px; align-items: center;
+        }
+        .type-add-row .f-input { flex: 1; }
+        .select-with-manage {
+            display: flex; gap: 8px; align-items: flex-end;
+        }
+        .select-with-manage > div:first-child { flex: 1; }
+        .btn-manage-types {
+            background: rgba(255,255,255,.05); border: 1px solid var(--border);
+            color: var(--text-secondary); cursor: pointer; padding: 10px 14px;
+            font-size: 14px; transition: all .15s; flex-shrink: 0;
+            height: 42px; display: flex; align-items: center;
+        }
+        .btn-manage-types:hover { border-color: rgba(255,255,255,.15); color: var(--text-primary); }
+    </style>
+</head>
+<body>
+    <%- include('../partials/admin-sidebar', { currentPage: 'achats' }) %>
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title">Achats</div>
+            <div class="page-subtitle">Enregistrement et suivi des d&eacute;penses</div>
+        </div>
+
+        <%
+            var totalCount = purchases.length;
+            var totalSpent = purchases.reduce(function(s, a) { return s + a.qty * a.unitPrice; }, 0);
+            var weekTotal = purchases.filter(function(a) { return a.week === currentWeek; }).reduce(function(s, a) { return s + a.qty * a.unitPrice; }, 0);
+        %>
+
+        <div class="g4" style="margin-bottom:28px;">
+            <div class="card"><div class="card-label">Total achats</div><div class="card-value c-accent"><%= totalCount %></div></div>
+            <div class="card"><div class="card-label">Total d&eacute;pens&eacute;</div><div class="card-value c-gold"><%= totalSpent.toFixed(2) %>$</div></div>
+            <div class="card"><div class="card-label">Semaine actuelle</div><div class="card-value">S<%= currentWeek %></div></div>
+            <div class="card"><div class="card-label">D&eacute;penses S<%= currentWeek %></div><div class="card-value"><%= weekTotal.toFixed(2) %>$</div></div>
+        </div>
+
+        <div class="admin-toolbar">
+            <div class="admin-toolbar-left">
+                <input type="text" class="admin-search" placeholder="Rechercher..." id="search-input" oninput="filterTable()">
+            </div>
+            <button class="btn-add" onclick="openModal('modal-add')">
+                <i class="fa-solid fa-plus"></i> Enregistrer un achat
+            </button>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Semaine</th>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Effectu&eacute; par</th>
+                        <th>Qt&eacute;</th>
+                        <th>Prix unitaire</th>
+                        <th>Total</th>
+                        <th>Description</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="achats-body">
+                    <% purchases.forEach(function(a) { %>
+                    <tr class="achat-row" data-achat-id="<%= a.id %>" data-search="<%= ((a.type ? a.type.name : '') + ' ' + a.description + ' ' + (a.employee ? a.employee.firstName + ' ' + a.employee.lastName : '')).toLowerCase() %>">
+                        <td class="mono" style="color:var(--text-muted)"><%= a.id %></td>
+                        <td><span style="font-family:var(--font-mono);font-size:13px;color:var(--accent)">S<%= a.week %></span></td>
+                        <td class="mono" style="color:var(--text-secondary)"><%= new Date(a.date).toISOString().split('T')[0] %></td>
+                        <td><%= a.type ? a.type.name : '—' %></td>
+                        <td style="color:var(--text-secondary)"><%= a.employee ? a.employee.firstName + ' ' + a.employee.lastName : '—' %></td>
+                        <td class="mono"><%= a.qty %></td>
+                        <td class="mono"><%= a.unitPrice.toFixed(2) %>$</td>
+                        <td class="mono" style="color:var(--gold);font-weight:600"><%= (a.qty * a.unitPrice).toFixed(2) %>$</td>
+                        <td style="color:var(--text-secondary);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="<%= a.description %>"><%= a.description %></td>
+                        <td>
+                            <div class="table-actions">
+                                <button type="button" class="btn-delete" onclick="deletePurchase(<%= a.id %>)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Modal Ajouter achat -->
+    <div class="modal-overlay" id="modal-add">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">Enregistrer un achat</div>
+                <button class="modal-close" onclick="closeModal('modal-add')">&#10005;</button>
+            </div>
+            <form method="POST" action="/admin/achats">
+                <div class="modal-body">
+                    <div class="form-grid">
+                        <div class="form-group-full">
+                            <label class="f-label f-required">Type d'achat</label>
+                            <div class="select-with-manage">
+                                <div>
+                                    <select class="f-select" name="typeId" id="add-type" required>
+                                        <option value="" disabled selected>S&eacute;lectionner...</option>
+                                        <% types.forEach(function(t) { %>
+                                        <option value="<%= t.id %>"><%= t.name %></option>
+                                        <% }); %>
+                                    </select>
+                                </div>
+                                <button type="button" class="btn-manage-types" onclick="closeModal('modal-add');openModal('modal-types')" title="G&eacute;rer les types">
+                                    <i class="fa-solid fa-gear"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Effectu&eacute; par</label>
+                            <select class="f-select" name="employeeId" required>
+                                <option value="" disabled selected>S&eacute;lectionner...</option>
+                                <% employees.forEach(function(e) { %>
+                                <option value="<%= e.id %>"><%= e.firstName %> <%= e.lastName %> &middot; <%= e.role %></option>
+                                <% }); %>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Quantit&eacute;</label>
+                            <input type="number" class="f-input" name="qty" placeholder="0" min="1" required>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Prix unitaire ($)</label>
+                            <input type="number" class="f-input" name="unitPrice" placeholder="0.00" step="0.01" min="0" required>
+                        </div>
+                        <div>
+                            <label class="f-label">Date</label>
+                            <input type="date" class="f-input" name="date" id="add-purchase-date">
+                            <div style="margin-top:4px;font-size:12px;color:var(--text-muted)">
+                                Semaine calcul&eacute;e : <strong id="add-purchase-week" style="color:var(--accent)">—</strong>
+                            </div>
+                        </div>
+                        <div class="form-group-full">
+                            <label class="f-label f-required">Description</label>
+                            <textarea class="f-textarea" name="description" placeholder="D&eacute;crivez l'achat en d&eacute;tail..." required></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('modal-add')">Annuler</button>
+                    <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal G&eacute;rer les types -->
+    <div class="modal-overlay" id="modal-types">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">G&eacute;rer les types d'achat</div>
+                <button class="modal-close" onclick="closeModal('modal-types')">&#10005;</button>
+            </div>
+            <div class="modal-body">
+                <div class="type-list" id="type-list"></div>
+                <div class="type-add-row">
+                    <input type="text" class="f-input" id="new-type-name" placeholder="Nouveau type...">
+                    <button class="btn-primary" onclick="addType()"><i class="fa-solid fa-plus"></i> Ajouter</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('modal-types');openModal('modal-add')"><i class="fa-solid fa-arrow-left"></i> Retour aux achats</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast success" id="toast">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toast-msg">Action effectu&eacute;e</span>
+    </div>
+
+    <script src="/js/week.js"></script>
+    <script src="/js/admin-ajax.js"></script>
+    <script>
+        function filterTable() {
+            var q = document.getElementById('search-input').value.toLowerCase();
+            document.querySelectorAll('.achat-row').forEach(function(row) {
+                row.style.display = row.getAttribute('data-search').includes(q) ? '' : 'none';
+            });
+        }
+
+        function deletePurchase(id) {
+            if (!confirm('Supprimer cet achat ?')) return;
+            AdminAjax.post('/admin/achats/' + id + '/delete')
+                .then(function() { return AdminAjax.reloadMain(); })
+                .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+
+        (function() {
+            var form = document.querySelector('#modal-add form');
+            if (!form) return;
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                AdminAjax.postForm(form).then(function() {
+                    closeModal('modal-add');
+                    form.reset();
+                    showToast('Achat enregistré');
+                    return AdminAjax.reloadMain();
+                }).catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+            });
+        })();
+
+        // Affichage en direct de la semaine à partir de la date saisie (ISO + offset 6h)
+        (function() {
+            var input = document.getElementById('add-purchase-date');
+            var out = document.getElementById('add-purchase-week');
+            if (!input || !out || !window.ronWeek) return;
+            function refresh() {
+                if (!input.value) { out.textContent = '—'; return; }
+                var w = window.ronWeek.getWeekFromTimestamp(new Date(input.value + 'T12:00:00'));
+                out.textContent = 'S' + w;
+            }
+            input.addEventListener('input', refresh);
+            refresh();
+        })();
+
+        // ── Type management via fetch ──
+        function loadTypes() {
+            fetch('/admin/achats/types')
+                .then(function(r) { return r.json(); })
+                .then(function(typesData) {
+                    renderTypeList(typesData);
+                    renderTypeSelect(typesData);
+                });
+        }
+
+        function renderTypeSelect(typesData) {
+            var sel = document.getElementById('add-type');
+            var current = sel.value;
+            sel.innerHTML = '<option value="" disabled selected>S\u00e9lectionner...</option>' +
+                typesData.map(function(t) {
+                    return '<option value="' + t.id + '"' + (String(t.id) === current ? ' selected' : '') + '>' + t.name + '</option>';
+                }).join('');
+        }
+
+        function renderTypeList(typesData) {
+            var container = document.getElementById('type-list');
+            container.innerHTML = typesData.map(function(t) {
+                return '<div class="type-row" id="type-row-' + t.id + '">' +
+                    '<div class="type-row-name" id="type-name-' + t.id + '">' + t.name + '</div>' +
+                    '<input type="text" class="type-row-input" id="type-input-' + t.id + '" value="' + t.name + '" style="display:none;">' +
+                    '<div class="type-row-actions">' +
+                        '<button class="btn-edit" id="type-edit-' + t.id + '" onclick="startEditType(' + t.id + ')" title="Renommer"><i class="fa-solid fa-pen"></i></button>' +
+                        '<button class="btn-primary" id="type-save-' + t.id + '" onclick="saveEditType(' + t.id + ')" style="display:none;padding:5px 10px;font-size:12px;" title="Valider"><i class="fa-solid fa-check"></i></button>' +
+                        '<button class="btn-delete" onclick="deleteType(' + t.id + ')" title="Supprimer"><i class="fa-solid fa-trash"></i></button>' +
+                    '</div>' +
+                '</div>';
+            }).join('');
+        }
+
+        function startEditType(id) {
+            document.getElementById('type-name-' + id).style.display = 'none';
+            document.getElementById('type-input-' + id).style.display = '';
+            document.getElementById('type-edit-' + id).style.display = 'none';
+            document.getElementById('type-save-' + id).style.display = '';
+            document.getElementById('type-input-' + id).focus();
+        }
+
+        function saveEditType(id) {
+            var input = document.getElementById('type-input-' + id);
+            var val = input.value.trim();
+            if (!val) return showToast('Le nom ne peut pas \u00eatre vide', 'error');
+
+            fetch('/admin/achats/types/' + id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: val })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function() {
+                loadTypes();
+                showToast('Type renomm\u00e9');
+            })
+            .catch(function() { showToast('Erreur', 'error'); });
+        }
+
+        function deleteType(id) {
+            if (!confirm('Supprimer ce type ?')) return;
+            fetch('/admin/achats/types/' + id, { method: 'DELETE' })
+                .then(function(r) { return r.json(); })
+                .then(function() {
+                    loadTypes();
+                    showToast('Type supprim\u00e9');
+                })
+                .catch(function() { showToast('Erreur', 'error'); });
+        }
+
+        function addType() {
+            var input = document.getElementById('new-type-name');
+            var val = input.value.trim();
+            if (!val) return showToast('Nom requis', 'error');
+
+            fetch('/admin/achats/types', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: val })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function() {
+                input.value = '';
+                loadTypes();
+                showToast('Type ajout\u00e9');
+            })
+            .catch(function() { showToast('Erreur', 'error'); });
+        }
+
+        function openModal(id) {
+            var overlay = document.getElementById(id);
+            overlay.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(id) {
+            var overlay = document.getElementById(id);
+            overlay.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        function showToast(msg, type) {
+            type = type || 'success';
+            var t = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            t.className = 'toast ' + type + ' show';
+            setTimeout(function() { t.classList.remove('show'); }, 3500);
+        }
+
+        // Outside-click-to-close modals
+        document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+            var downTarget = null;
+            overlay.addEventListener('mousedown', function(e) { downTarget = e.target; });
+            overlay.addEventListener('mouseup', function(e) {
+                if (downTarget === overlay && e.target === overlay) {
+                    overlay.classList.remove('open');
+                    document.body.style.overflow = '';
+                }
+                downTarget = null;
+            });
+        });
+
+        // Load types on modal open
+        loadTypes();
+    </script>
+    <script src="/js/auto-refresh.js"></script>
+</body>
+</html>

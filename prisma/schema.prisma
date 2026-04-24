@@ -1,0 +1,249 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ── Auth ──
+
+model User {
+  id         Int      @id @default(autoincrement())
+  username   String   @unique
+  password   String
+  employeeId Int?     @unique
+  employee   Employee? @relation(fields: [employeeId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+// ── Employés ──
+
+model Employee {
+  id               Int       @id @default(autoincrement())
+  firstName        String
+  lastName         String
+  contract         String    @default("CDD") // CDI | CDD
+  role             String    @default("Livreur")
+  phone            String?
+  iban             String?
+  discordId        String?   @unique
+  channelId        String?
+  casierId         String?
+  hireDate         DateTime  @default(now())
+  endDate          DateTime?
+  status           String    @default("active") // active | inactive
+  isAdmin          Boolean   @default(false)
+  notes            String?
+
+  user             User?
+  absences         Absence[]
+  expenses         Expense[]
+  breakdowns       Breakdown[]
+  repatriations    Repatriation[]
+  purchases        Purchase[]
+  weekStats        WeekStats[]
+  specialBonuses   SpecialBonus[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+// ── Véhicules ──
+
+model Vehicle {
+  id           Int           @id @default(autoincrement())
+  plate        String        @unique
+  type         String        @default("Camion") // Camion | Citerne | Autre
+  status       String        @default("active") // active | inactive
+  maintenances Maintenance[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Maintenance {
+  id        Int      @id @default(autoincrement())
+  vehicleId Int
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  date      DateTime
+  miles     Int
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+// ── Achats ──
+
+model PurchaseType {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  purchases Purchase[]
+}
+
+model Purchase {
+  id          Int          @id @default(autoincrement())
+  week        Int
+  typeId      Int
+  type        PurchaseType @relation(fields: [typeId], references: [id])
+  qty         Float
+  unitPrice   Float
+  description String
+  date        DateTime
+  employeeId  Int?
+  employee    Employee?    @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  createdAt   DateTime     @default(now())
+}
+
+// ── Formulaires employé ──
+
+model Absence {
+  id           Int      @id @default(autoincrement())
+  employeeId   Int
+  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  week         Int
+  year               Int
+  type         String   // conge | maladie | accident | perso | autre
+  dateStart    DateTime
+  dateEnd      DateTime
+  justificatif String?  // oui | non | a_venir
+  comment      String?
+  createdAt    DateTime @default(now())
+
+  @@index([year, week])
+}
+
+model Expense {
+  id         Int      @id @default(autoincrement())
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  week       Int
+  year               Int
+  type       String   // carburant | repas | transport | equipement | peage | autre
+  amount     Float
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  @@index([year, week])
+}
+
+model Breakdown {
+  id             Int      @id @default(autoincrement())
+  employeeId     Int
+  employee       Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  week           Int
+  year               Int
+  truckPlate     String
+  tankerPlate    String?
+  type           String   // moteur | pneu | electricite | citerne | freins | accident | autre
+  position       String
+  comment        String?
+  createdAt      DateTime @default(now())
+
+  @@index([year, week])
+}
+
+model Repatriation {
+  id           Int      @id @default(autoincrement())
+  employeeId   Int
+  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  week         Int
+  year               Int
+  truckPlate   String
+  tankerPlate  String?
+  fuel         Int
+  departure    String?
+  comment      String?
+  createdAt    DateTime @default(now())
+
+  @@index([year, week])
+}
+
+// ── Stats hebdomadaires ──
+
+// Snapshot figé des stats d'un employé pour une semaine donnée.
+// Une fois écrit, ces valeurs ne changent plus même si les taux/règles évoluent.
+model WeekStats {
+  id                 Int      @id @default(autoincrement())
+  employeeId         Int
+  employee           Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  week               Int
+  deliveries         Int      @default(0)
+  gainEmployee       Float    @default(0)
+  gainEnterprise     Float    @default(0)
+  points             Int      @default(0)
+  rank               Int      @default(0)
+  bonusSalary        Float    @default(0)   // Prime de livraisons effectivement versée
+  bonusRate          Float    @default(0)   // Taux appliqué (%) pour bonusSalary
+  bonusMinDeliveries Int      @default(0)   // Seuil livraisons pour débloquer bonusSalary à l'époque (0 = pas de seuil)
+  weeklyDeliveryQuota Int     @default(30)  // Quota affichage livraisons hebdo à l'époque
+  tierLevel          Int      @default(0)
+  tierPrime          Float    @default(0)   // Prime palier effectivement versée (= base × share)
+  tierBasePoints     Int      @default(0)   // Seuil de points du palier à l'époque du freeze
+  tierBasePrime      Float    @default(0)   // Prime base du palier à l'époque du freeze
+  tierPrimeShare     Float    @default(0)   // Part du podium appliquée à l'époque (0.5/0.3/0.2/0)
+  pointsPerGain      Float    @default(1000) // Équivalence $→pts à l'époque
+  podiumPrize        Float    @default(0)
+  specialBonus       Float    @default(0)
+  specialBonusReason String?
+  expenseRefund      Float    @default(0)
+  repatBonus         Float    @default(0)
+  impoundPenalty     Float    @default(0)
+  primeFinale        Float    @default(0)
+  frozenAt           DateTime @default(now())
+  year               Int
+
+  @@unique([employeeId, week, year])
+  @@index([year, week])
+}
+
+// ── Période / Config ──
+
+model Period {
+  id         Int      @id @default(autoincrement())
+  weekNumber Int
+  year               Int
+  startDate  DateTime
+  endDate    DateTime
+  status     String   @default("active") // active | closed
+  createdAt  DateTime @default(now())
+
+  @@unique([weekNumber, year])
+}
+
+model Config {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value String
+}
+
+// Prime spéciale manuelle attribuée par un admin à un employé pour une semaine donnée.
+model SpecialBonus {
+  id         Int      @id @default(autoincrement())
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  week       Int
+  year               Int
+  amount     Float
+  reason     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([employeeId, week, year])
+  @@index([year, week])
+}
+
+// ── Logs importés Google Sheets ──
+
+model LogEntry {
+  id        Int      @id @default(autoincrement())
+  sheetRow  Int      @unique  // Numéro de ligne dans le Google Sheet "FORM" — clé d'idempotence
+  type      String   // delivery | invoice | call | garage | duty
+  timestamp DateTime
+  week      Int
+  year               Int
+  data      String   // JSON string of parsed fields
+  rawData   String   // Original C column value
+  createdAt DateTime @default(now())
+
+  @@index([type])
+  @@index([year, week])
+}

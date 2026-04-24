@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL Admin — Rapatriements</title>
+    <link rel="stylesheet" href="/css/admin-shared.css">
+</head>
+<body>
+    <%- include('../partials/admin-sidebar', { currentPage: 'rapatriements' }) %>
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title">Rapatriements</div>
+            <div class="page-subtitle">D&eacute;clarations de rapatriements re&ccedil;ues</div>
+        </div>
+
+        <div class="admin-toolbar">
+            <div class="admin-toolbar-left">
+                <input type="text" class="admin-search" placeholder="Rechercher..." id="search-input" oninput="filterTable()">
+                <span id="count-label" style="font-size:12px;color:var(--text-muted)"><%= repatriations.length %> enregistrement(s)</span>
+            </div>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Semaine</th>
+                        <th>Horodatage</th>
+                        <th>Employ&eacute;</th>
+                        <th>Camion</th>
+                        <th>Citerne</th>
+                        <th>Carburant (%)</th>
+                        <th>D&eacute;part</th>
+                        <th>Commentaire</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <% repatriations.forEach(function(r) { %>
+                    <tr class="data-row" data-row-id="<%= r.id %>" data-search="<%= (r.employee.firstName + ' ' + r.employee.lastName + ' ' + r.truckPlate + ' ' + (r.departure || '') + ' ' + (r.comment || '')).toLowerCase() %>">
+                        <td class="mono" style="color:var(--text-muted)"><%= r.id %></td>
+                        <td><span style="font-family:var(--font-mono);font-size:12px;color:var(--accent)">S<%= r.week %></span></td>
+                        <td class="mono" style="color:var(--text-secondary);font-size:11px"><%= new Date(r.createdAt).toLocaleString('fr-FR') %></td>
+                        <td style="font-weight:500"><%= r.employee.firstName %> <%= r.employee.lastName %></td>
+                        <td class="mono" style="font-size:12px"><%= r.truckPlate %></td>
+                        <td class="mono" style="font-size:12px"><%= r.tankerPlate || '—' %></td>
+                        <td>
+                            <span class="mono" style="font-weight:600;color:<%= r.fuel <= 10 ? 'var(--danger)' : r.fuel <= 25 ? 'var(--gold)' : 'var(--success)' %>"><%= r.fuel %>%</span>
+                        </td>
+                        <td style="font-size:12px;color:var(--text-secondary)"><%= r.departure || '—' %></td>
+                        <td style="font-size:12px;color:var(--text-secondary);max-width:160px;overflow:hidden;text-overflow:ellipsis"><%= r.comment || '—' %></td>
+                        <td>
+                            <div class="table-actions">
+                                <button class="btn-edit" onclick="editRow(<%= r.id %>)" title="Modifier"><i class="fa-solid fa-pen"></i></button>
+                                <button class="btn-delete" onclick="deleteRow(<%= r.id %>)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Modal Modifier -->
+    <div class="modal-overlay" id="modal-edit">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">Modifier un rapatriement</div>
+                <button class="modal-close" onclick="closeModal('modal-edit')">&#10005;</button>
+            </div>
+            <form method="POST" id="form-edit" action="">
+                <div class="modal-body">
+                    <div class="form-grid">
+                        <div>
+                            <label class="f-label f-required">Plaque camion</label>
+                            <input type="text" class="f-input" name="truckPlate" required>
+                        </div>
+                        <div>
+                            <label class="f-label">Plaque citerne</label>
+                            <input type="text" class="f-input" name="tankerPlate">
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Carburant (%)</label>
+                            <input type="number" class="f-input" name="fuel" min="0" max="100" required>
+                        </div>
+                        <div>
+                            <label class="f-label">D&eacute;part</label>
+                            <input type="text" class="f-input" name="departure">
+                        </div>
+                        <div class="form-group-full">
+                            <label class="f-label">Commentaire</label>
+                            <textarea class="f-textarea" name="comment"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('modal-edit')">Annuler</button>
+                    <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="application/json" id="rows-data"><%- JSON.stringify(repatriations).replace(/</g, '\\u003c') %></script>
+
+    <div class="toast success" id="toast">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toast-msg">Action effectu&eacute;e</span>
+    </div>
+
+    <script src="/js/admin-ajax.js"></script>
+    <script>
+        var rowsData = JSON.parse(document.getElementById('rows-data').textContent);
+        window.addEventListener('admin:reloaded', function() {
+            var el = document.getElementById('rows-data');
+            if (el) rowsData = JSON.parse(el.textContent);
+        });
+
+        function filterTable() {
+            var q = document.getElementById('search-input').value.toLowerCase();
+            var count = 0;
+            document.querySelectorAll('.data-row').forEach(function(row) {
+                var match = row.getAttribute('data-search').includes(q);
+                row.style.display = match ? '' : 'none';
+                if (match) count++;
+            });
+            document.getElementById('count-label').textContent = count + ' enregistrement(s)';
+        }
+
+        function editRow(id) {
+            var r = rowsData.find(function(x) { return x.id === id; });
+            if (!r) { showToast('Ligne introuvable', 'error'); return; }
+            var form = document.getElementById('form-edit');
+            form.action = '/admin/rapatriements/' + id + '/edit';
+            form.truckPlate.value = r.truckPlate || '';
+            form.tankerPlate.value = r.tankerPlate || '';
+            form.fuel.value = r.fuel != null ? r.fuel : '';
+            form.departure.value = r.departure || '';
+            form.comment.value = r.comment || '';
+            openModal('modal-edit');
+        }
+
+        function deleteRow(id) {
+            if (!confirm('Supprimer ce rapatriement ?')) return;
+            AdminAjax.post('/admin/rapatriements/' + id + '/delete')
+                .then(function() { return AdminAjax.reloadMain(); })
+                .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+
+        document.getElementById('form-edit').addEventListener('submit', function(e) {
+            e.preventDefault();
+            AdminAjax.postForm(e.target).then(function() {
+                closeModal('modal-edit');
+                showToast('Rapatriement modifi&eacute;');
+                return AdminAjax.reloadMain();
+            }).catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        });
+
+        function openModal(id) { var o = document.getElementById(id); o.classList.add('open'); document.body.style.overflow = 'hidden'; }
+        function closeModal(id) { var o = document.getElementById(id); o.classList.remove('open'); document.body.style.overflow = ''; }
+        function showToast(msg, type) {
+            type = type || 'success';
+            var t = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            t.className = 'toast ' + type + ' show';
+            setTimeout(function() { t.classList.remove('show'); }, 3500);
+        }
+        document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+            var downTarget = null;
+            overlay.addEventListener('mousedown', function(e) { downTarget = e.target; });
+            overlay.addEventListener('mouseup', function(e) {
+                if (downTarget === overlay && e.target === overlay) {
+                    overlay.classList.remove('open');
+                    document.body.style.overflow = '';
+                }
+                downTarget = null;
+            });
+        });
+    </script>
+    <script src="/js/auto-refresh.js"></script>
+</body>
+</html>

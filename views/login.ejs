@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RON OIL — Connexion</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --bg-base:       #0D0D12;
+            --bg-panel:      #13131A;
+            --bg-card:       #1A1A23;
+            --bg-card-hover: #22222D;
+            --bg-input:      #1E1E28;
+            --accent:        #FF5422;
+            --accent-hover:  #FF6D3F;
+            --accent-glow:   rgba(255, 84, 34, 0.20);
+            --accent-dim:    rgba(255, 84, 34, 0.10);
+            --border-accent: rgba(255, 84, 34, 0.35);
+            --text-primary:  #F0EDE8;
+            --text-secondary:#B5B3C6;
+            --text-muted:    #908FA6;
+            --border:        rgba(255,255,255,0.09);
+            --font-display:  'Syne', sans-serif;
+            --font-mono:     'IBM Plex Mono', monospace;
+            --font-body:     'Outfit', sans-serif;
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg-base);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .login-bg {
+            position: absolute; inset: 0;
+            background:
+                radial-gradient(ellipse 60% 60% at 15% 55%, rgba(255,84,34,.09) 0%, transparent 70%),
+                radial-gradient(ellipse 50% 50% at 85% 20%, rgba(255,84,34,.05) 0%, transparent 60%);
+        }
+
+        .login-grid {
+            position: absolute; inset: 0;
+            background-image:
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 64px 64px;
+            mask-image: radial-gradient(ellipse at center, black 25%, transparent 75%);
+        }
+
+        .login-corner {
+            position: absolute;
+            width: 200px; height: 200px;
+            border: 1px solid var(--border-accent);
+            opacity: .35; pointer-events: none;
+        }
+        .login-corner.tl { top: 48px; left: 48px; border-right: none; border-bottom: none; }
+        .login-corner.br { bottom: 48px; right: 48px; border-left: none; border-top: none; }
+
+        .login-box {
+            position: relative; z-index: 1;
+            width: 420px;
+            padding: 48px 44px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-top: 1px solid var(--border-accent);
+            box-shadow: 0 32px 80px rgba(0,0,0,.6);
+        }
+
+        .login-logo { margin-bottom: 36px; }
+        .login-brand {
+            font-family: var(--font-display);
+            font-size: 26px; font-weight: 800; letter-spacing: .12em;
+            color: var(--accent);
+        }
+        .login-brand span { color: var(--text-primary); }
+        .login-brand-sub {
+            font-size: 10px; letter-spacing: .28em;
+            text-transform: uppercase; color: var(--text-muted); margin-top: 4px;
+        }
+
+        .login-title {
+            font-family: var(--font-display);
+            font-size: 18px; font-weight: 700; margin-bottom: 6px;
+        }
+        .login-subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 28px; }
+
+        .form-group { margin-bottom: 18px; }
+        .form-label {
+            display: block;
+            font-size: 10px; letter-spacing: .18em;
+            text-transform: uppercase; color: var(--text-secondary); margin-bottom: 8px;
+        }
+        .form-input {
+            width: 100%;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            font-family: var(--font-body); font-size: 14px;
+            padding: 12px 14px; outline: none;
+            transition: border-color .2s, background .2s;
+        }
+        .form-input:focus { border-color: var(--accent); background: var(--bg-card-hover); }
+        .form-input::placeholder { color: var(--text-muted); }
+
+        .btn-submit {
+            width: 100%;
+            background: var(--accent); color: white;
+            border: none;
+            font-family: var(--font-display); font-size: 12px;
+            font-weight: 700; letter-spacing: .2em; text-transform: uppercase;
+            padding: 14px 24px; cursor: pointer;
+            transition: background .2s, transform .1s;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            margin-top: 8px;
+        }
+        .btn-submit:hover { background: var(--accent-hover); }
+        .btn-submit:active { transform: scale(.99); }
+
+        .login-footer {
+            margin-top: 20px;
+            font-size: 11px; color: var(--text-muted);
+            text-align: center; letter-spacing: .04em;
+        }
+
+        .error-msg {
+            background: rgba(255, 77, 77, .12);
+            border: 1px solid rgba(255, 77, 77, .35);
+            color: #FF4D4D;
+            font-size: 12px;
+            padding: 10px 14px;
+            margin-bottom: 20px;
+            text-align: center;
+            letter-spacing: .04em;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-bg"></div>
+    <div class="login-grid"></div>
+    <div class="login-corner tl"></div>
+    <div class="login-corner br"></div>
+
+    <div class="login-box">
+        <div class="login-logo">
+            <div class="login-brand">RON&nbsp;<span>OIL</span></div>
+            <div class="login-brand-sub">Espace Employ&eacute; — Intranet</div>
+        </div>
+
+        <div class="login-title">Connexion</div>
+        <div class="login-subtitle">Acc&egrave;s r&eacute;serv&eacute; aux employ&eacute;s actifs</div>
+
+        <% if (typeof error !== 'undefined' && error) { %>
+        <div class="error-msg">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            Identifiant ou mot de passe incorrect
+        </div>
+        <% } %>
+
+        <form method="POST" action="/login">
+            <div class="form-group">
+                <label class="form-label" for="username">Identifiant</label>
+                <input type="text" class="form-input" id="username" name="username" placeholder="Votre identifiant" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">Mot de passe</label>
+                <input type="password" class="form-input" id="password" name="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" required>
+            </div>
+
+            <button type="submit" class="btn-submit">
+                <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                Acc&eacute;der &agrave; l'espace
+            </button>
+        </form>
+
+        <div class="login-footer">Tout acc&egrave;s non autoris&eacute; constitue une infraction grave</div>
+    </div>
+</body>
+</html>

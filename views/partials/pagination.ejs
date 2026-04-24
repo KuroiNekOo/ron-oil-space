@@ -1,0 +1,17 @@
+<% if (totalPages > 1) { %>
+    <%
+        var prev = Math.max(1, page - 1);
+        var next = Math.min(totalPages, page + 1);
+        function url(p) {
+            var params = Object.assign({}, typeof query === 'object' ? query : {}, { page: p });
+            return '?' + Object.keys(params).filter(function(k) { return params[k] !== '' && params[k] != null; }).map(function(k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); }).join('&');
+        }
+    %>
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;border-top:1px solid var(--border);font-size:13px;">
+        <a href="<%= url(1) %>" style="padding:6px 10px;color:<%= page === 1 ? 'var(--text-muted)' : 'var(--text-primary)' %>;text-decoration:none;<%= page === 1 ? 'pointer-events:none;' : '' %>"><i class="fa-solid fa-angles-left"></i></a>
+        <a href="<%= url(prev) %>" style="padding:6px 10px;color:<%= page === 1 ? 'var(--text-muted)' : 'var(--text-primary)' %>;text-decoration:none;<%= page === 1 ? 'pointer-events:none;' : '' %>"><i class="fa-solid fa-chevron-left"></i></a>
+        <span class="mono" style="color:var(--text-secondary);padding:0 12px;">Page <strong style="color:var(--accent)"><%= page %></strong> / <%= totalPages %> <span style="color:var(--text-muted);margin-left:8px;">(<%= total %> enregistrements)</span></span>
+        <a href="<%= url(next) %>" style="padding:6px 10px;color:<%= page === totalPages ? 'var(--text-muted)' : 'var(--text-primary)' %>;text-decoration:none;<%= page === totalPages ? 'pointer-events:none;' : '' %>"><i class="fa-solid fa-chevron-right"></i></a>
+        <a href="<%= url(totalPages) %>" style="padding:6px 10px;color:<%= page === totalPages ? 'var(--text-muted)' : 'var(--text-primary)' %>;text-decoration:none;<%= page === totalPages ? 'pointer-events:none;' : '' %>"><i class="fa-solid fa-angles-right"></i></a>
+    </div>
+<% } %>

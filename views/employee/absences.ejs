@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL — Absences</title>
+    <link rel="stylesheet" href="/css/shared.css">
+</head>
+<body>
+    <%- include('../partials/employee-sidebar', { currentPage: 'absences', employee: employee, currentWeek: currentWeek }) %>
+
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title">D&eacute;claration d'absence</div>
+            <div class="page-subtitle">Formulaire de d&eacute;claration</div>
+        </div>
+
+        <div class="form-page-layout">
+            <div class="form-page-sidebar">
+                <div class="form-page-icon"><i class="fa-solid fa-calendar-xmark"></i></div>
+                <div class="form-page-title">Absence</div>
+                <div class="form-page-desc">D&eacute;clarez une absence pr&eacute;vue ou impr&eacute;vue. Les informations seront transmises directement &agrave; l'administration.</div>
+                <div class="form-autofill-stack">
+                    <div class="form-autofill-item">
+                        <div class="form-autofill-label">Semaine</div>
+                        <div class="form-autofill-val" id="f-week"><%= currentWeek %></div>
+                    </div>
+                    <div class="form-autofill-item">
+                        <div class="form-autofill-label">Horodatage</div>
+                        <div class="form-autofill-val" id="f-timestamp">—</div>
+                    </div>
+                    <div class="form-autofill-item">
+                        <div class="form-autofill-label">Employ&eacute;</div>
+                        <div class="form-autofill-val"><%= employee.firstName %> <%= employee.lastName %></div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-page-main">
+                <form class="form-card" id="main-form" method="POST" action="/absences" novalidate>
+                    <div class="form-grid">
+                        <div>
+                            <label class="f-label f-required">Date de d&eacute;but</label>
+                            <input type="date" class="f-input" name="dateStart" required>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Date de fin</label>
+                            <input type="date" class="f-input" name="dateEnd" required>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Type d'absence</label>
+                            <select class="f-select" name="type" required>
+                                <option value="" disabled selected>S&eacute;lectionner...</option>
+                                <option value="conge">Cong&eacute;</option>
+                                <option value="maladie">Maladie</option>
+                                <option value="accident">Accident du travail</option>
+                                <option value="perso">Raison personnelle</option>
+                                <option value="autre">Autre</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="f-label">Justificatif</label>
+                            <select class="f-select" name="justificatif">
+                                <option value="" disabled selected>S&eacute;lectionner...</option>
+                                <option value="oui">Oui — fourni</option>
+                                <option value="non">Non</option>
+                                <option value="a_venir">&Agrave; venir</option>
+                            </select>
+                        </div>
+                        <div class="form-group-full">
+                            <label class="f-label">Commentaire</label>
+                            <textarea class="f-textarea" name="comment" placeholder="Informations compl&eacute;mentaires..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-submit-row">
+                        <button type="reset" class="btn-reset-form">R&eacute;initialiser</button>
+                        <button type="submit" class="btn-submit-form">
+                            <i class="fa-solid fa-paper-plane"></i> Envoyer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <div class="toast success" id="toast">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toast-msg">Formulaire envoy&eacute; avec succ&egrave;s</span>
+    </div>
+
+    <script>
+        // Auto-fill timestamp
+        function pad2(n) { return String(n).padStart(2, '0'); }
+        const now = new Date();
+        document.getElementById('f-timestamp').textContent =
+            now.getDate() + '/' + pad2(now.getMonth()+1) + '/' + now.getFullYear() + ' ' + pad2(now.getHours()) + ':' + pad2(now.getMinutes());
+
+        // Show success toast if redirected after submit
+        <% if (success) { %>
+            (function() {
+                const t = document.getElementById('toast');
+                t.className = 'toast success show';
+                setTimeout(() => t.classList.remove('show'), 3500);
+            })();
+        <% } %>
+    </script>
+    <script src="/js/form-guard.js"></script>
+</body>
+</html>

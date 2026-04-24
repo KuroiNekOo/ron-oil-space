@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL Admin — Notes de frais</title>
+    <link rel="stylesheet" href="/css/admin-shared.css">
+</head>
+<body>
+    <%- include('../partials/admin-sidebar', { currentPage: 'frais' }) %>
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title">Notes de frais</div>
+            <div class="page-subtitle">D&eacute;clarations de frais re&ccedil;ues</div>
+        </div>
+
+        <div class="admin-toolbar">
+            <div class="admin-toolbar-left">
+                <input type="text" class="admin-search" placeholder="Rechercher..." id="search-input" oninput="filterTable()">
+                <span id="count-label" style="font-size:12px;color:var(--text-muted)"><%= expenses.length %> enregistrement(s)</span>
+            </div>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Semaine</th>
+                        <th>Horodatage</th>
+                        <th>Employ&eacute;</th>
+                        <th>Type</th>
+                        <th>Montant</th>
+                        <th>Commentaire</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <% expenses.forEach(function(r) { %>
+                    <tr class="data-row" data-row-id="<%= r.id %>" data-search="<%= (r.employee.firstName + ' ' + r.employee.lastName + ' ' + r.type + ' ' + (r.comment || '')).toLowerCase() %>">
+                        <td class="mono" style="color:var(--text-muted)"><%= r.id %></td>
+                        <td><span style="font-family:var(--font-mono);font-size:12px;color:var(--accent)">S<%= r.week %></span></td>
+                        <td class="mono" style="color:var(--text-secondary);font-size:11px"><%= new Date(r.createdAt).toLocaleString('fr-FR') %></td>
+                        <td style="font-weight:500"><%= r.employee.firstName %> <%= r.employee.lastName %></td>
+                        <td><span class="status-badge pending"><%= r.type %></span></td>
+                        <td class="mono" style="color:var(--gold);font-weight:600"><%= r.amount.toFixed(2) %>$</td>
+                        <td style="font-size:12px;color:var(--text-secondary)"><%= r.comment || '—' %></td>
+                        <td>
+                            <div class="table-actions">
+                                <button class="btn-edit" onclick="editRow(<%= r.id %>)" title="Modifier"><i class="fa-solid fa-pen"></i></button>
+                                <button class="btn-delete" onclick="deleteRow(<%= r.id %>)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Modal Modifier -->
+    <div class="modal-overlay" id="modal-edit">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">Modifier une note de frais</div>
+                <button class="modal-close" onclick="closeModal('modal-edit')">&#10005;</button>
+            </div>
+            <form method="POST" id="form-edit" action="">
+                <div class="modal-body">
+                    <div class="form-grid">
+                        <div>
+                            <label class="f-label f-required">Type</label>
+                            <select class="f-select" name="type" required>
+                                <option value="carburant">Carburant</option>
+                                <option value="repas">Repas</option>
+                                <option value="transport">Transport</option>
+                                <option value="equipement">&Eacute;quipement</option>
+                                <option value="peage">P&eacute;age</option>
+                                <option value="autre">Autre</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Montant ($)</label>
+                            <input type="number" step="0.01" min="0" class="f-input" name="amount" required>
+                        </div>
+                        <div class="form-group-full">
+                            <label class="f-label">Commentaire</label>
+                            <textarea class="f-textarea" name="comment"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('modal-edit')">Annuler</button>
+                    <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="application/json" id="rows-data"><%- JSON.stringify(expenses).replace(/</g, '\\u003c') %></script>
+
+    <div class="toast success" id="toast">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toast-msg">Action effectu&eacute;e</span>
+    </div>
+
+    <script src="/js/admin-ajax.js"></script>
+    <script>
+        var rowsData = JSON.parse(document.getElementById('rows-data').textContent);
+        window.addEventListener('admin:reloaded', function() {
+            var el = document.getElementById('rows-data');
+            if (el) rowsData = JSON.parse(el.textContent);
+        });
+
+        function filterTable() {
+            var q = document.getElementById('search-input').value.toLowerCase();
+            var count = 0;
+            document.querySelectorAll('.data-row').forEach(function(row) {
+                var match = row.getAttribute('data-search').includes(q);
+                row.style.display = match ? '' : 'none';
+                if (match) count++;
+            });
+            document.getElementById('count-label').textContent = count + ' enregistrement(s)';
+        }
+
+        function editRow(id) {
+            var r = rowsData.find(function(x) { return x.id === id; });
+            if (!r) { showToast('Ligne introuvable', 'error'); return; }
+            var form = document.getElementById('form-edit');
+            form.action = '/admin/frais/' + id + '/edit';
+            form.type.value = r.type || 'autre';
+            form.amount.value = r.amount != null ? r.amount : '';
+            form.comment.value = r.comment || '';
+            openModal('modal-edit');
+        }
+
+        function deleteRow(id) {
+            if (!confirm('Supprimer cette note de frais ?')) return;
+            AdminAjax.post('/admin/frais/' + id + '/delete')
+                .then(function() { return AdminAjax.reloadMain(); })
+                .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+
+        document.getElementById('form-edit').addEventListener('submit', function(e) {
+            e.preventDefault();
+            AdminAjax.postForm(e.target).then(function() {
+                closeModal('modal-edit');
+                showToast('Note de frais modifi&eacute;e');
+                return AdminAjax.reloadMain();
+            }).catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        });
+
+        function openModal(id) { var o = document.getElementById(id); o.classList.add('open'); document.body.style.overflow = 'hidden'; }
+        function closeModal(id) { var o = document.getElementById(id); o.classList.remove('open'); document.body.style.overflow = ''; }
+        function showToast(msg, type) {
+            type = type || 'success';
+            var t = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            t.className = 'toast ' + type + ' show';
+            setTimeout(function() { t.classList.remove('show'); }, 3500);
+        }
+        document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+            var downTarget = null;
+            overlay.addEventListener('mousedown', function(e) { downTarget = e.target; });
+            overlay.addEventListener('mouseup', function(e) {
+                if (downTarget === overlay && e.target === overlay) {
+                    overlay.classList.remove('open');
+                    document.body.style.overflow = '';
+                }
+                downTarget = null;
+            });
+        });
+    </script>
+    <script src="/js/auto-refresh.js"></script>
+</body>
+</html>

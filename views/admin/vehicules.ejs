@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL Admin — V&eacute;hicules</title>
+    <link rel="stylesheet" href="/css/admin-shared.css">
+    <style>
+        .maint-history { margin-top: 20px; }
+        .maint-entry {
+            display: flex; align-items: flex-start; gap: 16px;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .maint-entry:last-child { border-bottom: none; }
+        .maint-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: var(--accent); flex-shrink: 0;
+            margin-top: 5px;
+        }
+        .maint-info { flex: 1; }
+        .maint-date {
+            font-family: var(--font-mono);
+            font-size: 13px; font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .maint-miles {
+            font-family: var(--font-mono);
+            font-size: 12px; color: var(--accent);
+            margin-bottom: 4px;
+        }
+        .maint-notes {
+            font-size: 13px; color: var(--text-secondary);
+            line-height: 1.4;
+        }
+        .maint-empty {
+            text-align: center; padding: 32px 0;
+            color: var(--text-muted); font-size: 14px;
+        }
+        .maint-pagination {
+            display: flex; align-items: center; justify-content: center;
+            gap: 8px; margin-top: 16px;
+        }
+        .maint-page-btn {
+            background: var(--bg-card); border: 1px solid var(--border);
+            color: var(--text-secondary); font-family: var(--font-mono);
+            font-size: 13px; padding: 6px 12px; cursor: pointer;
+            transition: all .15s;
+        }
+        .maint-page-btn:hover { border-color: rgba(255,255,255,.15); color: var(--text-primary); }
+        .maint-page-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+        .maint-page-btn.disabled { opacity: .3; pointer-events: none; }
+        .maint-separator {
+            font-size: 12.5px; font-weight: 700;
+            letter-spacing: .18em; text-transform: uppercase;
+            color: var(--text-secondary);
+            margin: 24px 0 16px;
+            display: flex; align-items: center; gap: 12px;
+            font-family: var(--font-display);
+        }
+        .maint-separator::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    </style>
+</head>
+<body>
+    <%- include('../partials/admin-sidebar', { currentPage: 'vehicules' }) %>
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title">V&eacute;hicules</div>
+            <div class="page-subtitle">Flotte Ron Oil — camions et citernes</div>
+        </div>
+
+        <% const totalV = vehicles.length; %>
+        <% const activeV = vehicles.filter(v => v.status === 'active').length; %>
+        <% const inactiveV = vehicles.filter(v => v.status !== 'active').length; %>
+
+        <div class="g3" style="margin-bottom:28px;">
+            <div class="card"><div class="card-label">Total v&eacute;hicules</div><div class="card-value c-accent"><%= totalV %></div></div>
+            <div class="card"><div class="card-label">En service</div><div class="card-value c-success"><%= activeV %></div></div>
+            <div class="card"><div class="card-label">Hors service</div><div class="card-value"><%= inactiveV %></div></div>
+        </div>
+
+        <div class="admin-toolbar">
+            <div class="admin-toolbar-left">
+                <input type="text" class="admin-search" placeholder="Rechercher une plaque..." id="search-input" oninput="filterTable()">
+            </div>
+            <button class="btn-add" onclick="openModal('modal-add')">
+                <i class="fa-solid fa-plus"></i> Ajouter un v&eacute;hicule
+            </button>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Plaque</th>
+                        <th>Type</th>
+                        <th>Statut</th>
+                        <th>Derni&egrave;re maintenance</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="vehicles-body">
+                    <% vehicles.forEach(function(v) { %>
+                    <tr class="vehicle-row" data-vehicle-id="<%= v.id %>" data-search="<%= (v.plate + ' ' + v.type).toLowerCase() %>">
+                        <td class="mono" style="color:var(--text-muted)"><%= v.id %></td>
+                        <td class="mono" style="font-weight:600"><%= v.plate %></td>
+                        <td><%= v.type %></td>
+                        <td><span class="status-badge <%= v.status === 'active' ? 'active' : 'inactive' %>"><%= v.status === 'active' ? 'En service' : 'Hors service' %></span></td>
+                        <td class="mono" style="color:var(--text-secondary)"><%= v.maintenances && v.maintenances.length > 0 ? new Date(v.maintenances[0].date).toISOString().split('T')[0] : '—' %></td>
+                        <td>
+                            <div class="table-actions">
+                                <button class="btn-edit" onclick="openMaintenance(<%= v.id %>, '<%= v.plate %>')" title="Maintenance"><i class="fa-solid fa-wrench"></i></button>
+                                <button type="button" class="btn-toggle-status" onclick="toggleVehicle(<%= v.id %>)" title="<%= v.status === 'active' ? 'Mettre hors service' : 'Remettre en service' %>">
+                                    <i class="fa-solid <%= v.status === 'active' ? 'fa-ban' : 'fa-circle-check' %>"></i>
+                                </button>
+                                <button type="button" class="btn-delete" onclick="deleteVehicle(<%= v.id %>)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Modal Ajouter -->
+    <div class="modal-overlay" id="modal-add">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">Ajouter un v&eacute;hicule</div>
+                <button class="modal-close" onclick="closeModal('modal-add')">&#10005;</button>
+            </div>
+            <form method="POST" action="/admin/vehicules">
+                <div class="modal-body">
+                    <div class="form-grid">
+                        <div>
+                            <label class="f-label f-required">Plaque</label>
+                            <input type="text" class="f-input" name="plate" placeholder="AA-000-BB" required>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Type de v&eacute;hicule</label>
+                            <select class="f-select" name="type" required>
+                                <option value="" disabled selected>S&eacute;lectionner...</option>
+                                <option value="Camion">Camion</option>
+                                <option value="Citerne">Citerne</option>
+                                <option value="Autre">Autre</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('modal-add')">Annuler</button>
+                    <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Ajouter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Maintenance -->
+    <div class="modal-overlay" id="modal-maint">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">Maintenance — <span id="maint-plate">—</span></div>
+                <button class="modal-close" onclick="closeModal('modal-maint')">&#10005;</button>
+            </div>
+            <div class="modal-body">
+                <div class="maint-separator">Nouvelle maintenance</div>
+                <form method="POST" id="maint-form" action="">
+                    <div class="form-grid">
+                        <div>
+                            <label class="f-label f-required">Date</label>
+                            <input type="date" class="f-input" name="date" required>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Compteur (miles)</label>
+                            <input type="number" class="f-input" name="miles" placeholder="ex. 45200" min="0" required>
+                        </div>
+                        <div class="form-group-full">
+                            <label class="f-label">Notes</label>
+                            <textarea class="f-textarea" name="notes" placeholder="D&eacute;tails de la maintenance effectu&eacute;e..."></textarea>
+                        </div>
+                    </div>
+                    <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+                        <button type="submit" class="btn-primary"><i class="fa-solid fa-plus"></i> Ajouter la maintenance</button>
+                    </div>
+                </form>
+
+                <div class="maint-separator">Historique</div>
+                <div id="maint-history">
+                    <div class="maint-empty"><i class="fa-solid fa-wrench" style="opacity:.3;font-size:20px;display:block;margin-bottom:8px;"></i>Chargement...</div>
+                </div>
+                <div class="maint-pagination" id="maint-pagination"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast success" id="toast">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toast-msg">Action effectu&eacute;e</span>
+    </div>
+
+    <script src="/js/admin-ajax.js"></script>
+    <script>
+        var currentMaintVehicleId = null;
+        var maintPage = 0;
+        var MAINT_PER_PAGE = 5;
+
+        function filterTable() {
+            var q = document.getElementById('search-input').value.toLowerCase();
+            document.querySelectorAll('.vehicle-row').forEach(function(row) {
+                row.style.display = row.getAttribute('data-search').includes(q) ? '' : 'none';
+            });
+        }
+
+        // Interception des submits add + maintenance en AJAX
+        function hookForm(selector, modalId, successMsg, resetOnSuccess) {
+            var form = document.querySelector(selector);
+            if (!form) return;
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                AdminAjax.postForm(form).then(function() {
+                    if (resetOnSuccess) form.reset();
+                    if (modalId) closeModal(modalId);
+                    showToast(successMsg);
+                    return AdminAjax.reloadMain();
+                }).catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+            });
+        }
+        hookForm('#modal-add form', 'modal-add', 'Véhicule ajouté', true);
+        // Le form maintenance reste dans sa modal ouverte (pas de fermeture auto,
+        // l'utilisateur peut vouloir en ajouter plusieurs). On recharge juste l'historique.
+        (function() {
+            var form = document.getElementById('maint-form');
+            if (!form) return;
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                AdminAjax.postForm(form).then(function() {
+                    form.reset();
+                    showToast('Maintenance ajoutée');
+                    if (currentMaintVehicleId) loadMaintHistory(0);
+                    return AdminAjax.reloadMain();
+                }).catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+            });
+        })();
+
+        function openMaintenance(id, plate) {
+            currentMaintVehicleId = id;
+            document.getElementById('maint-plate').textContent = plate;
+            document.getElementById('maint-form').action = '/admin/vehicules/' + id + '/maintenance';
+            loadMaintHistory(0);
+            openModal('modal-maint');
+        }
+
+        function loadMaintHistory(page) {
+            maintPage = page;
+            var container = document.getElementById('maint-history');
+            var pagination = document.getElementById('maint-pagination');
+
+            fetch('/admin/vehicules/' + currentMaintVehicleId + '/maintenances?page=' + page + '&limit=' + MAINT_PER_PAGE)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (!data.maintenances || data.maintenances.length === 0) {
+                        container.innerHTML = '<div class="maint-empty"><i class="fa-solid fa-wrench" style="opacity:.3;font-size:20px;display:block;margin-bottom:8px;"></i>Aucune maintenance enregistr\u00e9e</div>';
+                        pagination.innerHTML = '';
+                        return;
+                    }
+
+                    container.innerHTML = data.maintenances.map(function(m) {
+                        var d = new Date(m.date).toISOString().split('T')[0];
+                        var milesDisplay = m.miles ? new Intl.NumberFormat('fr-FR').format(m.miles) + ' miles' : 'Miles non renseign\u00e9s';
+                        return '<div class="maint-entry">' +
+                            '<div class="maint-dot"></div>' +
+                            '<div class="maint-info">' +
+                                '<div class="maint-date">' + d + '<span style="margin-left:12px;font-size:12px;color:var(--accent);font-weight:400;">' + milesDisplay + '</span></div>' +
+                                (m.notes ? '<div class="maint-notes">' + m.notes + '</div>' : '') +
+                            '</div>' +
+                        '</div>';
+                    }).join('');
+
+                    // Pagination
+                    if (data.totalPages <= 1) {
+                        pagination.innerHTML = '';
+                        return;
+                    }
+
+                    var html = '<button class="maint-page-btn ' + (maintPage === 0 ? 'disabled' : '') + '" onclick="loadMaintHistory(' + (maintPage - 1) + ')"><i class="fa-solid fa-chevron-left"></i></button>';
+                    for (var i = 0; i < data.totalPages; i++) {
+                        html += '<button class="maint-page-btn ' + (i === maintPage ? 'active' : '') + '" onclick="loadMaintHistory(' + i + ')">' + (i + 1) + '</button>';
+                    }
+                    html += '<button class="maint-page-btn ' + (maintPage === data.totalPages - 1 ? 'disabled' : '') + '" onclick="loadMaintHistory(' + (maintPage + 1) + ')"><i class="fa-solid fa-chevron-right"></i></button>';
+                    pagination.innerHTML = html;
+                });
+        }
+
+        function toggleVehicle(id) {
+            AdminAjax.post('/admin/vehicules/' + id + '/toggle')
+                .then(function() { return AdminAjax.reloadMain(); })
+                .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+
+        function deleteVehicle(id) {
+            if (!confirm('Supprimer ce véhicule ?')) return;
+            AdminAjax.post('/admin/vehicules/' + id + '/delete')
+                .then(function() { return AdminAjax.reloadMain(); })
+                .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+
+        function openModal(id) {
+            var overlay = document.getElementById(id);
+            overlay.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(id) {
+            var overlay = document.getElementById(id);
+            overlay.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        function showToast(msg, type) {
+            type = type || 'success';
+            var t = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            t.className = 'toast ' + type + ' show';
+            setTimeout(function() { t.classList.remove('show'); }, 3500);
+        }
+
+        // Outside-click-to-close modals
+        document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+            var downTarget = null;
+            overlay.addEventListener('mousedown', function(e) { downTarget = e.target; });
+            overlay.addEventListener('mouseup', function(e) {
+                if (downTarget === overlay && e.target === overlay) {
+                    overlay.classList.remove('open');
+                    document.body.style.overflow = '';
+                }
+                downTarget = null;
+            });
+        });
+    </script>
+    <script src="/js/auto-refresh.js"></script>
+</body>
+</html>

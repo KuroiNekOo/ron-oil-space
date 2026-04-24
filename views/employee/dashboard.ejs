@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL — Dashboard</title>
+    <link rel="stylesheet" href="/css/shared.css">
+    <style>
+        .tier-bar-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-accent);
+            padding: 22px 28px 20px;
+            margin-bottom: 28px;
+            position: relative;
+            overflow: hidden;
+        }
+        .tier-bar-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            opacity: .6;
+        }
+        .tier-bar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .tier-bar-left { display: flex; align-items: center; gap: 14px; }
+        .tier-bar-badge {
+            font-family: var(--font-display);
+            font-size: 11px; font-weight: 800;
+            letter-spacing: .18em; text-transform: uppercase;
+            color: white; background: var(--accent);
+            padding: 5px 14px;
+        }
+        .tier-bar-pts { display: flex; align-items: baseline; gap: 4px; }
+        .tier-bar-pts-val {
+            font-family: var(--font-mono);
+            font-size: 28px; font-weight: 600;
+            color: var(--text-primary); line-height: 1;
+        }
+        .tier-bar-pts-label { font-size: 12px; color: var(--text-secondary); letter-spacing: .08em; }
+        .tier-bar-prime { text-align: right; }
+        .tier-bar-prime-label {
+            font-size: 9.5px; letter-spacing: .18em;
+            text-transform: uppercase; color: var(--text-muted);
+            font-weight: 600; margin-bottom: 3px;
+        }
+        .tier-bar-prime-val {
+            font-family: var(--font-mono); font-size: 20px; font-weight: 600; color: var(--gold);
+        }
+        .tier-bar-next { font-size: 11.5px; color: var(--text-secondary); margin-top: 3px; }
+
+        /* Track */
+        .tier-track-wrap { position: relative; padding-bottom: 46px; }
+        .tier-track {
+            position: relative; height: 6px;
+            background: rgba(255,255,255,.08); border-radius: 3px;
+        }
+        .tier-track-fill {
+            position: absolute; top: 0; left: 0; bottom: 0;
+            background: linear-gradient(90deg, var(--accent), #FF8C5A);
+            border-radius: 3px; width: 0;
+            transition: width 1.2s cubic-bezier(.4,0,.2,1);
+        }
+        .tier-track-fill::after {
+            content: '';
+            position: absolute; right: -1px; top: 50%;
+            transform: translateY(-50%);
+            width: 12px; height: 12px; border-radius: 50%;
+            background: #FF8C5A;
+            box-shadow: 0 0 10px 3px rgba(255,140,90,.5);
+        }
+
+        /* Milestones */
+        .tier-milestone {
+            position: absolute; top: 50%;
+            transform: translate(-50%, -50%);
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .tier-milestone-dot {
+            width: 14px; height: 14px; border-radius: 50%;
+            border: 2px solid var(--bg-card);
+            background: rgba(255,255,255,.15);
+            transition: background .3s, box-shadow .3s;
+            position: relative; z-index: 1;
+        }
+        .tier-milestone-dot.reached { background: var(--accent); box-shadow: 0 0 8px 2px rgba(255,84,34,.4); }
+        .tier-milestone-dot.current { background: var(--gold); box-shadow: 0 0 12px 3px rgba(245,166,35,.5); width: 18px; height: 18px; }
+
+        .tier-milestone-label {
+            position: absolute; top: 16px;
+            display: flex; flex-direction: column; align-items: center; gap: 1px;
+            white-space: nowrap;
+        }
+        .tier-milestone-name {
+            font-family: var(--font-display); font-size: 9px; font-weight: 700;
+            letter-spacing: .12em; color: var(--text-muted); margin-bottom: 2px;
+        }
+        .tier-milestone-name.reached { color: var(--accent); }
+        .tier-milestone-name.current { color: var(--gold); }
+        .tier-milestone-pts { font-family: var(--font-mono); font-size: 10px; font-weight: 600; color: var(--text-muted); }
+        .tier-milestone-pts.reached { color: var(--text-secondary); }
+        .tier-milestone-pts.current { color: var(--gold); font-weight: 700; }
+        .tier-milestone-prime { font-size: 10px; color: var(--text-muted); }
+        .tier-milestone-prime.reached { color: var(--text-secondary); }
+        .tier-milestone-prime.current { color: var(--gold); font-size: 11px; font-weight: 600; }
+
+        /* Reset Timer */
+        .reset-timer-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-left: 2px solid var(--accent);
+            padding: 20px 28px;
+            margin-bottom: 28px;
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+        .reset-timer-label { display: flex; align-items: center; }
+        .reset-timer-label i { color: var(--accent); font-size: 28px; }
+        .reset-timer-display { display: flex; align-items: center; gap: 6px; flex: 1; }
+        .reset-timer-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .reset-timer-val {
+            font-family: var(--font-mono);
+            font-size: 52px; font-weight: 600;
+            color: var(--text-primary); line-height: 1;
+            min-width: 2ch; text-align: center;
+            transition: color .15s;
+        }
+        .reset-timer-val.tick { color: var(--accent); }
+        .reset-timer-unit-label {
+            font-size: 10px; letter-spacing: .18em;
+            text-transform: uppercase; color: var(--text-muted); font-weight: 600;
+        }
+        .reset-timer-sep {
+            font-family: var(--font-mono);
+            font-size: 40px; font-weight: 600;
+            color: var(--text-muted); margin-bottom: 18px; opacity: .4;
+        }
+        .reset-timer-date {
+            font-size: 18px; color: var(--text-secondary);
+            white-space: nowrap; text-align: right;
+        }
+        @keyframes urgentPulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: .5; }
+        }
+        .reset-timer-val.urgent {
+            color: var(--danger);
+            animation: urgentPulse 1s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <%- include('../partials/employee-sidebar', { currentPage: 'dashboard', employee: employee, currentWeek: currentWeek }) %>
+
+    <main class="main-content">
+
+        <div class="page-header">
+            <div class="page-title">Dashboard</div>
+            <div class="page-subtitle">Vos statistiques — semaine en cours</div>
+        </div>
+
+        <!-- TIMER DE REINITIALISATION -->
+        <div class="reset-timer-card">
+            <div class="reset-timer-label">
+                <i class="fa-solid fa-rotate"></i>
+            </div>
+            <div class="reset-timer-display">
+                <div class="reset-timer-unit">
+                    <div class="reset-timer-val" id="timer-days">00</div>
+                    <div class="reset-timer-unit-label">jours</div>
+                </div>
+                <div class="reset-timer-sep">:</div>
+                <div class="reset-timer-unit">
+                    <div class="reset-timer-val" id="timer-hours">00</div>
+                    <div class="reset-timer-unit-label">heures</div>
+                </div>
+                <div class="reset-timer-sep">:</div>
+                <div class="reset-timer-unit">
+                    <div class="reset-timer-val" id="timer-minutes">00</div>
+                    <div class="reset-timer-unit-label">minutes</div>
+                </div>
+                <div class="reset-timer-sep">:</div>
+                <div class="reset-timer-unit">
+                    <div class="reset-timer-val" id="timer-seconds">00</div>
+                    <div class="reset-timer-unit-label">secondes</div>
+                </div>
+            </div>
+            <div class="reset-timer-date" id="timer-date">—</div>
+        </div>
+
+        <!-- BARRE DE PALIER -->
+        <div class="tier-bar-card">
+            <div class="tier-bar-header">
+                <div class="tier-bar-left">
+                    <div class="tier-bar-badge"><%= tier ? 'PALIER ' + tier.level : 'SANS PALIER' %></div>
+                    <div class="tier-bar-pts">
+                        <span class="tier-bar-pts-val"><%= stats.points %></span>
+                        <span class="tier-bar-pts-label">pts</span>
+                    </div>
+                </div>
+                <div class="tier-bar-prime">
+                    <div class="tier-bar-prime-label">Prime d&eacute;bloqu&eacute;e</div>
+                    <div class="tier-bar-prime-val"><%= tier ? fmt(tier.prime) : '—' %></div>
+                    <div class="tier-bar-next">
+                        <% if (nextTier) { %>
+                            <%= nextTier.points - stats.points %> pts avant Palier <%= nextTier.level %> &middot; <%= fmt(nextTier.prime) %>
+                        <% } else { %>
+                            Palier maximum atteint
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+            <div class="tier-track-wrap">
+                <% var MAX_PTS_TB = tiers[tiers.length - 1].points; %>
+                <% var tbPct = Math.min(100, (stats.points / MAX_PTS_TB) * 100); %>
+                <div class="tier-track">
+                    <div class="tier-track-fill" id="tb-fill" style="width:<%= tbPct %>%"></div>
+                    <div id="tb-milestones">
+                        <% const MAX_PTS = tiers[tiers.length - 1].points; %>
+                        <% tiers.forEach(function(t) { %>
+                            <% const pos = (t.points / MAX_PTS) * 100; %>
+                            <% const reached = tier && t.level <= tier.level; %>
+                            <% const isCurrent = tier && t.level === tier.level; %>
+                            <% const cls = isCurrent ? 'current' : reached ? 'reached' : ''; %>
+                            <div class="tier-milestone" style="left:<%= pos %>%">
+                                <div class="tier-milestone-dot <%= cls %>"></div>
+                                <div class="tier-milestone-label">
+                                    <div class="tier-milestone-name <%= cls %>">P<%= t.level %></div>
+                                    <div class="tier-milestone-pts <%= cls %>"><%= t.points %> pts</div>
+                                    <div class="tier-milestone-prime <%= cls %>"><%= fmt(t.prime) %></div>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activite -->
+        <div class="section-title">Activit&eacute; de la semaine</div>
+        <div class="g4">
+            <div class="card">
+                <div class="card-label">Livraisons effectu&eacute;es</div>
+                <div class="card-value c-accent"><%= stats.deliveries %></div>
+                <% const quotaPct = Math.min(100, Math.round(stats.deliveries / weeklyDeliveryQuota * 100)); %>
+                <div class="prog-track"><div class="prog-fill ok" style="width:<%= quotaPct %>%"></div></div>
+                <div class="prog-labels">
+                    <span>Quota minimum</span>
+                    <span><%= weeklyDeliveryQuota %> requis</span>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-label">Gain employ&eacute;</div>
+                <div class="card-value c-success"><%= fmt(stats.gainEmployee) %></div>
+                <div class="card-sub">Revenu semaine en cours</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Gain entreprise</div>
+                <div class="card-value"><%= fmt(stats.gainEnterprise) %></div>
+                <div class="card-sub">G&eacute;n&eacute;r&eacute; pour Ron Oil</div>
+            </div>
+            <div class="card accent-border">
+                <div class="card-label">Position classement</div>
+                <div class="card-value c-accent">#<%= stats.rank || '—' %></div>
+                <div class="card-sub">Sur <%= totalPlayers %> employ&eacute;s actifs</div>
+            </div>
+        </div>
+
+        <!-- Primes -->
+        <% const tierShare = getTierPrimeShare(stats.rank); %>
+        <% const tierPrimeAmt = tier && tierShare !== null ? tier.prime * tierShare : null; %>
+        <% const podiumPrize = getPodiumPrize(stats.rank); %>
+
+        <div class="section-title">Primes de fin de semaine</div>
+        <div class="g4">
+            <div class="card">
+                <div class="card-label">Prime de livraisons</div>
+                <div class="card-value <%= stats.bonusUnlocked ? 'c-gold' : 'c-muted' %>"><%= fmt(stats.bonusSalary) %></div>
+                <% if (bonusMinDeliveries > 0 && !stats.bonusUnlocked) { %>
+                    <div class="card-sub"><%= stats.deliveries %>/<%= bonusMinDeliveries %> livraisons avant d&eacute;blocage · <%= stats.bonusRate || 0 %>%</div>
+                <% } else if (bonusMinDeliveries > 0) { %>
+                    <div class="card-sub">Seuil atteint · <%= stats.bonusRate || 0 %>% du gain entreprise</div>
+                <% } else { %>
+                    <div class="card-sub"><%= stats.bonusRate || 0 %>% du gain entreprise</div>
+                <% } %>
+            </div>
+            <div class="card">
+                <div class="card-label">Prime palier</div>
+                <% if (tierPrimeAmt !== null) { %>
+                    <div class="card-value c-accent"><%= fmt(tierPrimeAmt) %></div>
+                    <div class="card-sub"><%= (tierShare * 100) %>% de <%= fmt(tier.prime) %> &middot; Palier <%= tier.level %></div>
+                <% } else if (tier) { %>
+                    <div class="card-value c-muted">—</div>
+                    <div class="card-sub">Hors podium (top 3 requis)</div>
+                <% } else { %>
+                    <div class="card-value c-muted">—</div>
+                    <div class="card-sub">Aucun palier atteint</div>
+                <% } %>
+            </div>
+            <div class="card">
+                <div class="card-label">Prime podium</div>
+                <% if (podiumPrize > 0) { %>
+                    <div class="card-value c-gold"><%= fmt(podiumPrize) %></div>
+                    <div class="card-sub"><%= stats.rank %><%= stats.rank === 1 ? 'ère' : 'ème' %> place du classement</div>
+                <% } else { %>
+                    <div class="card-value sm c-muted">—</div>
+                    <div class="card-sub">Hors podium (top 3 requis)</div>
+                <% } %>
+            </div>
+            <div class="card accent-border">
+                <div class="card-label">Prime sp&eacute;ciale</div>
+                <% if (stats.specialBonus && stats.specialBonus > 0) { %>
+                    <div class="card-value c-accent"><%= fmt(stats.specialBonus) %></div>
+                    <div class="card-sub"><%= stats.specialBonusReason || 'Bonus attribué par la direction' %></div>
+                <% } else { %>
+                    <div class="card-value c-muted">—</div>
+                    <div class="card-sub">Aucune prime cette semaine</div>
+                <% } %>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Records + Podium -->
+        <div class="g2">
+            <div class="card">
+                <div class="card-label" style="margin-bottom:14px;">Records &amp; Statistiques globales</div>
+                <div class="record-row">
+                    <div class="record-label">Total livraisons (semaine)</div>
+                    <div><div class="record-val"><%= totalDeliveries %></div></div>
+                </div>
+                <div class="record-row">
+                    <div class="record-label">Record livraisons communes</div>
+                    <div>
+                        <div class="record-val"><%= new Intl.NumberFormat('fr-FR').format(companyRecord) %></div>
+                        <div class="record-sub">Record absolu</div>
+                    </div>
+                </div>
+                <div class="record-row">
+                    <div class="record-label">Record livraisons individuelles</div>
+                    <div>
+                        <div class="record-val"><%= individualRecord.value %></div>
+                        <div class="record-sub"><%= individualRecord.name %></div>
+                    </div>
+                </div>
+                <div class="record-row">
+                    <div class="record-label">Num&eacute;ro de la semaine</div>
+                    <div><div class="record-val"><%= currentWeek %></div></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-label">Podium — Semaine en cours</div>
+                <div class="podium-wrap">
+                    <% podium.forEach(function(p) { %>
+                        <% const cls = p.rank === 1 ? 'pod-1st' : p.rank === 2 ? 'pod-2nd' : 'pod-3rd'; %>
+                        <div class="pod-place <%= cls %>">
+                            <div class="pod-name"><%= p.name.split(' ')[0] %></div>
+                            <div class="pod-gain"><%= fmt(p.gain) %></div>
+                            <div class="pod-block"><%= p.rank %></div>
+                        </div>
+                    <% }); %>
+                </div>
+                <div style="font-size:11px;color:var(--text-muted);text-align:center;">
+                    Classement bas&eacute; sur le gain g&eacute;n&eacute;r&eacute; pour l'entreprise
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="/js/auto-refresh.js"></script>
+    <script>
+        const fmt = n => new Intl.NumberFormat('fr-FR').format(Math.round(n)) + '$';
+
+        // Countdown timer
+        function getNextResetDate() {
+            const now = new Date();
+            const day  = now.getDay();
+            const diff = (day === 0 && now.getHours() < 18) ? 0 : (7 - day) % 7 || 7;
+            const next = new Date(now);
+            next.setDate(now.getDate() + diff);
+            next.setHours(18, 0, 0, 0);
+            return next;
+        }
+
+        function pad(n) { return String(n).padStart(2, '0'); }
+
+        function updateTimer() {
+            const now  = new Date();
+            const next = getNextResetDate();
+            const diff = next - now;
+
+            if (diff <= 0) {
+                ['timer-days','timer-hours','timer-minutes','timer-seconds']
+                    .forEach(id => document.getElementById(id).textContent = '00');
+                return;
+            }
+
+            const days    = Math.floor(diff / 86400000);
+            const hours   = Math.floor((diff % 86400000) / 3600000);
+            const minutes = Math.floor((diff % 3600000) / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+
+            const urgent  = diff < 3600000;
+            const els     = {
+                'timer-days':    days,
+                'timer-hours':   hours,
+                'timer-minutes': minutes,
+                'timer-seconds': seconds,
+            };
+
+            Object.entries(els).forEach(([id, val]) => {
+                const el = document.getElementById(id);
+                const newVal = pad(val);
+                if (el.textContent !== newVal) {
+                    el.textContent = newVal;
+                    el.classList.add('tick');
+                    setTimeout(() => el.classList.remove('tick'), 150);
+                }
+                el.classList.toggle('urgent', urgent);
+            });
+
+            const jours = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+            const mois  = ['jan.','f\u00e9v.','mars','avr.','mai','juin','juil.','ao\u00fbt','sep.','oct.','nov.','d\u00e9c.'];
+            document.getElementById('timer-date').textContent =
+                `${jours[next.getDay()]} ${next.getDate()} ${mois[next.getMonth()]} \u00e0 18h00`;
+        }
+
+        updateTimer();
+        setInterval(updateTimer, 1000);
+    </script>
+</body>
+</html>

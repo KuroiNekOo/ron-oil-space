@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL — Notes de frais</title>
+    <link rel="stylesheet" href="/css/shared.css">
+</head>
+<body>
+    <%- include('../partials/employee-sidebar', { currentPage: 'frais', employee: employee, currentWeek: currentWeek }) %>
+
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title">Note de frais</div>
+            <div class="page-subtitle">Formulaire de d&eacute;claration</div>
+        </div>
+
+        <div class="form-page-layout">
+            <div class="form-page-sidebar">
+                <div class="form-page-icon"><i class="fa-solid fa-receipt"></i></div>
+                <div class="form-page-title">Note de frais</div>
+                <div class="form-page-desc">Soumettez une d&eacute;pense professionnelle pour remboursement. Joignez un justificatif si possible.</div>
+                <div class="form-autofill-stack">
+                    <div class="form-autofill-item">
+                        <div class="form-autofill-label">Semaine</div>
+                        <div class="form-autofill-val" id="f-week"><%= currentWeek %></div>
+                    </div>
+                    <div class="form-autofill-item">
+                        <div class="form-autofill-label">Horodatage</div>
+                        <div class="form-autofill-val" id="f-timestamp">—</div>
+                    </div>
+                    <div class="form-autofill-item">
+                        <div class="form-autofill-label">Employ&eacute;</div>
+                        <div class="form-autofill-val"><%= employee.firstName %> <%= employee.lastName %></div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-page-main">
+                <form class="form-card" id="main-form" method="POST" action="/frais" novalidate>
+                    <div class="form-grid">
+                        <div>
+                            <label class="f-label f-required">Type de frais</label>
+                            <select class="f-select" name="type" required>
+                                <option value="" disabled selected>S&eacute;lectionner...</option>
+                                <option value="carburant">Carburant</option>
+                                <option value="repas">Repas</option>
+                                <option value="transport">Transport</option>
+                                <option value="equipement">&Eacute;quipement</option>
+                                <option value="peage">P&eacute;age</option>
+                                <option value="autre">Autre</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Montant ($)</label>
+                            <input type="number" class="f-input" name="montant" placeholder="0.00" min="0" step="0.01" required>
+                        </div>
+                        <div class="form-group-full">
+                            <label class="f-label f-required">Commentaire</label>
+                            <textarea class="f-textarea" name="comment" placeholder="D&eacute;crivez la nature de la d&eacute;pense..." required></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-submit-row">
+                        <button type="reset" class="btn-reset-form">R&eacute;initialiser</button>
+                        <button type="submit" class="btn-submit-form">
+                            <i class="fa-solid fa-paper-plane"></i> Envoyer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <div class="toast success" id="toast">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toast-msg">Formulaire envoy&eacute; avec succ&egrave;s</span>
+    </div>
+
+    <script>
+        function pad2(n) { return String(n).padStart(2, '0'); }
+        const now = new Date();
+        document.getElementById('f-timestamp').textContent =
+            now.getDate() + '/' + pad2(now.getMonth()+1) + '/' + now.getFullYear() + ' ' + pad2(now.getHours()) + ':' + pad2(now.getMinutes());
+
+        <% if (success) { %>
+            (function() {
+                const t = document.getElementById('toast');
+                t.className = 'toast success show';
+                setTimeout(() => t.classList.remove('show'), 3500);
+            })();
+        <% } %>
+    </script>
+    <script src="/js/form-guard.js"></script>
+</body>
+</html>
