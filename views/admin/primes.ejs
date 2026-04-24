@@ -181,10 +181,14 @@
                         <td style="font-size:12px;color:var(--text-secondary);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="<%= b.reason || '' %>"><%= b.reason || '—' %></td>
                         <td class="mono" style="font-size:11px;color:var(--text-muted)"><%= new Date(b.createdAt).toLocaleString('fr-FR') %></td>
                         <td>
-                            <div class="table-actions">
-                                <button class="btn-edit" onclick="editBonus(<%= b.id %>)" title="Modifier"><i class="fa-solid fa-pen"></i></button>
-                                <button class="btn-delete" onclick="deleteBonus(<%= b.id %>)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
-                            </div>
+                            <% if (frozenKeys.has(b.week + '|' + b.year)) { %>
+                                <span class="frozen-badge" title="Semaine figée, action interdite"><i class="fa-solid fa-lock"></i> figée</span>
+                            <% } else { %>
+                                <div class="table-actions">
+                                    <button class="btn-edit" onclick="editBonus(<%= b.id %>)" title="Modifier"><i class="fa-solid fa-pen"></i></button>
+                                    <button class="btn-delete" onclick="deleteBonus(<%= b.id %>)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            <% } %>
                         </td>
                     </tr>
                     <% }); %>

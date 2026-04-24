@@ -7,7 +7,6 @@ const { requireAdmin } = require('../middleware/auth');
 const { createCasier } = require('../services/bot');
 const { getWeekFromTimestamp, getYearFromTimestamp, getWeekAndYear } = require('../services/week');
 const { getBonusRates, setBonusRate } = require('../services/bonus');
-const { resyncWeek } = require('../services/rollover');
 const {
   getTiers, setTiers,
   getTierPrimeShares, setTierPrimeShares,
@@ -43,6 +42,24 @@ async function generateUniqueUsername(firstName, lastName) {
     candidate = `${base}${i}`;
   }
   return candidate;
+}
+
+// Une semaine est "figée" dès qu'une ligne WeekStats existe pour (week, year).
+// Toute action admin sur une donnée de cette semaine est alors rejetée.
+async function isWeekFrozen(week, year) {
+  if (!week || !year) return false;
+  const row = await prisma.weekStats.findFirst({ where: { week, year } });
+  return !!row;
+}
+
+// Set<"week|year"> de toutes les semaines figées — passé aux vues admin pour
+// masquer les boutons d'édition/suppression sur les lignes concernées.
+async function getFrozenWeekKeys() {
+  const rows = await prisma.weekStats.findMany({
+    select: { week: true, year: true },
+    distinct: ['week', 'year'],
+  });
+  return new Set(rows.map(r => r.week + '|' + r.year));
 }
 
 // All routes protected
@@ -431,11 +448,14 @@ router.delete('/achats/types/:id', async (req, res) => {
 
 router.get('/absences', async (req, res) => {
   try {
-    const absences = await prisma.absence.findMany({
-      include: { employee: true },
-      orderBy: { createdAt: 'desc' },
-    });
-    res.render('admin/absences', { absences });
+    const [absences, frozenKeys] = await Promise.all([
+      prisma.absence.findMany({
+        include: { employee: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      getFrozenWeekKeys(),
+    ]);
+    res.render('admin/absences', { absences, frozenKeys });
   } catch (err) {
     console.error('GET /absences error:', err);
     res.status(500).send('Erreur serveur');
@@ -445,6 +465,11 @@ router.get('/absences', async (req, res) => {
 router.post('/absences/:id/edit', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    const existing = await prisma.absence.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Not found' });
+    if (await isWeekFrozen(existing.week, existing.year)) {
+      return res.status(409).json({ error: 'Semaine figée, action interdite' });
+    }
     const { type, dateStart, dateEnd, justificatif, comment } = req.body;
     await prisma.absence.update({
       where: { id },
@@ -466,6 +491,11 @@ router.post('/absences/:id/edit', async (req, res) => {
 router.post('/absences/:id/delete', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    const existing = await prisma.absence.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Not found' });
+    if (await isWeekFrozen(existing.week, existing.year)) {
+      return res.status(409).json({ error: 'Semaine figée, action interdite' });
+    }
     await prisma.absence.delete({ where: { id } });
     res.json({ ok: true, id });
   } catch (err) {
@@ -476,11 +506,14 @@ router.post('/absences/:id/delete', async (req, res) => {
 
 router.get('/frais', async (req, res) => {
   try {
-    const expenses = await prisma.expense.findMany({
-      include: { employee: true },
-      orderBy: { createdAt: 'desc' },
-    });
-    res.render('admin/frais', { expenses });
+    const [expenses, frozenKeys] = await Promise.all([
+      prisma.expense.findMany({
+        include: { employee: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      getFrozenWeekKeys(),
+    ]);
+    res.render('admin/frais', { expenses, frozenKeys });
   } catch (err) {
     console.error('GET /frais error:', err);
     res.status(500).send('Erreur serveur');
@@ -490,6 +523,11 @@ router.get('/frais', async (req, res) => {
 router.post('/frais/:id/edit', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    const existing = await prisma.expense.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Not found' });
+    if (await isWeekFrozen(existing.week, existing.year)) {
+      return res.status(409).json({ error: 'Semaine figée, action interdite' });
+    }
     const { type, amount, comment } = req.body;
     await prisma.expense.update({
       where: { id },
@@ -509,6 +547,11 @@ router.post('/frais/:id/edit', async (req, res) => {
 router.post('/frais/:id/delete', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    const existing = await prisma.expense.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Not found' });
+    if (await isWeekFrozen(existing.week, existing.year)) {
+      return res.status(409).json({ error: 'Semaine figée, action interdite' });
+    }
     await prisma.expense.delete({ where: { id } });
     res.json({ ok: true, id });
   } catch (err) {
@@ -519,11 +562,14 @@ router.post('/frais/:id/delete', async (req, res) => {
 
 router.get('/pannes', async (req, res) => {
   try {
-    const breakdowns = await prisma.breakdown.findMany({
-      include: { employee: true },
-      orderBy: { createdAt: 'desc' },
-    });
-    res.render('admin/pannes', { breakdowns });
+    const [breakdowns, frozenKeys] = await Promise.all([
+      prisma.breakdown.findMany({
+        include: { employee: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      getFrozenWeekKeys(),
+    ]);
+    res.render('admin/pannes', { breakdowns, frozenKeys });
   } catch (err) {
     console.error('GET /pannes error:', err);
     res.status(500).send('Erreur serveur');
@@ -533,6 +579,11 @@ router.get('/pannes', async (req, res) => {
 router.post('/pannes/:id/edit', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    const existing = await prisma.breakdown.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Not found' });
+    if (await isWeekFrozen(existing.week, existing.year)) {
+      return res.status(409).json({ error: 'Semaine figée, action interdite' });
+    }
     const { truckPlate, tankerPlate, type, position, comment } = req.body;
     await prisma.breakdown.update({
       where: { id },
@@ -554,6 +605,11 @@ router.post('/pannes/:id/edit', async (req, res) => {
 router.post('/pannes/:id/delete', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    const existing = await prisma.breakdown.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Not found' });
+    if (await isWeekFrozen(existing.week, existing.year)) {
+      return res.status(409).json({ error: 'Semaine figée, action interdite' });
+    }
     await prisma.breakdown.delete({ where: { id } });
     res.json({ ok: true, id });
   } catch (err) {
@@ -564,11 +620,14 @@ router.post('/pannes/:id/delete', async (req, res) => {
 
 router.get('/rapatriements', async (req, res) => {
   try {
-    const repatriations = await prisma.repatriation.findMany({
-      include: { employee: true },
-      orderBy: { createdAt: 'desc' },
-    });
-    res.render('admin/rapatriements', { repatriations });
+    const [repatriations, frozenKeys] = await Promise.all([
+      prisma.repatriation.findMany({
+        include: { employee: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      getFrozenWeekKeys(),
+    ]);
+    res.render('admin/rapatriements', { repatriations, frozenKeys });
   } catch (err) {
     console.error('GET /rapatriements error:', err);
     res.status(500).send('Erreur serveur');
@@ -578,6 +637,11 @@ router.get('/rapatriements', async (req, res) => {
 router.post('/rapatriements/:id/edit', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    const existing = await prisma.repatriation.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Not found' });
+    if (await isWeekFrozen(existing.week, existing.year)) {
+      return res.status(409).json({ error: 'Semaine figée, action interdite' });
+    }
     const { truckPlate, tankerPlate, fuel, departure, comment } = req.body;
     await prisma.repatriation.update({
       where: { id },
@@ -599,6 +663,11 @@ router.post('/rapatriements/:id/edit', async (req, res) => {
 router.post('/rapatriements/:id/delete', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    const existing = await prisma.repatriation.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Not found' });
+    if (await isWeekFrozen(existing.week, existing.year)) {
+      return res.status(409).json({ error: 'Semaine figée, action interdite' });
+    }
     await prisma.repatriation.delete({ where: { id } });
     res.json({ ok: true, id });
   } catch (err) {
@@ -616,7 +685,7 @@ router.get('/primes', async (req, res) => {
     const [
       roles, rates, specialBonuses, employees,
       tiers, tierShares, podiumPrizes, pointsPerGain,
-      bonusMinDeliveries, weeklyDeliveryQuota,
+      bonusMinDeliveries, weeklyDeliveryQuota, frozenKeys,
     ] = await Promise.all([
       prisma.employee.findMany({
         distinct: ['role'],
@@ -638,6 +707,7 @@ router.get('/primes', async (req, res) => {
       getPointsPerGain(),
       getBonusMinDeliveries(),
       getWeeklyDeliveryQuota(),
+      getFrozenWeekKeys(),
     ]);
     const rows = roles
       .map(r => r.role)
@@ -647,7 +717,7 @@ router.get('/primes', async (req, res) => {
     res.render('admin/primes', {
       rows, specialBonuses, employees, currentWeek, currentYear,
       tiers, tierShares, podiumPrizes, pointsPerGain,
-      bonusMinDeliveries, weeklyDeliveryQuota,
+      bonusMinDeliveries, weeklyDeliveryQuota, frozenKeys,
     });
   } catch (err) {
     console.error('GET /primes error:', err);
@@ -753,14 +823,14 @@ router.post('/special-bonus', async (req, res) => {
     if (!empId || !w || isNaN(amt)) {
       return res.status(400).json({ error: 'employeeId, week et amount requis' });
     }
+    if (await isWeekFrozen(w, y)) {
+      return res.status(409).json({ error: 'Semaine figée, action interdite' });
+    }
     const bonus = await prisma.specialBonus.upsert({
       where: { employeeId_week_year: { employeeId: empId, week: w, year: y } },
       create: { employeeId: empId, week: w, year: y, amount: amt, reason: reason || null },
       update: { amount: amt, reason: reason || null },
     });
-    // Si la semaine est déjà figée, on re-synchronise le snapshot
-    const frozen = await prisma.weekStats.findFirst({ where: { week: w, year: y } });
-    if (frozen) { try { await resyncWeek(w, y); } catch (e) { console.warn('resync:', e.message); } }
     res.json({ ok: true, id: bonus.id });
   } catch (err) {
     console.error('POST /special-bonus error:', err);
@@ -772,11 +842,11 @@ router.post('/special-bonus/:id/delete', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const bonus = await prisma.specialBonus.findUnique({ where: { id } });
-    await prisma.specialBonus.delete({ where: { id } });
-    if (bonus) {
-      const frozen = await prisma.weekStats.findFirst({ where: { week: bonus.week, year: bonus.year } });
-      if (frozen) { try { await resyncWeek(bonus.week, bonus.year); } catch (e) { console.warn('resync:', e.message); } }
+    if (!bonus) return res.status(404).json({ error: 'Not found' });
+    if (await isWeekFrozen(bonus.week, bonus.year)) {
+      return res.status(409).json({ error: 'Semaine figée, action interdite' });
     }
+    await prisma.specialBonus.delete({ where: { id } });
     res.json({ ok: true, id });
   } catch (err) {
     console.error('POST /special-bonus/:id/delete error:', err);

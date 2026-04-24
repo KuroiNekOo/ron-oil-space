@@ -49,10 +49,14 @@
                         <td style="font-size:12px;color:var(--text-secondary)"><%= r.position %></td>
                         <td style="font-size:12px;color:var(--text-secondary);max-width:160px;overflow:hidden;text-overflow:ellipsis"><%= r.comment || '—' %></td>
                         <td>
-                            <div class="table-actions">
-                                <button class="btn-edit" onclick="editRow(<%= r.id %>)" title="Modifier"><i class="fa-solid fa-pen"></i></button>
-                                <button class="btn-delete" onclick="deleteRow(<%= r.id %>)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
-                            </div>
+                            <% if (frozenKeys.has(r.week + '|' + r.year)) { %>
+                                <span class="frozen-badge" title="Semaine figée, action interdite"><i class="fa-solid fa-lock"></i> figée</span>
+                            <% } else { %>
+                                <div class="table-actions">
+                                    <button class="btn-edit" onclick="editRow(<%= r.id %>)" title="Modifier"><i class="fa-solid fa-pen"></i></button>
+                                    <button class="btn-delete" onclick="deleteRow(<%= r.id %>)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            <% } %>
                         </td>
                     </tr>
                     <% }); %>

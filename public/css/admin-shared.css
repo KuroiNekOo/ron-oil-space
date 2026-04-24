@@ -173,6 +173,9 @@ body {
 .btn-delete { background:rgba(255,77,77,.08); color:var(--danger); border:1px solid rgba(255,77,77,.2); cursor:pointer; padding:6px 12px; font-size:12px; font-weight:600; transition:all .15s; }
 .btn-delete:hover { background:rgba(255,77,77,.18); }
 
+.frozen-badge { display:inline-flex; align-items:center; gap:6px; font-size:11px; padding:6px 10px; font-weight:600; color:var(--text-muted); background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); font-style:italic; }
+.frozen-badge i { font-size:10px; }
+
 /* ── STATUS BADGES ── */
 .status-badge { display:inline-block; font-size:11px; letter-spacing:.1em; padding:4px 12px; font-weight:700; text-transform:uppercase; }
 .status-badge.active   { background:rgba(46,204,138,.1); color:var(--success); border:1px solid rgba(46,204,138,.2); }

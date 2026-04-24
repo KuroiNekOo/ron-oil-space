@@ -248,36 +248,4 @@ async function rolloverWeek(opts) {
   };
 }
 
-// Resync partielle d'une semaine déjà figée (par ex. après ajout/édition d'une prime spéciale).
-// N'écrase PAS les valeurs snapshotées (tiers/shares/prizes/bonusMin/etc) — met uniquement à jour
-// `specialBonus`/`specialBonusReason` et recalcule `primeFinale` à partir des snapshots existants.
-// Ne déclenche pas la diffusion Discord.
-async function resyncWeek(week, year) {
-  const where = { week, year };
-  const [frozen, bonuses] = await Promise.all([
-    prisma.weekStats.findMany({ where }),
-    prisma.specialBonus.findMany({ where }),
-  ]);
-  const sbByEmp = new Map(bonuses.map(b => [b.employeeId, b]));
-
-  for (const r of frozen) {
-    const sb = sbByEmp.get(r.employeeId);
-    const specialBonus = sb ? sb.amount : 0;
-    const specialBonusReason = sb ? sb.reason : null;
-    const primeFinale =
-      (r.bonusSalary || 0) +
-      (r.tierPrime || 0) +
-      (r.podiumPrize || 0) +
-      specialBonus +
-      (r.expenseRefund || 0) +
-      (r.repatBonus || 0) -
-      (r.impoundPenalty || 0);
-    await prisma.weekStats.update({
-      where: { id: r.id },
-      data: { specialBonus, specialBonusReason, primeFinale },
-    });
-  }
-  return { week, year, frozenCount: frozen.length };
-}
-
-module.exports = { rolloverWeek, resyncWeek, computeFrozenWeek, saveFrozenWeek };
+module.exports = { rolloverWeek, computeFrozenWeek, saveFrozenWeek };
