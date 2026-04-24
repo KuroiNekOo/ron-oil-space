@@ -14,17 +14,23 @@
   }
 
   // Désactive tous les boutons submit du formulaire pendant la requête pour empêcher
-  // les double-clics. Restauré dans tous les cas (succès / erreur).
+  // les double-clics, et affiche un spinner à la place du libellé.
+  // Restauré dans tous les cas (succès / erreur).
+  var SPINNER = '<i class="fa-solid fa-spinner fa-spin"></i>';
   function lockSubmits(form) {
     var btns = form.querySelectorAll('button[type="submit"], input[type="submit"]');
     var wasDisabled = [];
+    var origHtml = [];
     for (var i = 0; i < btns.length; i++) {
       wasDisabled.push(btns[i].disabled);
+      origHtml.push(btns[i].innerHTML);
+      btns[i].innerHTML = SPINNER;
       btns[i].disabled = true;
       btns[i].dataset._busy = '1';
     }
     return function unlock() {
       for (var j = 0; j < btns.length; j++) {
+        btns[j].innerHTML = origHtml[j];
         btns[j].disabled = wasDisabled[j];
         delete btns[j].dataset._busy;
       }
