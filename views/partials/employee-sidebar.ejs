@@ -28,9 +28,12 @@
         <a class="nav-item<%= currentPage === 'pannes' ? ' active' : '' %>" id="nav-pannes" href="/pannes">
             <i class="fa-solid fa-triangle-exclamation"></i> Pannes
         </a>
+        <% if (canRapatriement(employee.role)) { %>
         <a class="nav-item<%= currentPage === 'rapatriements' ? ' active' : '' %>" id="nav-rapatriements" href="/rapatriements">
             <i class="fa-solid fa-truck-arrow-right"></i> Rapatriements
         </a>
+        <% } %>
+
         <% if (session && session.isAdmin) { %>
             <div class="nav-section-label" style="margin-top:12px;">Administration</div>
             <a class="nav-item" href="/admin/salaries">

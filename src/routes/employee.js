@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../db');
 const { requireEmployee } = require('../middleware/auth');
+const { canRapatriement } = require('../services/permissions');
 const { getWeekFromTimestamp, getYearFromTimestamp, getWeekAndYear } = require('../services/week');
 const { getBonusRates, getBonusRate } = require('../services/bonus');
 const {
@@ -437,7 +438,19 @@ router.post('/pannes', requireEmployee, async (req, res) => {
 });
 
 // ─── GET/POST /rapatriements ───
-router.get('/rapatriements', requireEmployee, async (req, res) => {
+// Réservé aux Superviseurs et plus (voir services/permissions.js).
+async function requireRapatriementAccess(req, res, next) {
+  const emp = await prisma.employee.findUnique({
+    where: { id: req.session.employeeId },
+    select: { role: true },
+  });
+  if (!emp || !canRapatriement(emp.role)) {
+    return res.redirect('/dashboard');
+  }
+  next();
+}
+
+router.get('/rapatriements', requireEmployee, requireRapatriementAccess, async (req, res) => {
   const { week: currentWeek, year: currentYear } = getCurrentWeekAndYear();
   const employee = await getEmployee(req.session.employeeId);
   if (!employee) return res.redirect('/login');
@@ -446,7 +459,7 @@ router.get('/rapatriements', requireEmployee, async (req, res) => {
   });
 });
 
-router.post('/rapatriements', requireEmployee, async (req, res) => {
+router.post('/rapatriements', requireEmployee, requireRapatriementAccess, async (req, res) => {
   try {
     const { week: currentWeek, year: currentYear } = getCurrentWeekAndYear();
     const { plaqueCamion, plaqueCiterne, fuel, departure, comment } = req.body;

@@ -48,9 +48,11 @@ app.use(session({
   cookie: { maxAge: SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000 }
 }));
 
-// Make session data available in all views
+// Make session data + helpers de permission available in all views
+const { canRapatriement } = require('./services/permissions');
 app.use((req, res, next) => {
   res.locals.session = req.session;
+  res.locals.canRapatriement = canRapatriement;
   next();
 });
 
