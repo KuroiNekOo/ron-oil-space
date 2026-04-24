@@ -93,6 +93,22 @@ router.post('/admin/login', async (req, res) => {
   }
 });
 
+// ── Page publique : liste des employés actifs (vitrine partenaires) ──
+
+router.get('/equipe', async (req, res) => {
+  try {
+    const employees = await prisma.employee.findMany({
+      where: { status: 'active' },
+      select: { firstName: true, lastName: true },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+    });
+    res.render('equipe', { employees });
+  } catch (err) {
+    console.error('GET /equipe error:', err);
+    res.status(500).send('Erreur serveur');
+  }
+});
+
 // ── Logout ──
 
 router.get('/logout', (req, res) => {

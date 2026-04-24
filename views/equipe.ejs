@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RON OIL — &Eacute;quipe</title>
+    <link rel="icon" type="image/png" href="/img/ron-oil.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <meta name="description" content="Liste des employ&eacute;s actifs de RON OIL — page publique &agrave; destination des partenaires.">
+    <meta name="theme-color" content="#FF5422">
+    <meta property="og:site_name" content="RON OIL">
+    <meta property="og:title" content="RON OIL — &Eacute;quipe">
+    <meta property="og:description" content="Notre &eacute;quipe d'employ&eacute;s actifs">
+    <meta property="og:image" content="/img/ron-oil.png">
+
+    <style>
+        :root {
+            --bg-base:       #0D0D12;
+            --bg-panel:      #13131A;
+            --bg-card:       #1A1A23;
+            --bg-card-hover: #22222D;
+            --accent:        #FF5422;
+            --accent-dim:    rgba(255, 84, 34, 0.10);
+            --border-accent: rgba(255, 84, 34, 0.35);
+            --text-primary:  #F0EDE8;
+            --text-secondary:#B5B3C6;
+            --text-muted:    #908FA6;
+            --border:        rgba(255,255,255,0.09);
+            --font-display:  'Syne', sans-serif;
+            --font-mono:     'IBM Plex Mono', monospace;
+            --font-body:     'Outfit', sans-serif;
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body { height: 100%; }
+        body {
+            background: var(--bg-base);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            padding: 28px 24px 16px;
+        }
+
+        .bg {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background:
+                radial-gradient(ellipse 60% 60% at 15% 15%, rgba(255,84,34,.08) 0%, transparent 70%),
+                radial-gradient(ellipse 50% 50% at 85% 85%, rgba(255,84,34,.05) 0%, transparent 60%);
+        }
+        .grid-bg {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background-image:
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 64px 64px;
+            mask-image: radial-gradient(ellipse at center, black 25%, transparent 75%);
+        }
+
+        .wrap {
+            position: relative; z-index: 1;
+            width: 100%;
+            max-width: 1500px;
+            margin: 0 auto;
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header { text-align: center; }
+        .brand {
+            font-family: var(--font-display);
+            font-size: 28px; font-weight: 800; letter-spacing: .12em;
+            color: var(--accent);
+        }
+        .brand span { color: var(--text-primary); }
+        .brand-sub {
+            font-size: 10px; letter-spacing: .28em;
+            text-transform: uppercase; color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .title-block {
+            text-align: center;
+            margin: 20px 0 8px;
+        }
+        .title {
+            font-family: var(--font-display);
+            font-size: 20px; font-weight: 700;
+            letter-spacing: .04em;
+            margin-bottom: 4px;
+        }
+        .subtitle {
+            font-size: 12px; color: var(--text-secondary);
+            letter-spacing: .04em;
+        }
+        .count {
+            display: inline-block;
+            margin-top: 8px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--accent);
+            background: var(--accent-dim);
+            border: 1px solid var(--border-accent);
+            padding: 3px 10px;
+            letter-spacing: .1em;
+        }
+
+        .list {
+            margin-top: 20px;
+            flex: 1;
+            min-height: 0;
+            display: grid;
+            gap: 10px;
+            /* grid-template-rows / columns + grid-auto-flow sont définis en JS
+               pour s'adapter au nombre d'employés et à la hauteur dispo. */
+        }
+
+        .person {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 10px 14px;
+            display: flex; align-items: center; gap: 12px;
+            transition: border-color .15s, background .15s;
+            min-width: 0;
+        }
+        .person:hover { border-color: var(--border-accent); background: var(--bg-card-hover); }
+
+        .avatar {
+            width: 34px; height: 34px;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--accent-dim);
+            border: 1px solid var(--border-accent);
+            color: var(--accent);
+            font-family: var(--font-display);
+            font-size: 12px; font-weight: 700;
+            letter-spacing: .06em;
+            flex-shrink: 0;
+        }
+        .info { flex: 1; min-width: 0; }
+        .name {
+            font-family: var(--font-display);
+            font-size: 13px; font-weight: 700;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        .empty {
+            margin-top: 30px;
+            text-align: center;
+            padding: 40px 24px;
+            color: var(--text-muted);
+            background: var(--bg-card);
+            border: 1px dashed var(--border);
+        }
+
+        .footer {
+            margin-top: 12px;
+            text-align: center;
+            font-size: 10px;
+            color: var(--text-muted);
+            letter-spacing: .04em;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg"></div>
+    <div class="grid-bg"></div>
+
+    <div class="wrap">
+        <header class="header">
+            <div class="brand">RON&nbsp;<span>OIL</span></div>
+            <div class="brand-sub">Transport &amp; Distribution P&eacute;trolier</div>
+        </header>
+
+        <div class="title-block">
+            <div class="title">Notre &eacute;quipe</div>
+            <div class="subtitle">Liste publique de nos employ&eacute;s actuellement en poste</div>
+            <div class="count"><%= employees.length %> employ&eacute;<%= employees.length > 1 ? 's' : '' %> actif<%= employees.length > 1 ? 's' : '' %></div>
+        </div>
+
+        <% if (employees.length === 0) { %>
+            <div class="empty">Aucun employ&eacute; actif &agrave; afficher pour le moment.</div>
+        <% } else { %>
+            <div class="list" id="employee-list">
+                <% employees.forEach(function(e) { %>
+                    <div class="person">
+                        <div class="avatar"><%= e.firstName.charAt(0).toUpperCase() %><%= e.lastName.charAt(0).toUpperCase() %></div>
+                        <div class="info">
+                            <div class="name"><%= e.firstName %> <%= e.lastName %></div>
+                        </div>
+                    </div>
+                <% }); %>
+            </div>
+        <% } %>
+
+        <div class="footer">&copy; RON OIL &middot; Page publique</div>
+    </div>
+
+    <script>
+        // Adapte le nombre de colonnes au nombre d'employés + à la hauteur dispo
+        // pour tenir dans 100vh sans scroll. Plus d'employés → plus de colonnes.
+        (function () {
+            var list = document.getElementById('employee-list');
+            if (!list) return;
+            var count = list.children.length;
+            if (count === 0) return;
+
+            var ITEM_MIN_H = 54;  // hauteur mini d'une card (px, incluant padding+bordure)
+            var GAP = 10;
+
+            function fit() {
+                // Espace vertical disponible = depuis le haut de la liste jusqu'au footer
+                var listTop = list.getBoundingClientRect().top;
+                var footer = document.querySelector('.footer');
+                var footerTop = footer ? footer.getBoundingClientRect().top : window.innerHeight;
+                var available = Math.max(60, footerTop - listTop - 10);
+
+                // Nombre max de rangées qui tiennent, puis colonnes déduites du count
+                var maxRows = Math.max(1, Math.floor((available + GAP) / (ITEM_MIN_H + GAP)));
+                var rows = Math.min(maxRows, count);
+                var cols = Math.ceil(count / rows);
+
+                list.style.gridAutoFlow = 'column';
+                list.style.gridTemplateRows = 'repeat(' + rows + ', minmax(0, 1fr))';
+                list.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
+            }
+
+            window.addEventListener('resize', fit);
+            // Appel initial après layout pour avoir le bon listTop
+            requestAnimationFrame(fit);
+        })();
+    </script>
+</body>
+</html>
