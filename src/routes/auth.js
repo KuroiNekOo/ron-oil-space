@@ -24,6 +24,9 @@ router.post('/login', async (req, res) => {
     if (!user || !user.employeeId || !user.employee) {
       return res.redirect('/login?error=1');
     }
+    if (user.employee.status !== 'active') {
+      return res.redirect('/login?error=1');
+    }
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
@@ -65,8 +68,9 @@ router.post('/admin/login', async (req, res) => {
     }
 
     const isPrimary = user.employeeId === null;
-    const isEmployeeAdmin = user.employee?.isAdmin === true;
-    if (!isPrimary && !isEmployeeAdmin) {
+    const isActiveEmployeeAdmin =
+      user.employee?.isAdmin === true && user.employee?.status === 'active';
+    if (!isPrimary && !isActiveEmployeeAdmin) {
       return res.redirect('/admin/login?error=1');
     }
 
