@@ -958,14 +958,22 @@ router.get('/standard', async (req, res) => {
 router.get('/livraisons', async (req, res) => {
   try {
     const result = await paginateLogs('delivery', req);
-    const rows = result.rows.map(r => mapLogRow(r, (r, d) => ({
-      id: r.id, timestamp: r.timestamp, week: r.week,
-      employee: d[0] || '',
-      station: d[1] || '',
-      qty: parseFloat(d[2]) || 0,
-      gainEmployee: parseFloat(d[3]) || 0,
-      gainEnterprise: parseFloat(d[4]) || 0,
-    }))).filter(Boolean);
+    const rows = result.rows.map(r => mapLogRow(r, (r, d) => {
+      // d[5] = prix de la station après livraison. Absent sur les anciens logs.
+      const rawPrice = d[5];
+      const price = rawPrice != null && rawPrice !== '' && !isNaN(parseFloat(rawPrice))
+        ? parseFloat(rawPrice)
+        : null;
+      return {
+        id: r.id, timestamp: r.timestamp, week: r.week,
+        employee: d[0] || '',
+        station: d[1] || '',
+        qty: parseFloat(d[2]) || 0,
+        gainEmployee: parseFloat(d[3]) || 0,
+        gainEnterprise: parseFloat(d[4]) || 0,
+        price,
+      };
+    })).filter(Boolean);
     res.render('admin/livraisons', { ...result, rows });
   } catch (err) {
     console.error('GET /livraisons error:', err);

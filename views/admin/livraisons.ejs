@@ -30,11 +30,12 @@
                         <th>Quantit&eacute;</th>
                         <th>Gain employ&eacute;</th>
                         <th>Gain entreprise</th>
+                        <th>Prix station</th>
                     </tr>
                 </thead>
                 <tbody>
                     <% if (rows.length === 0) { %>
-                        <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">Aucun enregistrement</td></tr>
+                        <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted)">Aucun enregistrement</td></tr>
                     <% } %>
                     <% rows.forEach(function(r) { %>
                     <tr>
@@ -45,6 +46,7 @@
                         <td class="mono" style="font-size:12px"><%= r.qty %>%</td>
                         <td class="mono" style="font-size:12px;color:var(--success)"><%= r.gainEmployee.toFixed(2) %>$</td>
                         <td class="mono" style="font-size:12px;color:var(--gold);font-weight:600"><%= r.gainEnterprise.toFixed(2) %>$</td>
+                        <td class="mono" style="font-size:12px;color:var(--text-secondary)"><%= r.price !== null ? r.price.toFixed(2) + '$' : '—' %></td>
                     </tr>
                     <% }); %>
                 </tbody>
