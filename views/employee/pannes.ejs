@@ -39,11 +39,21 @@
                     <div class="form-grid">
                         <div>
                             <label class="f-label f-required">Plaque du camion</label>
-                            <input type="text" class="f-input" name="plaqueCamion" placeholder="ex. AA-123-BB" required>
+                            <select class="f-select" name="plaqueCamion" required>
+                                <option value="" disabled selected>S&eacute;lectionner un camion...</option>
+                                <% trucks.forEach(function(v) { %>
+                                    <option value="<%= v.plate %>"><%= v.plate %></option>
+                                <% }); %>
+                            </select>
                         </div>
                         <div>
                             <label class="f-label f-required">Plaque de la citerne</label>
-                            <input type="text" class="f-input" name="plaqueCiterne" placeholder="ex. AA-456-BB" required>
+                            <select class="f-select" name="plaqueCiterne" required>
+                                <option value="" disabled selected>S&eacute;lectionner une citerne...</option>
+                                <% tankers.forEach(function(v) { %>
+                                    <option value="<%= v.plate %>"><%= v.plate %></option>
+                                <% }); %>
+                            </select>
                         </div>
                         <div>
                             <label class="f-label f-required">Type de panne</label>

@@ -409,8 +409,14 @@ router.get('/pannes', requireEmployee, async (req, res) => {
   const { week: currentWeek, year: currentYear } = getCurrentWeekAndYear();
   const employee = await getEmployee(req.session.employeeId);
   if (!employee) return res.redirect('/login');
+  const vehicles = await prisma.vehicle.findMany({
+    where: { status: 'active' },
+    orderBy: { plate: 'asc' },
+  });
+  const trucks = vehicles.filter(v => v.type === 'Camion');
+  const tankers = vehicles.filter(v => v.type === 'Citerne');
   res.render('employee/pannes', {
-    employee, currentWeek, success: req.query.success || null
+    employee, currentWeek, trucks, tankers, success: req.query.success || null
   });
 });
 
@@ -454,8 +460,14 @@ router.get('/rapatriements', requireEmployee, requireRapatriementAccess, async (
   const { week: currentWeek, year: currentYear } = getCurrentWeekAndYear();
   const employee = await getEmployee(req.session.employeeId);
   if (!employee) return res.redirect('/login');
+  const vehicles = await prisma.vehicle.findMany({
+    where: { status: 'active' },
+    orderBy: { plate: 'asc' },
+  });
+  const trucks = vehicles.filter(v => v.type === 'Camion');
+  const tankers = vehicles.filter(v => v.type === 'Citerne');
   res.render('employee/rapatriements', {
-    employee, currentWeek, success: req.query.success || null
+    employee, currentWeek, trucks, tankers, success: req.query.success || null
   });
 });
 
