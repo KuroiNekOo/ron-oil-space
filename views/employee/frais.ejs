@@ -41,12 +41,9 @@
                             <label class="f-label f-required">Type de frais</label>
                             <select class="f-select" name="type" required>
                                 <option value="" disabled selected>S&eacute;lectionner...</option>
-                                <option value="carburant">Carburant</option>
-                                <option value="repas">Repas</option>
-                                <option value="transport">Transport</option>
-                                <option value="equipement">&Eacute;quipement</option>
-                                <option value="peage">P&eacute;age</option>
-                                <option value="autre">Autre</option>
+                                <% expenseTypes.forEach(function(t) { %>
+                                    <option value="<%= t.key %>"><%= t.label %></option>
+                                <% }); %>
                             </select>
                         </div>
                         <div>

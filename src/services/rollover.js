@@ -1,7 +1,7 @@
 // Fige une semaine close (source de vérité unique pour les calculs hebdos).
-// La config (paliers, équivalence points, répartition podium, prix podium) est lue
-// dynamiquement et snapshotée sur chaque WeekStats → un changement futur ne
-// réécrit pas l'historique.
+// La config (paliers, équivalence points, répartition podium, prix podium,
+// remboursements frais/rapat/fourrières) est lue dynamiquement et snapshotée
+// sur chaque WeekStats → un changement futur ne réécrit pas l'historique.
 const prisma = require('../db');
 const { getWeekFromTimestamp, getYearFromTimestamp, getWeekAndYear, weekBounds } = require('./week');
 const { getBonusRates } = require('./bonus');
@@ -10,26 +10,14 @@ const {
   getBonusMinDeliveries, getWeeklyDeliveryQuota,
   getTier, getShareForRank, getPodiumPrize, computeCollectivePoints,
 } = require('./tiers');
-
-const REPAT_BONUS     = 400;
-const IMPOUND_PENALTY = 280;
+const {
+  getRepatCostPerEvent, getRepatReimbursementPercent,
+  getImpoundCostPerEvent, getImpoundReimbursementPercent,
+} = require('./reimbursements');
+const { getExpenseTypes, computeRefund: computeExpenseRefund } = require('./expenseTypes');
 
 function normalizeName(s) {
   return String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
-}
-
-// Taux de remboursement par type de frais. "autre" est surconfigurable via Config.autreRemboursementPercent.
-function expenseReimbursement(type, amount, autrePercent) {
-  const t = String(type || '').toLowerCase();
-  if (t === 'carburant' || t === '100%') return amount;
-  if (t === 'repas' || t === 'transport' || t === 'equipement' || t === 'peage' || t === '50%') return amount * 0.5;
-  return amount * ((autrePercent || 50) / 100);
-}
-
-async function getAutrePercent() {
-  const row = await prisma.config.findUnique({ where: { key: 'autreRemboursementPercent' } });
-  const n = row ? parseFloat(row.value) : 50;
-  return isNaN(n) ? 50 : n;
 }
 
 // Bornes réelles dim. 18h → dim. 18h pour la semaine ISO (week, year).
@@ -44,7 +32,9 @@ async function computeFrozenWeek(week, year) {
   const [
     logs, employees, specialBonuses, rates,
     tiers, shares, podiumPrizes, pointsPerGain,
-    bonusMinDeliveries, weeklyDeliveryQuota, autrePercent,
+    bonusMinDeliveries, weeklyDeliveryQuota,
+    expenseTypes, repatCostPerEvent, repatReimbursementPct,
+    impoundCostPerEvent, impoundReimbursementPct,
     expenses, repatAgg, breakdownAgg,
   ] = await Promise.all([
     prisma.logEntry.findMany({
@@ -60,7 +50,11 @@ async function computeFrozenWeek(week, year) {
     getPointsPerGain(),
     getBonusMinDeliveries(),
     getWeeklyDeliveryQuota(),
-    getAutrePercent(),
+    getExpenseTypes(),
+    getRepatCostPerEvent(),
+    getRepatReimbursementPercent(),
+    getImpoundCostPerEvent(),
+    getImpoundReimbursementPercent(),
     prisma.expense.findMany({ where: whereWeek }),
     prisma.repatriation.groupBy({ by: ['employeeId'], where: whereWeek, _count: { _all: true } }),
     prisma.breakdown.groupBy({ by: ['employeeId'], where: whereWeek, _count: { _all: true } }),
@@ -84,10 +78,12 @@ async function computeFrozenWeek(week, year) {
     totalGainEnterprise += g;
   }
 
-  // Expense refunds : applique le % par type de frais, pas le montant brut.
+  // Expense : cumul brut + refund (selon % par type à l'époque)
+  const expenseCostMap = new Map();
   const expenseRefundMap = new Map();
   for (const ex of expenses) {
-    const refund = expenseReimbursement(ex.type, ex.amount, autrePercent);
+    expenseCostMap.set(ex.employeeId, (expenseCostMap.get(ex.employeeId) || 0) + (ex.amount || 0));
+    const refund = computeExpenseRefund(ex.type, ex.amount, expenseTypes);
     expenseRefundMap.set(ex.employeeId, (expenseRefundMap.get(ex.employeeId) || 0) + refund);
   }
   const repatMap = new Map(repatAgg.map(r => [r.employeeId, r._count._all]));
@@ -132,9 +128,18 @@ async function computeFrozenWeek(week, year) {
     const sb = sbByEmp.get(e.emp.id);
     const specialBonus = sb ? sb.amount : 0;
     const specialBonusReason = sb ? sb.reason : null;
+
+    const expenseCost = expenseCostMap.get(e.emp.id) || 0;
     const expenseRefund = expenseRefundMap.get(e.emp.id) || 0;
-    const repatBonus = (repatMap.get(e.emp.id) || 0) * REPAT_BONUS;
-    const impoundPenalty = (breakdownMap.get(e.emp.id) || 0) * IMPOUND_PENALTY;
+
+    const repatCount = repatMap.get(e.emp.id) || 0;
+    const repatBonus = repatCount * repatCostPerEvent * (repatReimbursementPct / 100);
+
+    const impoundCount = breakdownMap.get(e.emp.id) || 0;
+    const impoundGross = impoundCount * impoundCostPerEvent;
+    const impoundReimbursement = impoundGross * (impoundReimbursementPct / 100);
+    const impoundPenalty = impoundGross - impoundReimbursement;
+
     const primeFinale = bonusSalary + tierPrime + podiumPrize + specialBonus
                       + expenseRefund + repatBonus - impoundPenalty;
     return {
@@ -145,7 +150,11 @@ async function computeFrozenWeek(week, year) {
       tierLevel, tierBasePoints, tierBasePrime, tierPrimeShare: share, pointsPerGain,
       tierPrime,
       podiumPrize, specialBonus, specialBonusReason,
-      expenseRefund, repatBonus, impoundPenalty, primeFinale,
+      expenseRefund, expenseCost,
+      repatBonus, repatCount, repatCostPerEvent, repatReimbursementPercent: repatReimbursementPct,
+      impoundPenalty, impoundCount, impoundCostPerEvent, impoundReimbursementPercent: impoundReimbursementPct,
+      impoundReimbursement,
+      primeFinale,
     };
   });
 }
@@ -172,8 +181,16 @@ async function saveFrozenWeek(frozenResults) {
       specialBonus: r.specialBonus,
       specialBonusReason: r.specialBonusReason,
       expenseRefund: r.expenseRefund,
+      expenseCost: r.expenseCost,
       repatBonus: r.repatBonus,
+      repatCount: r.repatCount,
+      repatCostPerEvent: r.repatCostPerEvent,
+      repatReimbursementPercent: r.repatReimbursementPercent,
       impoundPenalty: r.impoundPenalty,
+      impoundCount: r.impoundCount,
+      impoundCostPerEvent: r.impoundCostPerEvent,
+      impoundReimbursementPercent: r.impoundReimbursementPercent,
+      impoundReimbursement: r.impoundReimbursement,
       primeFinale: r.primeFinale,
     };
     await prisma.weekStats.upsert({

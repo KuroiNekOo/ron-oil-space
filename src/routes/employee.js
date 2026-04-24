@@ -5,6 +5,11 @@ const { requireEmployee } = require('../middleware/auth');
 const { canRapatriement } = require('../services/permissions');
 const { getWeekFromTimestamp, getYearFromTimestamp, getWeekAndYear } = require('../services/week');
 const { getBonusRates, getBonusRate } = require('../services/bonus');
+const { getExpenseTypes, computeRefund: computeExpenseRefund } = require('../services/expenseTypes');
+const {
+  getRepatCostPerEvent, getRepatReimbursementPercent,
+  getImpoundCostPerEvent, getImpoundReimbursementPercent,
+} = require('../services/reimbursements');
 const {
   getTiers, getTierPrimeShares, getPodiumPrizes, getPointsPerGain,
   getBonusMinDeliveries, getWeeklyDeliveryQuota,
@@ -177,13 +182,31 @@ router.get('/dashboard', requireEmployee, async (req, res) => {
     const employee = await getEmployee(req.session.employeeId);
     if (!employee) return res.redirect('/login');
 
-    const [leaderboard, records, tiers, shares, podiumPrizes, weeklyDeliveryQuota] = await Promise.all([
+    const [
+      leaderboard, records, tiers, shares, podiumPrizes, weeklyDeliveryQuota,
+      expenseTypes, repatCost, repatPct, impoundCost, impoundPct,
+      myExpenses, myRepatCount, myImpoundCount,
+    ] = await Promise.all([
       computeWeekStats(currentWeek, currentYear),
       computeRecords(),
       getTiers(),
       getTierPrimeShares(),
       getPodiumPrizes(),
       getWeeklyDeliveryQuota(),
+      getExpenseTypes(),
+      getRepatCostPerEvent(),
+      getRepatReimbursementPercent(),
+      getImpoundCostPerEvent(),
+      getImpoundReimbursementPercent(),
+      prisma.expense.findMany({
+        where: { employeeId: employee.id, week: currentWeek, year: currentYear },
+      }),
+      prisma.repatriation.count({
+        where: { employeeId: employee.id, week: currentWeek, year: currentYear },
+      }),
+      prisma.breakdown.count({
+        where: { employeeId: employee.id, week: currentWeek, year: currentYear },
+      }),
     ]);
 
     const collectivePoints = leaderboard._collectivePoints || 0;
@@ -210,6 +233,21 @@ router.get('/dashboard', requireEmployee, async (req, res) => {
         specialBonusReason: myBonus ? myBonus.reason : null,
       };
     }
+
+    // Breakdown live : notes de frais / rapatriements / fourrières (taux courants).
+    const expenseCost = myExpenses.reduce((s, e) => s + (e.amount || 0), 0);
+    const expenseRefund = myExpenses.reduce((s, e) => s + computeExpenseRefund(e.type, e.amount, expenseTypes), 0);
+    const repatBonus = myRepatCount * repatCost * (repatPct / 100);
+    const impoundGross = myImpoundCount * impoundCost;
+    const impoundReimbursement = impoundGross * (impoundPct / 100);
+    const impoundPenalty = impoundGross - impoundReimbursement;
+    stats = {
+      ...stats,
+      expenseCost, expenseRefund,
+      repatCount: myRepatCount, repatCostPerEvent: repatCost, repatReimbursementPercent: repatPct, repatBonus,
+      impoundCount: myImpoundCount, impoundCostPerEvent: impoundCost, impoundReimbursementPercent: impoundPct,
+      impoundReimbursement, impoundPenalty,
+    };
 
     const totalDeliveriesThisWeek = leaderboard.reduce((s, l) => s + l.deliveries, 0);
 
@@ -260,43 +298,13 @@ router.get('/dashboard', requireEmployee, async (req, res) => {
 });
 
 // ─── GET /profil ───
-// Historique = WeekStats figés pour les semaines antérieures à la semaine courante.
-// Semaine en cours = calculée live (reflète les changements en temps réel).
+// Page centrée sur l'historique figé — la semaine en cours est sur /dashboard.
 router.get('/profil', requireEmployee, async (req, res) => {
   try {
     const { week: currentWeek, year: currentYear } = getCurrentWeekAndYear();
     const employee = await getEmployee(req.session.employeeId);
     if (!employee) return res.redirect('/login');
 
-    // Semaine courante — live
-    const [liveLeaderboard, tiers] = await Promise.all([
-      computeWeekStats(currentWeek, currentYear),
-      getTiers(),
-    ]);
-    const collectivePoints = liveLeaderboard._collectivePoints || 0;
-    const myCurrent = liveLeaderboard.find(l => l.employeeId === employee.id);
-    let currentStats;
-    if (myCurrent) {
-      currentStats = myCurrent;
-    } else {
-      const myBonus = await prisma.specialBonus.findUnique({
-        where: { employeeId_week_year: { employeeId: employee.id, week: currentWeek, year: currentYear } },
-      });
-      currentStats = {
-        deliveries: 0, gainEmployee: 0, gainEnterprise: 0,
-        points: collectivePoints,
-        rank: 0, bonusSalary: 0,
-        bonusRate: await getBonusRate(employee.role),
-        bonusMinDeliveries: liveLeaderboard._bonusMinDeliveries || 0,
-        bonusUnlocked: (liveLeaderboard._bonusMinDeliveries || 0) === 0,
-        tierLevel: 0, tierBasePoints: 0, tierBasePrime: 0, tierPrimeShare: 0,
-        tierPrime: 0, podiumPrize: 0,
-        specialBonus: myBonus ? myBonus.amount : 0,
-        specialBonusReason: myBonus ? myBonus.reason : null,
-      };
-    }
-
-    // Historique figé = tout ce qui n'est pas la semaine courante (année/semaine)
     const frozen = await prisma.weekStats.findMany({
       where: {
         employeeId: employee.id,
@@ -308,10 +316,7 @@ router.get('/profil', requireEmployee, async (req, res) => {
     res.render('employee/profil', {
       employee,
       currentWeek,
-      currentStats,
       history: frozen,
-      tiers,
-      getTier: (p) => getTier(p, tiers),
       fmt,
     });
   } catch (err) {
@@ -378,8 +383,9 @@ router.get('/frais', requireEmployee, async (req, res) => {
   const { week: currentWeek, year: currentYear } = getCurrentWeekAndYear();
   const employee = await getEmployee(req.session.employeeId);
   if (!employee) return res.redirect('/login');
+  const expenseTypes = await getExpenseTypes();
   res.render('employee/frais', {
-    employee, currentWeek, success: req.query.success || null
+    employee, currentWeek, expenseTypes, success: req.query.success || null
   });
 });
 

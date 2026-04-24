@@ -5,6 +5,7 @@ const prisma = require('../db');
 const bcrypt = require('bcrypt');
 const { requireAdmin } = require('../middleware/auth');
 const { createCasier, archiveCasier } = require('../services/bot');
+const { computeFrozenWeek } = require('../services/rollover');
 const { getWeekFromTimestamp, getYearFromTimestamp, getWeekAndYear } = require('../services/week');
 const { getBonusRates, setBonusRate } = require('../services/bonus');
 const {
@@ -15,6 +16,15 @@ const {
   getBonusMinDeliveries, setBonusMinDeliveries,
   getWeeklyDeliveryQuota, setWeeklyDeliveryQuota,
 } = require('../services/tiers');
+const {
+  getRepatCostPerEvent, setRepatCostPerEvent,
+  getRepatReimbursementPercent, setRepatReimbursementPercent,
+  getImpoundCostPerEvent, setImpoundCostPerEvent,
+  getImpoundReimbursementPercent, setImpoundReimbursementPercent,
+} = require('../services/reimbursements');
+const {
+  getExpenseTypes, createExpenseType, updateExpenseType, deleteExpenseType,
+} = require('../services/expenseTypes');
 
 // ── Helpers : génération d'identifiants ──
 
@@ -558,14 +568,15 @@ router.post('/absences/:id/delete', async (req, res) => {
 
 router.get('/frais', async (req, res) => {
   try {
-    const [expenses, frozenKeys] = await Promise.all([
+    const [expenses, frozenKeys, expenseTypes] = await Promise.all([
       prisma.expense.findMany({
         include: { employee: true },
         orderBy: { createdAt: 'desc' },
       }),
       getFrozenWeekKeys(),
+      getExpenseTypes(),
     ]);
-    res.render('admin/frais', { expenses, frozenKeys });
+    res.render('admin/frais', { expenses, frozenKeys, expenseTypes });
   } catch (err) {
     console.error('GET /frais error:', err);
     res.status(500).send('Erreur serveur');
@@ -738,6 +749,8 @@ router.get('/primes', async (req, res) => {
       roles, rates, specialBonuses, employees,
       tiers, tierShares, podiumPrizes, pointsPerGain,
       bonusMinDeliveries, weeklyDeliveryQuota, frozenKeys,
+      expenseTypes, repatCostPerEvent, repatReimbursementPercent,
+      impoundCostPerEvent, impoundReimbursementPercent,
     ] = await Promise.all([
       prisma.employee.findMany({
         distinct: ['role'],
@@ -760,6 +773,11 @@ router.get('/primes', async (req, res) => {
       getBonusMinDeliveries(),
       getWeeklyDeliveryQuota(),
       getFrozenWeekKeys(),
+      getExpenseTypes(),
+      getRepatCostPerEvent(),
+      getRepatReimbursementPercent(),
+      getImpoundCostPerEvent(),
+      getImpoundReimbursementPercent(),
     ]);
     const rows = roles
       .map(r => r.role)
@@ -770,10 +788,80 @@ router.get('/primes', async (req, res) => {
       rows, specialBonuses, employees, currentWeek, currentYear,
       tiers, tierShares, podiumPrizes, pointsPerGain,
       bonusMinDeliveries, weeklyDeliveryQuota, frozenKeys,
+      expenseTypes,
+      repatCostPerEvent, repatReimbursementPercent,
+      impoundCostPerEvent, impoundReimbursementPercent,
     });
   } catch (err) {
     console.error('GET /primes error:', err);
     res.status(500).send('Erreur serveur');
+  }
+});
+
+// ── Config remboursements : rapatriements + fourrières ──
+// (les notes de frais passent par /admin/expense-types, voir plus bas)
+router.post('/reimbursements', async (req, res) => {
+  try {
+    const body = req.body || {};
+    if (body.repatCostPerEvent != null && body.repatCostPerEvent !== '') {
+      await setRepatCostPerEvent(body.repatCostPerEvent);
+    }
+    if (body.repatReimbursementPercent != null && body.repatReimbursementPercent !== '') {
+      await setRepatReimbursementPercent(body.repatReimbursementPercent);
+    }
+    if (body.impoundCostPerEvent != null && body.impoundCostPerEvent !== '') {
+      await setImpoundCostPerEvent(body.impoundCostPerEvent);
+    }
+    if (body.impoundReimbursementPercent != null && body.impoundReimbursementPercent !== '') {
+      await setImpoundReimbursementPercent(body.impoundReimbursementPercent);
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /reimbursements error:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ── Types de notes de frais : CRUD (parallèle à /admin/achats/types) ──
+router.get('/expense-types', async (req, res) => {
+  try {
+    res.json(await getExpenseTypes());
+  } catch (err) {
+    console.error('GET /expense-types error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/expense-types', async (req, res) => {
+  try {
+    const { key, label, reimbursementPercent } = req.body || {};
+    const type = await createExpenseType({ key, label, reimbursementPercent });
+    res.json(type);
+  } catch (err) {
+    console.error('POST /expense-types error:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.put('/expense-types/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const type = await updateExpenseType(id, req.body || {});
+    res.json(type);
+  } catch (err) {
+    console.error('PUT /expense-types/:id error:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.delete('/expense-types/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    await deleteExpenseType(id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /expense-types/:id error:', err);
+    res.status(400).json({ error: 'Impossible de supprimer le type' });
   }
 });
 
@@ -949,6 +1037,127 @@ function mapLogRow(r, mapper) {
   }
   return mapper(r, d);
 }
+
+// ══════════════════════════════════════
+//  STATISTIQUES
+// ══════════════════════════════════════
+
+function sumWeekStats(rows) {
+  let livraisons = 0, gainEnterprise = 0, gainEmployee = 0;
+  let bonusSalary = 0, tierPrime = 0, podiumPrize = 0, specialBonus = 0;
+  let expenseRefund = 0, repatBonus = 0, impoundReimbursement = 0;
+  let impoundPenalty = 0, expenseCost = 0, primeFinale = 0;
+  for (const r of rows) {
+    livraisons    += r.deliveries || 0;
+    gainEnterprise += r.gainEnterprise || 0;
+    gainEmployee   += r.gainEmployee || 0;
+    bonusSalary    += r.bonusSalary || 0;
+    tierPrime      += r.tierPrime || 0;
+    podiumPrize    += r.podiumPrize || 0;
+    specialBonus   += r.specialBonus || 0;
+    expenseRefund  += r.expenseRefund || 0;
+    expenseCost    += r.expenseCost || 0;
+    repatBonus     += r.repatBonus || 0;
+    impoundReimbursement += r.impoundReimbursement || 0;
+    impoundPenalty += r.impoundPenalty || 0;
+    primeFinale    += r.primeFinale || 0;
+  }
+  const totalPrimes = bonusSalary + tierPrime + podiumPrize + specialBonus;
+  const totalFrais  = expenseRefund + repatBonus + impoundReimbursement;
+  return {
+    livraisons, gainEnterprise, gainEmployee,
+    bonusSalary, tierPrime, podiumPrize, specialBonus, totalPrimes,
+    expenseRefund, expenseCost, repatBonus, impoundReimbursement, totalFrais,
+    impoundPenalty, primeFinale,
+    activeEmployees: rows.length,
+  };
+}
+
+router.get('/statistiques', async (req, res) => {
+  try {
+    const { week: currentWeek, year: currentYear } = getWeekAndYear(new Date());
+
+    // Semaine en cours : on calcule "à blanc" (computeFrozenWeek ne sauve rien)
+    // pour avoir le même format que les WeekStats figés.
+    const [liveRows, allFrozen, allPurchases] = await Promise.all([
+      computeFrozenWeek(currentWeek, currentYear),
+      prisma.weekStats.findMany({
+        where: { NOT: { AND: [{ week: currentWeek }, { year: currentYear }] } },
+        include: { employee: true },
+        orderBy: [{ year: 'desc' }, { week: 'desc' }],
+      }),
+      // Charge tous les achats : on dérive l'année ISO depuis la date pour pouvoir
+      // les agréger par (year, week) sans dépendre du champ Purchase.week qui n'a
+      // pas d'année associée.
+      prisma.purchase.findMany({ select: { date: true, qty: true, unitPrice: true } }),
+    ]);
+
+    const purchasesByWeek = new Map();
+    for (const p of allPurchases) {
+      const { week, year } = getWeekAndYear(p.date);
+      const k = year + '|' + week;
+      purchasesByWeek.set(k, (purchasesByWeek.get(k) || 0) + (p.qty || 0) * (p.unitPrice || 0));
+    }
+
+    const liveTop = liveRows.slice().sort((a, b) => b.primeFinale - a.primeFinale);
+    const currentTotals = sumWeekStats(liveRows);
+    currentTotals.achats = purchasesByWeek.get(currentYear + '|' + currentWeek) || 0;
+    currentTotals.totalDepenses =
+      currentTotals.totalPrimes + currentTotals.totalFrais + currentTotals.achats;
+    currentTotals.beneficeNet = currentTotals.gainEnterprise - currentTotals.totalDepenses;
+
+    const byWeek = new Map();
+    for (const r of allFrozen) {
+      const k = r.year + '|' + r.week;
+      if (!byWeek.has(k)) byWeek.set(k, { week: r.week, year: r.year, rows: [] });
+      byWeek.get(k).rows.push(r);
+    }
+    const history = Array.from(byWeek.values()).map(w => {
+      const totals = sumWeekStats(w.rows);
+      totals.achats = purchasesByWeek.get(w.year + '|' + w.week) || 0;
+      totals.totalDepenses = totals.totalPrimes + totals.totalFrais + totals.achats;
+      totals.beneficeNet = totals.gainEnterprise - totals.totalDepenses;
+      return {
+        week: w.week, year: w.year,
+        totals,
+        rows: w.rows.map(r => ({
+          employeeId: r.employeeId,
+          name: r.employee ? r.employee.firstName + ' ' + r.employee.lastName : '—',
+          deliveries: r.deliveries,
+          gainEmployee: r.gainEmployee,
+          bonusSalary: r.bonusSalary,
+          tierPrime: r.tierPrime,
+          podiumPrize: r.podiumPrize,
+          specialBonus: r.specialBonus,
+          expenseRefund: r.expenseRefund,
+          repatBonus: r.repatBonus,
+          impoundReimbursement: r.impoundReimbursement,
+          impoundPenalty: r.impoundPenalty,
+          primeFinale: r.primeFinale,
+          rank: r.rank,
+        })).sort((a, b) => b.primeFinale - a.primeFinale),
+      };
+    });
+
+    res.render('admin/statistiques', {
+      currentWeek, currentYear,
+      currentTotals,
+      currentTop: liveTop.map(r => ({
+        employeeId: r.employee.id,
+        name: r.employee.firstName + ' ' + r.employee.lastName,
+        deliveries: r.deliveries,
+        gainEmployee: r.gainEmployee,
+        bonusSalary: r.bonusSalary,
+        primeFinale: r.primeFinale,
+        rank: r.rank,
+      })),
+      history,
+    });
+  } catch (err) {
+    console.error('GET /statistiques error:', err);
+    res.status(500).send('Erreur serveur');
+  }
+});
 
 router.get('/standard', async (req, res) => {
   try {

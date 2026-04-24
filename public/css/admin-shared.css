@@ -119,7 +119,35 @@ body {
 .card-value.c-accent { color:var(--accent); }
 .card-value.c-gold   { color:var(--gold); }
 .card-value.c-success{ color:var(--success); }
+.card-value.c-danger { color:var(--danger); }
+.card-value.c-muted  { color:var(--text-muted); }
 .card-sub { font-size:13px; color:var(--text-secondary); margin-top:6px; }
+
+/* Cells mono color variants (réutilisables en <td class="mono c-success">) */
+.mono.c-success { color:var(--success); }
+.mono.c-danger  { color:var(--danger); }
+.mono.c-gold    { color:var(--gold); }
+
+/* Historique semaine par semaine (layout liste + détail) */
+.history-list { display:flex; flex-direction:column; gap:6px; }
+.history-item {
+    background:var(--bg-card); border:1px solid var(--border);
+    padding:14px 16px; cursor:pointer;
+    display:flex; align-items:center; justify-content:space-between;
+    transition:border-color .15s, background .15s;
+}
+.history-item:hover { border-color:rgba(255,255,255,.1); }
+.history-item.active { border-color:var(--accent); background:rgba(255,84,34,.08); }
+.hi-week { font-family:var(--font-display); font-size:14px; font-weight:700; }
+.hi-info { font-size:12.5px; color:var(--text-muted); margin-top:2px; }
+.hi-rank { font-family:var(--font-mono); font-size:13px; font-weight:600; }
+
+.detail-empty {
+    background:var(--bg-card); border:1px dashed var(--border);
+    padding:60px 24px; display:flex; align-items:center; justify-content:center;
+}
+.detail-empty-inner { text-align:center; color:var(--text-muted); }
+.detail-empty-inner i { font-size:28px; display:block; margin-bottom:12px; opacity:.35; }
 
 .g4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
 .g3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }

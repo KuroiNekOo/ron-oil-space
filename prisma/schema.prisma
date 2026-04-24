@@ -117,12 +117,22 @@ model Expense {
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   week       Int
   year               Int
-  type       String   // carburant | repas | transport | equipement | peage | autre
+  type       String   // slug = ExpenseType.key (pas de FK pour conserver les valeurs historiques même si le type est supprimé)
   amount     Float
   comment    String?
   createdAt  DateTime @default(now())
 
   @@index([year, week])
+}
+
+// Types de notes de frais éditables depuis l'admin (seedés la première fois avec
+// les 6 valeurs historiques carburant/repas/transport/equipement/peage/autre).
+model ExpenseType {
+  id                   Int      @id @default(autoincrement())
+  key                  String   @unique // slug stocké dans Expense.type
+  label                String
+  reimbursementPercent Float    @default(0)
+  createdAt            DateTime @default(now())
 }
 
 model Breakdown {
@@ -184,9 +194,17 @@ model WeekStats {
   podiumPrize        Float    @default(0)
   specialBonus       Float    @default(0)
   specialBonusReason String?
-  expenseRefund      Float    @default(0)
-  repatBonus         Float    @default(0)
-  impoundPenalty     Float    @default(0)
+  expenseRefund      Float    @default(0)  // Remboursement net des notes de frais
+  expenseCost        Float    @default(0)  // Brut des notes de frais (somme amount)
+  repatBonus         Float    @default(0)  // = repatCount × repatCostPerEvent × repatReimbursementPercent/100
+  repatCount         Int      @default(0)
+  repatCostPerEvent  Float    @default(0) // Snapshot à l'époque
+  repatReimbursementPercent  Float @default(0) // Snapshot à l'époque
+  impoundPenalty     Float    @default(0)  // Net déduit de l'employé = impoundCount × cost - impoundReimbursement
+  impoundCount       Int      @default(0)
+  impoundCostPerEvent        Float @default(0) // Snapshot à l'époque
+  impoundReimbursementPercent Float @default(0) // Snapshot à l'époque
+  impoundReimbursement       Float @default(0) // Montant remboursé par l'entreprise (= part portée par l'entreprise)
   primeFinale        Float    @default(0)
   frozenAt           DateTime @default(now())
   year               Int

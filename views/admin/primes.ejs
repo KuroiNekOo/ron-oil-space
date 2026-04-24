@@ -150,6 +150,111 @@
             </form>
         </div>
 
+        <!-- ══════════ Frais & remboursements ══════════ -->
+        <div class="section-title">Frais &amp; remboursements</div>
+        <div class="card" style="padding:24px;max-width:860px;margin-bottom:32px;">
+            <form method="POST" id="form-reimbursements" action="/admin/reimbursements">
+
+                <!-- Notes de frais : types éditables -->
+                <div style="margin-bottom:24px;">
+                    <label class="f-label">Types de notes de frais — % rembours&eacute; par l&#39;entreprise</label>
+                    <table class="admin-table" id="expense-types-table" style="width:100%;">
+                        <thead>
+                            <tr>
+                                <th style="width:45%;">Libell&eacute;</th>
+                                <th style="width:25%;">Slug</th>
+                                <th style="width:20%;">% rembours&eacute;</th>
+                                <th style="width:10%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="expense-types-body">
+                            <% expenseTypes.forEach(function(t) { %>
+                                <tr data-type-id="<%= t.id %>">
+                                    <td><input type="text" class="f-input et-label" value="<%= t.label %>" placeholder="Libellé"></td>
+                                    <td><input type="text" class="f-input et-key" value="<%= t.key %>" placeholder="slug"></td>
+                                    <td>
+                                        <div style="display:flex;align-items:center;gap:6px;">
+                                            <input type="number" class="f-input et-pct" value="<%= t.reimbursementPercent %>" min="0" max="100" step="0.1" style="max-width:90px;">
+                                            <span style="font-family:var(--font-mono);color:var(--text-muted);">%</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="table-actions">
+                                            <button type="button" class="btn-primary" onclick="saveExpenseType(<%= t.id %>)" style="padding:6px 10px;font-size:12px;" title="Enregistrer"><i class="fa-solid fa-check"></i></button>
+                                            <button type="button" class="btn-delete" onclick="deleteExpenseType(<%= t.id %>)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                    <div style="margin-top:10px;display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+                        <div style="flex:1;min-width:160px;">
+                            <label class="f-label" style="margin-bottom:4px;">Libell&eacute;</label>
+                            <input type="text" class="f-input" id="new-et-label" placeholder="ex. Parking">
+                        </div>
+                        <div style="min-width:140px;">
+                            <label class="f-label" style="margin-bottom:4px;">Slug (optionnel)</label>
+                            <input type="text" class="f-input" id="new-et-key" placeholder="auto">
+                        </div>
+                        <div style="min-width:120px;">
+                            <label class="f-label" style="margin-bottom:4px;">% rembours&eacute;</label>
+                            <input type="number" class="f-input" id="new-et-pct" value="50" min="0" max="100" step="0.1">
+                        </div>
+                        <button type="button" class="btn-add" onclick="addExpenseType()"><i class="fa-solid fa-plus"></i> Ajouter un type</button>
+                    </div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">
+                        Ajouter/modifier/supprimer un type est instantan&eacute; et impacte imm&eacute;diatement la liste d&eacute;roulante des employ&eacute;s.
+                        Le slug doit rester stable : s&#39;il est modifi&eacute;, les anciennes notes de frais ne matcheront plus ce type.
+                    </div>
+                </div>
+
+                <!-- Rapatriements -->
+                <div style="margin-bottom:24px;">
+                    <label class="f-label">Rapatriements</label>
+                    <div style="display:flex;flex-wrap:wrap;gap:16px;">
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <span style="font-size:12px;color:var(--text-muted);min-width:140px;">Montant par rapatriement</span>
+                            <input type="number" class="f-input" name="repatCostPerEvent" value="<%= repatCostPerEvent %>" min="0" step="1" style="width:120px;">
+                            <span style="font-family:var(--font-mono);color:var(--text-muted);">$</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <span style="font-size:12px;color:var(--text-muted);min-width:140px;">% vers&eacute; &agrave; l&#39;employ&eacute;</span>
+                            <input type="number" class="f-input" name="repatReimbursementPercent" value="<%= repatReimbursementPercent %>" min="0" max="100" step="0.1" style="width:90px;">
+                            <span style="font-family:var(--font-mono);color:var(--text-muted);">%</span>
+                        </div>
+                    </div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">
+                        Bonus re&ccedil;u par l&#39;employ&eacute; = nb rapatriements &times; montant &times; %.
+                    </div>
+                </div>
+
+                <!-- Fourrières -->
+                <div style="margin-bottom:16px;">
+                    <label class="f-label">Fourri&egrave;res</label>
+                    <div style="display:flex;flex-wrap:wrap;gap:16px;">
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <span style="font-size:12px;color:var(--text-muted);min-width:140px;">Montant par fourri&egrave;re</span>
+                            <input type="number" class="f-input" name="impoundCostPerEvent" value="<%= impoundCostPerEvent %>" min="0" step="1" style="width:120px;">
+                            <span style="font-family:var(--font-mono);color:var(--text-muted);">$</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <span style="font-size:12px;color:var(--text-muted);min-width:140px;">% rembours&eacute; par l&#39;entreprise</span>
+                            <input type="number" class="f-input" name="impoundReimbursementPercent" value="<%= impoundReimbursementPercent %>" min="0" max="100" step="0.1" style="width:90px;">
+                            <span style="font-family:var(--font-mono);color:var(--text-muted);">%</span>
+                        </div>
+                    </div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">
+                        P&eacute;nalit&eacute; d&eacute;duite de l&#39;employ&eacute; = nb fourri&egrave;res &times; montant &times; (100 &minus; %).
+                    </div>
+                </div>
+
+                <div style="margin-top:20px;display:flex;justify-content:flex-end;gap:8px;">
+                    <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Enregistrer</button>
+                </div>
+            </form>
+        </div>
+
         <!-- ══════════ Primes spéciales ══════════ -->
         <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;">
             <span>Primes spéciales</span>
@@ -273,6 +378,66 @@
                 return AdminAjax.reloadMain();
             }).catch(function (err) { showToast('Erreur : ' + err.message, 'error'); });
         });
+
+        // Form "frais & remboursements"
+        document.getElementById('form-reimbursements')?.addEventListener('submit', function (e) {
+            e.preventDefault();
+            AdminAjax.postForm(e.target).then(function () {
+                showToast('Remboursements enregistrés');
+                return AdminAjax.reloadMain();
+            }).catch(function (err) { showToast('Erreur : ' + err.message, 'error'); });
+        });
+
+        // ── Types de notes de frais : CRUD AJAX ──
+        function saveExpenseType(id) {
+            var row = document.querySelector('tr[data-type-id="' + id + '"]');
+            if (!row) return;
+            var body = {
+                label: row.querySelector('.et-label').value,
+                key: row.querySelector('.et-key').value,
+                reimbursementPercent: parseFloat(row.querySelector('.et-pct').value),
+            };
+            fetch('/admin/expense-types/' + id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+            .then(function (res) {
+                if (!res.ok) throw new Error(res.data.error || 'Erreur');
+                showToast('Type enregistré');
+            }).catch(function (err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+
+        function deleteExpenseType(id) {
+            if (!confirm('Supprimer ce type ? Les anciennes notes de frais de ce type perdront leur % de remboursement (fallback "autre").')) return;
+            fetch('/admin/expense-types/' + id, { method: 'DELETE' })
+                .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+                .then(function (res) {
+                    if (!res.ok) throw new Error(res.data.error || 'Erreur');
+                    showToast('Type supprimé');
+                    return AdminAjax.reloadMain();
+                }).catch(function (err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+
+        function addExpenseType() {
+            var lbl = document.getElementById('new-et-label').value.trim();
+            var key = document.getElementById('new-et-key').value.trim();
+            var pct = parseFloat(document.getElementById('new-et-pct').value);
+            if (!lbl) return showToast('Libellé requis', 'error');
+            fetch('/admin/expense-types', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ label: lbl, key: key, reimbursementPercent: pct }),
+            }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+            .then(function (res) {
+                if (!res.ok) throw new Error(res.data.error || 'Erreur');
+                document.getElementById('new-et-label').value = '';
+                document.getElementById('new-et-key').value = '';
+                document.getElementById('new-et-pct').value = '50';
+                showToast('Type ajouté');
+                return AdminAjax.reloadMain();
+            }).catch(function (err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
 
         function nextTierLevel() {
             const levels = Array.from(document.querySelectorAll('#tiers-body .tier-level'))

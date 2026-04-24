@@ -81,7 +81,8 @@
     }
   }
   function patch(from, to) {
-    if (from.nodeType === 3 && to.nodeType === 3) {
+    // Texte et commentaires : maj de la valeur, pas d'attributs à patcher.
+    if ((from.nodeType === 3 || from.nodeType === 8) && from.nodeType === to.nodeType) {
       if (from.nodeValue !== to.nodeValue) from.nodeValue = to.nodeValue;
       return;
     }

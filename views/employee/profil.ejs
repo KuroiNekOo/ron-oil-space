@@ -28,29 +28,6 @@
             </div>
         </div>
 
-        <!-- Resume semaine courante -->
-        <% const curTier = getTier(currentStats.points); %>
-        <div class="section-title">Semaine en cours</div>
-        <div class="g4" style="margin-bottom:28px;">
-            <div class="card">
-                <div class="card-label">Livraisons</div>
-                <div class="card-value c-accent"><%= currentStats.deliveries %></div>
-            </div>
-            <div class="card">
-                <div class="card-label">Position</div>
-                <div class="card-value c-gold">#<%= currentStats.rank || '—' %></div>
-            </div>
-            <div class="card">
-                <div class="card-label">Gain employ&eacute;</div>
-                <div class="card-value c-success"><%= fmt(currentStats.gainEmployee) %></div>
-            </div>
-            <div class="card">
-                <div class="card-label">Palier</div>
-                <div class="card-value c-accent"><%= curTier ? 'Palier ' + curTier.level : '—' %></div>
-                <div class="card-sub"><%= currentStats.points %> pts</div>
-            </div>
-        </div>
-
         <!-- Historique -->
         <div class="section-title">Semaines pass&eacute;es</div>
         <div class="history-grid">
@@ -179,6 +156,38 @@
                            <div class="card-sub">${h.specialBonusReason || "Bonus attribu\u00e9 par la direction"}</div>`
                         : `<div class="card-value c-muted">&mdash;</div>
                            <div class="card-sub">Aucune prime cette semaine</div>`}
+                </div>
+                <div class="card">
+                    <div class="card-label">Notes de frais rembours\u00e9es</div>
+                    ${h.expenseRefund > 0
+                        ? `<div class="card-value c-success">+${fmt(h.expenseRefund)}</div>
+                           <div class="card-sub">${h.expenseCost > 0 ? 'sur ' + fmt(h.expenseCost) + ' de frais engag\u00e9s' : ''}</div>`
+                        : `<div class="card-value c-muted">&mdash;</div>
+                           <div class="card-sub">Aucune note de frais</div>`}
+                </div>
+                <div class="card">
+                    <div class="card-label">Rapatriements</div>
+                    ${h.repatBonus > 0
+                        ? `<div class="card-value c-success">+${fmt(h.repatBonus)}</div>
+                           <div class="card-sub">${(h.repatCount || 0) > 0 ? h.repatCount + ' \u00d7 ' + fmt(h.repatCostPerEvent || 0) + ' \u00d7 ' + (h.repatReimbursementPercent || 0).toFixed(0) + '%' : 'Bonus rapatriements'}</div>`
+                        : `<div class="card-value c-muted">&mdash;</div>
+                           <div class="card-sub">Aucun rapatriement</div>`}
+                </div>
+                <div class="card">
+                    <div class="card-label">Remboursement fourri\u00e8res</div>
+                    ${(h.impoundCount || 0) > 0 && (h.impoundReimbursement || 0) > 0
+                        ? `<div class="card-value c-success">+${fmt(h.impoundReimbursement)}</div>
+                           <div class="card-sub">Reste \u00e0 votre charge : -${fmt(h.impoundPenalty)} (${h.impoundCount} \u00d7 ${fmt(h.impoundCostPerEvent || 0)}, entreprise couvre ${(h.impoundReimbursementPercent || 0).toFixed(0)}%)</div>`
+                        : (h.impoundPenalty > 0
+                            ? `<div class="card-value c-danger">-${fmt(h.impoundPenalty)}</div>
+                               <div class="card-sub">${(h.impoundCount || 0) > 0 ? h.impoundCount + ' \u00d7 ' + fmt(h.impoundCostPerEvent || 0) + ' \u2014 enti\u00e8rement \u00e0 votre charge' : 'P\u00e9nalit\u00e9 fourri\u00e8re'}</div>`
+                            : `<div class="card-value c-muted">&mdash;</div>
+                               <div class="card-sub">Aucune fourri\u00e8re</div>`)}
+                </div>
+                <div class="card">
+                    <div class="card-label">Prime finale</div>
+                    <div class="card-value ${h.primeFinale >= 0 ? 'c-accent' : 'c-danger'}">${h.primeFinale >= 0 ? '' : '-'}${fmt(Math.abs(h.primeFinale))}</div>
+                    <div class="card-sub">Montant vers\u00e9 ${h.primeFinale >= 0 ? 'sur IBAN' : '\u00e0 facturer'}</div>
                 </div>
             `;
         }

@@ -323,6 +323,47 @@
             </div>
         </div>
 
+        <!-- Remboursements & frais à charge -->
+        <div class="section-title">Remboursements &amp; frais &agrave; charge</div>
+        <div class="g3">
+            <div class="card">
+                <div class="card-label">Notes de frais remboursées</div>
+                <% if (stats.expenseRefund > 0) { %>
+                    <div class="card-value c-success">+<%= fmt(stats.expenseRefund) %></div>
+                    <div class="card-sub">sur <%= fmt(stats.expenseCost) %> engagés</div>
+                <% } else { %>
+                    <div class="card-value c-muted">&mdash;</div>
+                    <div class="card-sub">Aucune note de frais</div>
+                <% } %>
+            </div>
+            <div class="card">
+                <div class="card-label">Rapatriements</div>
+                <% if (stats.repatCount > 0) { %>
+                    <div class="card-value c-success">+<%= fmt(stats.repatBonus) %></div>
+                    <div class="card-sub"><%= stats.repatCount %> × <%= fmt(stats.repatCostPerEvent) %> × <%= Math.round(stats.repatReimbursementPercent) %>%</div>
+                <% } else { %>
+                    <div class="card-value c-muted">&mdash;</div>
+                    <div class="card-sub">Aucun rapatriement</div>
+                <% } %>
+            </div>
+            <div class="card">
+                <div class="card-label">Remboursement fourri&egrave;res</div>
+                <% if (stats.impoundCount > 0 && stats.impoundReimbursement > 0) { %>
+                    <div class="card-value c-success">+<%= fmt(stats.impoundReimbursement) %></div>
+                    <div class="card-sub">Reste &agrave; votre charge : -<%= fmt(stats.impoundPenalty) %> (<%= stats.impoundCount %> × <%= fmt(stats.impoundCostPerEvent) %>, entreprise couvre <%= Math.round(stats.impoundReimbursementPercent) %>%)</div>
+                <% } else if (stats.impoundCount > 0) { %>
+                    <div class="card-value c-danger">-<%= fmt(stats.impoundPenalty) %></div>
+                    <div class="card-sub"><%= stats.impoundCount %> × <%= fmt(stats.impoundCostPerEvent) %> — enti&egrave;rement &agrave; votre charge</div>
+                <% } else { %>
+                    <div class="card-value c-muted">&mdash;</div>
+                    <div class="card-sub">Aucune fourri&egrave;re</div>
+                <% } %>
+            </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">
+            Provisoire — fig&eacute; au rollover hebdo (dimanche 18h) avec les taux de l'instant.
+        </div>
+
         <div class="divider"></div>
 
         <!-- Records + Podium -->

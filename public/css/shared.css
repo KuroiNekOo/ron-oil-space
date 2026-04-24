@@ -188,6 +188,7 @@ body {
 .card-value.c-gold    { color: var(--gold); }
 .card-value.c-success { color: var(--success); }
 .card-value.c-muted   { color: var(--text-muted); }
+.card-value.c-danger  { color: var(--danger); }
 .card-sub { font-size: 13px; color: var(--text-secondary); margin-top: 6px; }
 
 /* ─── GRIDS ─── */

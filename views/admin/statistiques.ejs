@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL Admin — Statistiques</title>
+    <link rel="stylesheet" href="/css/admin-shared.css">
+</head>
+<body>
+    <%- include('../partials/admin-sidebar', { currentPage: 'statistiques' }) %>
+    <main class="main-content">
+
+        <div class="page-header">
+            <div class="page-title">Statistiques</div>
+            <div class="page-subtitle">Vue d'ensemble globale et historique semaine par semaine</div>
+        </div>
+
+        <%
+            function fmt(n) {
+                return new Intl.NumberFormat('fr-FR').format(Math.round(n)) + '$';
+            }
+        %>
+
+        <!-- ══════════ Semaine en cours ══════════ -->
+        <div class="section-title" style="display:flex;align-items:center;gap:10px;">
+            <span>Semaine en cours</span>
+            <span style="font-family:var(--font-mono);font-size:14px;color:var(--accent);">S<%= currentWeek %> &middot; <%= currentYear %></span>
+        </div>
+
+        <div class="g4" style="margin-bottom:28px;">
+            <div class="card">
+                <div class="card-label">Livraisons</div>
+                <div class="card-value c-accent"><%= currentTotals.livraisons %></div>
+            </div>
+            <div class="card">
+                <div class="card-label">CA entreprise</div>
+                <div class="card-value c-gold">+<%= fmt(currentTotals.gainEnterprise) %></div>
+            </div>
+            <div class="card">
+                <div class="card-label">Dépenses totales</div>
+                <div class="card-value c-danger">-<%= fmt(currentTotals.totalDepenses) %></div>
+                <div class="card-sub">primes + remboursements + achats</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Bénéfice net</div>
+                <div class="card-value <%= currentTotals.beneficeNet >= 0 ? 'c-success' : 'c-danger' %>"><%= currentTotals.beneficeNet >= 0 ? '+' : '-' %><%= fmt(Math.abs(currentTotals.beneficeNet)) %></div>
+                <div class="card-sub">CA − dépenses</div>
+            </div>
+        </div>
+
+        <!-- Composantes de la perte entreprise -->
+        <div class="section-title">Détail des dépenses</div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:28px;">
+            <div class="card">
+                <div class="card-label">Primes versées</div>
+                <div class="card-value c-danger">-<%= fmt(currentTotals.totalPrimes) %></div>
+                <div class="card-sub">livraisons + paliers + podiums + spéciales</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Notes de frais remboursées</div>
+                <div class="card-value c-danger">-<%= fmt(currentTotals.expenseRefund) %></div>
+                <div class="card-sub">sur <%= fmt(currentTotals.expenseCost) %> déclarés</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Rapatriements payés</div>
+                <div class="card-value c-danger">-<%= fmt(currentTotals.repatBonus) %></div>
+            </div>
+            <div class="card">
+                <div class="card-label">Fourrières remboursées</div>
+                <div class="card-value c-danger">-<%= fmt(currentTotals.impoundReimbursement) %></div>
+                <div class="card-sub">part employé : <%= fmt(currentTotals.impoundPenalty) %></div>
+            </div>
+            <div class="card">
+                <div class="card-label">Achats</div>
+                <div class="card-value c-danger">-<%= fmt(currentTotals.achats) %></div>
+            </div>
+        </div>
+
+        <!-- Détail des primes -->
+        <div class="section-title">Décomposition des primes</div>
+        <div class="g4" style="margin-bottom:28px;">
+            <div class="card">
+                <div class="card-label">Prime de livraisons</div>
+                <div class="card-value"><%= fmt(currentTotals.bonusSalary) %></div>
+            </div>
+            <div class="card">
+                <div class="card-label">Primes paliers</div>
+                <div class="card-value"><%= fmt(currentTotals.tierPrime) %></div>
+            </div>
+            <div class="card">
+                <div class="card-label">Primes podium</div>
+                <div class="card-value c-gold"><%= fmt(currentTotals.podiumPrize) %></div>
+            </div>
+            <div class="card">
+                <div class="card-label">Primes spéciales</div>
+                <div class="card-value c-accent"><%= fmt(currentTotals.specialBonus) %></div>
+            </div>
+        </div>
+
+        <!-- Classement semaine en cours -->
+        <div class="section-title">Classement de la semaine</div>
+        <div class="card" style="padding:0;overflow:hidden;margin-bottom:32px;">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th style="width:60px;">Rang</th>
+                        <th>Employé</th>
+                        <th>Livraisons</th>
+                        <th>Gain employé</th>
+                        <th>Prime de livraisons</th>
+                        <th>Prime finale</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (currentTop.length === 0) { %>
+                        <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-muted);">Aucune donnée pour cette semaine.</td></tr>
+                    <% } %>
+                    <% currentTop.forEach(function(r) { %>
+                        <tr>
+                            <td><span style="font-family:var(--font-mono);color:<%= r.rank <= 3 ? 'var(--gold)' : 'var(--text-secondary)' %>">#<%= r.rank %></span></td>
+                            <td style="font-weight:500;"><%= r.name %></td>
+                            <td class="mono"><%= r.deliveries %></td>
+                            <td class="mono" style="color:var(--text-secondary);"><%= fmt(r.gainEmployee) %></td>
+                            <td class="mono"><%= fmt(r.bonusSalary) %></td>
+                            <td class="mono <%= r.primeFinale >= 0 ? 'c-success' : 'c-danger' %>" style="font-weight:600;"><%= r.primeFinale >= 0 ? '' : '-' %><%= fmt(Math.abs(r.primeFinale)) %></td>
+                        </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ══════════ Historique ══════════ -->
+        <div class="section-title">Historique des semaines passées</div>
+        <% if (history.length === 0) { %>
+            <div class="card" style="padding:24px;color:var(--text-muted);text-align:center;">
+                Aucune semaine figée pour le moment. L'historique apparaît après le premier rollover hebdo.
+            </div>
+        <% } else { %>
+            <div class="history-grid" style="display:grid;grid-template-columns:280px 1fr;gap:24px;">
+                <!-- Liste -->
+                <div>
+                    <div class="history-list" id="h-list">
+                        <% history.forEach(function(h, i) { %>
+                            <div class="history-item" id="h-item-<%= i %>" onclick="showWeek(<%= i %>)">
+                                <div>
+                                    <div class="hi-week">Semaine <%= h.week %></div>
+                                    <div class="hi-info"><%= h.totals.livraisons %> livraisons &middot; <%= h.totals.activeEmployees %> employés</div>
+                                </div>
+                                <div class="hi-rank" style="color:var(--accent);font-family:var(--font-mono);"><%= Math.round(h.totals.gainEnterprise) %>$</div>
+                            </div>
+                        <% }); %>
+                    </div>
+                </div>
+
+                <!-- Détail -->
+                <div>
+                    <div class="section-title" style="margin-bottom:14px;">
+                        Détail — Semaine <span id="h-detail-label">—</span>
+                    </div>
+                    <div id="h-detail-empty" class="detail-empty">
+                        <div class="detail-empty-inner">
+                            <i class="fa-solid fa-clock-rotate-left"></i>
+                            Sélectionnez une semaine pour afficher le détail
+                        </div>
+                    </div>
+                    <div id="h-detail-body" style="display:none;">
+                        <div class="g4" id="h-detail-totals" style="margin-bottom:14px;"></div>
+                        <div id="h-detail-breakdown" style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:18px;"></div>
+                        <div class="card" style="padding:0;overflow:hidden;">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:60px;">Rang</th>
+                                        <th>Employé</th>
+                                        <th>Livraisons</th>
+                                        <th>Primes</th>
+                                        <th>Frais</th>
+                                        <th>Prime finale</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="h-detail-rows"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <% } %>
+
+    </main>
+
+    <script type="application/json" id="history-data"><%- JSON.stringify(history).replace(/</g, '\\u003c') %></script>
+    <script src="/js/auto-refresh.js"></script>
+    <script>
+        const fmt = n => new Intl.NumberFormat('fr-FR').format(Math.round(n)) + '$';
+        let HISTORY = JSON.parse(document.getElementById('history-data').textContent);
+        let selectedKey = null;
+
+        window.addEventListener('admin:reloaded', function () {
+            const el = document.getElementById('history-data');
+            if (el) HISTORY = JSON.parse(el.textContent);
+            if (selectedKey != null) {
+                const idx = HISTORY.findIndex(h => h.year + '|' + h.week === selectedKey);
+                if (idx >= 0) showWeek(idx, { skipTrack: true });
+            }
+        });
+
+        function showWeek(i, opts) {
+            const h = HISTORY[i];
+            if (!h) return;
+            if (!opts || !opts.skipTrack) selectedKey = h.year + '|' + h.week;
+
+            document.querySelectorAll('.history-item').forEach(el => el.classList.remove('active'));
+            const row = document.getElementById('h-item-' + i);
+            if (row) row.classList.add('active');
+
+            document.getElementById('h-detail-label').textContent = h.week;
+            document.getElementById('h-detail-empty').style.display = 'none';
+            document.getElementById('h-detail-body').style.display = '';
+
+            const t = h.totals;
+            const beneficeColor = t.beneficeNet >= 0 ? 'c-success' : 'c-danger';
+            const beneficeSign = t.beneficeNet >= 0 ? '+' : '-';
+            document.getElementById('h-detail-totals').innerHTML = `
+                <div class="card"><div class="card-label">Livraisons</div><div class="card-value c-accent">${t.livraisons}</div></div>
+                <div class="card"><div class="card-label">CA entreprise</div><div class="card-value c-gold">+${fmt(t.gainEnterprise)}</div></div>
+                <div class="card"><div class="card-label">Dépenses totales</div><div class="card-value c-danger">-${fmt(t.totalDepenses)}</div><div class="card-sub">primes + remboursements + achats</div></div>
+                <div class="card"><div class="card-label">Bénéfice net</div><div class="card-value ${beneficeColor}">${beneficeSign}${fmt(Math.abs(t.beneficeNet))}</div><div class="card-sub">CA − dépenses</div></div>
+            `;
+            const detailRow = document.getElementById('h-detail-breakdown');
+            if (detailRow) detailRow.innerHTML = `
+                <div class="card"><div class="card-label">Primes versées</div><div class="card-value c-danger">-${fmt(t.totalPrimes)}</div></div>
+                <div class="card"><div class="card-label">Notes de frais</div><div class="card-value c-danger">-${fmt(t.expenseRefund)}</div></div>
+                <div class="card"><div class="card-label">Rapatriements</div><div class="card-value c-danger">-${fmt(t.repatBonus)}</div></div>
+                <div class="card"><div class="card-label">Fourrières</div><div class="card-value c-danger">-${fmt(t.impoundReimbursement)}</div></div>
+                <div class="card"><div class="card-label">Achats</div><div class="card-value c-danger">-${fmt(t.achats)}</div></div>
+            `;
+
+            const tbody = document.getElementById('h-detail-rows');
+            tbody.innerHTML = h.rows.map(r => {
+                const primes = (r.bonusSalary || 0) + (r.tierPrime || 0) + (r.podiumPrize || 0) + (r.specialBonus || 0);
+                const frais = (r.expenseRefund || 0) + (r.repatBonus || 0) + (r.impoundReimbursement || 0);
+                const finale = r.primeFinale || 0;
+                const rankColor = r.rank <= 3 ? 'var(--gold)' : 'var(--text-secondary)';
+                return `
+                    <tr>
+                        <td><span style="font-family:var(--font-mono);color:${rankColor}">#${r.rank || '—'}</span></td>
+                        <td style="font-weight:500;">${r.name}</td>
+                        <td class="mono">${r.deliveries || 0}</td>
+                        <td class="mono">${fmt(primes)}</td>
+                        <td class="mono">${fmt(frais)}</td>
+                        <td class="mono ${finale >= 0 ? 'c-success' : 'c-danger'}" style="font-weight:600;">${finale >= 0 ? '' : '-'}${fmt(Math.abs(finale))}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    </script>
+</body>
+</html>

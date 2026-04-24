@@ -50,9 +50,9 @@
                     </tr>
                 </thead>
                 <tbody id="salaries-body">
-                    <% employees.forEach(function(e) { %>
+                    <% employees.forEach(function(e, i) { %>
                     <tr class="employee-row" data-employee-id="<%= e.id %>" data-search="<%= (e.firstName + ' ' + e.lastName + ' ' + e.role).toLowerCase() %>">
-                        <td class="mono" style="color:var(--text-muted)"><%= e.id %></td>
+                        <td class="mono" style="color:var(--text-muted)"><%= i + 1 %></td>
                         <td style="font-weight:500">
                             <% var dutyClass = (e.duty && e.duty.onDuty) ? 'on' : 'off'; %>
                             <% var dutyTitle = e.duty ? ((e.duty.onDuty ? 'En service' : 'Hors service') + ' depuis ' + new Date(e.duty.since).toLocaleString('fr-FR')) : 'Hors service (aucun log)'; %>
