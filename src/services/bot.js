@@ -24,6 +24,10 @@ async function createCasier({ discordId, firstName, lastName, username, password
   return call('/casier', { discordId, firstName, lastName, username, password });
 }
 
+async function archiveCasier({ channelId, discordId }) {
+  return call('/casier/archive', { channelId, discordId });
+}
+
 async function notifyWeeklyStats(payload) {
   return call('/notify/weekly-stats', payload);
 }
@@ -32,4 +36,4 @@ async function notifyContractAlert(payload) {
   return call('/notify/contract-alert', payload);
 }
 
-module.exports = { createCasier, notifyWeeklyStats, notifyContractAlert };
+module.exports = { createCasier, archiveCasier, notifyWeeklyStats, notifyContractAlert };

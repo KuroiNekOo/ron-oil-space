@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const prisma = require('../db');
 const bcrypt = require('bcrypt');
 const { requireAdmin } = require('../middleware/auth');
-const { createCasier } = require('../services/bot');
+const { createCasier, archiveCasier } = require('../services/bot');
 const { getWeekFromTimestamp, getYearFromTimestamp, getWeekAndYear } = require('../services/week');
 const { getBonusRates, setBonusRate } = require('../services/bonus');
 const {
@@ -243,10 +243,28 @@ router.post('/salaries/:id/toggle-admin', async (req, res) => {
 router.post('/salaries/:id/delete', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    // Delete user account first
+
+    // Récupéré AVANT la suppression pour pouvoir archiver le casier ensuite.
+    const employee = await prisma.employee.findUnique({ where: { id } });
+    if (!employee) return res.status(404).json({ error: 'Not found' });
+
     await prisma.user.deleteMany({ where: { employeeId: id } });
     await prisma.employee.delete({ where: { id } });
-    res.json({ ok: true, id });
+
+    // Archive Discord en best-effort — on ne bloque PAS la suppression BDD
+    // si le bot est down. L'admin verra juste un warning côté réponse.
+    let botWarning = null;
+    const channelId = employee.channelId || employee.casierId || null;
+    if (channelId || employee.discordId) {
+      try {
+        await archiveCasier({ channelId, discordId: employee.discordId });
+      } catch (botErr) {
+        console.warn('[salaries/delete] archiveCasier failed:', botErr.message);
+        botWarning = botErr.message;
+      }
+    }
+
+    res.json({ ok: true, id, botWarning });
   } catch (err) {
     console.error('POST /salaries/:id/delete error:', err);
     res.status(500).json({ error: err.message });

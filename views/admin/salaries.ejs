@@ -314,7 +314,14 @@
         function deleteEmployee(id) {
             if (!confirm('Supprimer définitivement cet employé ?')) return;
             AdminAjax.post('/admin/salaries/' + id + '/delete')
-                .then(function() { return AdminAjax.reloadMain(); })
+                .then(function(data) {
+                    if (data && data.botWarning) {
+                        setTimeout(function() {
+                            showToast('Casier Discord non archivé : ' + data.botWarning, 'error');
+                        }, 1500);
+                    }
+                    return AdminAjax.reloadMain();
+                })
                 .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
         }
 
