@@ -71,10 +71,33 @@ router.use(requireAdmin);
 
 router.get('/salaries', async (req, res) => {
   try {
-    const employees = await prisma.employee.findMany({
-      orderBy: { id: 'asc' },
+    const [employees, dutyLogs] = await Promise.all([
+      prisma.employee.findMany({ orderBy: { id: 'asc' } }),
+      prisma.logEntry.findMany({
+        where: { type: 'duty' },
+        orderBy: { timestamp: 'desc' },
+        select: { data: true, timestamp: true },
+      }),
+    ]);
+
+    // Dernier log de service par nom normalisé (first-wins car trié desc).
+    const dutyByName = new Map();
+    for (const log of dutyLogs) {
+      let d;
+      try { d = JSON.parse(log.data); } catch { continue; }
+      const name = String(d[0] || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      if (!name) continue;
+      if (dutyByName.has(name)) continue;
+      dutyByName.set(name, { onDuty: d[1] === 'true', since: log.timestamp });
+    }
+
+    const enriched = employees.map(e => {
+      const key = (e.firstName + ' ' + e.lastName).trim().toLowerCase().replace(/\s+/g, ' ');
+      const duty = dutyByName.get(key) || null;
+      return { ...e, duty };
     });
-    res.render('admin/salaries', { employees });
+
+    res.render('admin/salaries', { employees: enriched });
   } catch (err) {
     console.error('GET /salaries error:', err);
     res.status(500).send('Erreur serveur');

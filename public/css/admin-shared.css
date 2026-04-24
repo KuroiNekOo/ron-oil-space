@@ -176,6 +176,10 @@ body {
 .frozen-badge { display:inline-flex; align-items:center; gap:6px; font-size:11px; padding:6px 10px; font-weight:600; color:var(--text-muted); background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); font-style:italic; }
 .frozen-badge i { font-size:10px; }
 
+.duty-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:8px; vertical-align:middle; }
+.duty-dot.on { background:var(--success); box-shadow:0 0 6px rgba(46,204,138,.6); }
+.duty-dot.off { background:var(--danger); }
+
 /* ── STATUS BADGES ── */
 .status-badge { display:inline-block; font-size:11px; letter-spacing:.1em; padding:4px 12px; font-weight:700; text-transform:uppercase; }
 .status-badge.active   { background:rgba(46,204,138,.1); color:var(--success); border:1px solid rgba(46,204,138,.2); }

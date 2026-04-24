@@ -53,7 +53,12 @@
                     <% employees.forEach(function(e) { %>
                     <tr class="employee-row" data-employee-id="<%= e.id %>" data-search="<%= (e.firstName + ' ' + e.lastName + ' ' + e.role).toLowerCase() %>">
                         <td class="mono" style="color:var(--text-muted)"><%= e.id %></td>
-                        <td style="font-weight:500"><%= e.firstName %> <%= e.lastName %></td>
+                        <td style="font-weight:500">
+                            <% var dutyClass = (e.duty && e.duty.onDuty) ? 'on' : 'off'; %>
+                            <% var dutyTitle = e.duty ? ((e.duty.onDuty ? 'En service' : 'Hors service') + ' depuis ' + new Date(e.duty.since).toLocaleString('fr-FR')) : 'Hors service (aucun log)'; %>
+                            <span class="duty-dot <%= dutyClass %>" title="<%= dutyTitle %>"></span>
+                            <%= e.firstName %> <%= e.lastName %>
+                        </td>
                         <td><span class="contract-badge <%= e.contract.toLowerCase() %>"><%= e.contract %></span></td>
                         <td><%= e.role %></td>
                         <td><span class="status-badge <%= e.status === 'active' ? 'active' : 'inactive' %>"><%= e.status === 'active' ? 'Actif' : 'Inactif' %></span></td>
