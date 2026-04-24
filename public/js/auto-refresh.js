@@ -6,7 +6,7 @@
 // Actif uniquement quand l'onglet est visible.
 // Émet 'admin:reloaded' après chaque patch pour que les pages réhydratent leurs caches.
 (function () {
-  var INTERVAL = 15000;
+  var INTERVAL = 5000;
   var inFlight = false;
 
   function patchAttrs(from, to) {
@@ -66,17 +66,25 @@
     if (document.visibilityState !== 'visible') return;
     if (isBusy()) return;
     inFlight = true;
-    fetch(window.location.pathname + window.location.search, {
-      headers: { Accept: 'text/html' },
+    // Cache-busting query param : évite qu'un proxy/navigateur serve une page stale.
+    var sep = window.location.search ? '&' : '?';
+    var url = window.location.pathname + window.location.search + sep + '_ts=' + Date.now();
+    fetch(url, {
+      headers: { Accept: 'text/html', 'Cache-Control': 'no-cache' },
       credentials: 'same-origin',
     })
       .then(function (r) { return r.ok ? r.text() : null; })
       .then(function (html) {
         if (!html) return;
         var doc = new DOMParser().parseFromString(html, 'text/html');
-        var nextMain = doc.querySelector('main');
-        var currMain = document.querySelector('main');
-        if (nextMain && currMain) patch(currMain, nextMain);
+
+        // Patche chaque zone "live" : sidebar (numéro de semaine, nav items
+        // conditionnels) + contenu principal.
+        [['aside', 'aside'], ['main', 'main']].forEach(function (pair) {
+          var next = doc.querySelector(pair[1]);
+          var curr = document.querySelector(pair[0]);
+          if (next && curr) patch(curr, next);
+        });
 
         doc.querySelectorAll('script[type="application/json"]').forEach(function (s) {
           if (!s.id) return;
