@@ -2,3 +2,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="/img/ron-oil.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<!-- SEO / description générique -->
+<meta name="description" content="<%= og.description %>">
+<meta name="theme-color" content="<%= og.themeColor %>">
+
+<!-- Open Graph (Discord / Facebook / LinkedIn) -->
+<meta property="og:site_name" content="<%= og.siteName %>">
+<meta property="og:title" content="<%= og.title %>">
+<meta property="og:description" content="<%= og.description %>">
+<meta property="og:type" content="<%= og.type %>">
+<meta property="og:url" content="<%= og.url %>">
+<meta property="og:image" content="<%= og.image %>">
+<meta property="og:image:alt" content="Logo RON OIL">
+<meta property="og:locale" content="fr_FR">
+
+<!-- Twitter Card (fallback pour certains clients qui ne lisent que Twitter) -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="<%= og.title %>">
+<meta name="twitter:description" content="<%= og.description %>">
+<meta name="twitter:image" content="<%= og.image %>">

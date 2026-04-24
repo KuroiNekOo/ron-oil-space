@@ -7,6 +7,11 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Derrière un reverse proxy (nginx / cloudflare), on fait confiance aux en-têtes
+// X-Forwarded-* pour que req.protocol reflète bien le https côté public.
+// Indispensable pour les URLs absolues (og:url, og:image) envoyées à Discord.
+app.set('trust proxy', true);
+
 // View engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '..', 'views'));
@@ -38,6 +43,22 @@ app.use(session({
 // Make session data available in all views
 app.use((req, res, next) => {
   res.locals.session = req.session;
+  next();
+});
+
+// Balises Open Graph / Twitter Card exposées dans toutes les vues via res.locals.og.
+// Une route peut surcharger (res.locals.og.title = ...) avant res.render().
+app.use((req, res, next) => {
+  const origin = req.protocol + '://' + req.get('host');
+  res.locals.og = {
+    siteName: 'RON OIL',
+    title: 'RON OIL',
+    description: 'Plateforme interne Ron Oil — gestion des livraisons, primes, paies et suivi des employés.',
+    url: origin + req.originalUrl,
+    image: origin + '/img/ron-oil.png',
+    type: 'website',
+    themeColor: '#FF5422',
+  };
   next();
 });
 
