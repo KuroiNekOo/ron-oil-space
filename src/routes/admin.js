@@ -114,6 +114,12 @@ router.post('/salaries', async (req, res) => {
     if (!discordId) {
       return res.status(400).json({ error: 'ID Discord requis' });
     }
+    if (!phone || !phone.trim()) {
+      return res.status(400).json({ error: 'Téléphone requis' });
+    }
+    if (!endDate) {
+      return res.status(400).json({ error: 'Date de fin de contrat requise' });
+    }
 
     const username = await generateUniqueUsername(firstName, lastName);
     const password = generatePassword(16);
