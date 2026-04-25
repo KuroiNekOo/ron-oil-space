@@ -38,6 +38,8 @@ async function requireAdmin(req, res, next) {
 
 // Employé : doit avoir un Employee rattaché et son status doit être 'active'.
 // Un employé désactivé voit sa session invalidée au premier hit.
+// Expose req.employee pour éviter une requête supplémentaire côté handler
+// (utile pour snapshoter le nom lors de la création de soumissions).
 async function requireEmployee(req, res, next) {
   const user = await loadSessionUser(req);
   if (!user || !user.employeeId || !user.employee) {
@@ -46,6 +48,7 @@ async function requireEmployee(req, res, next) {
   if (user.employee.status !== 'active') {
     return killSession(req, res, '/login');
   }
+  req.employee = user.employee;
   next();
 }
 

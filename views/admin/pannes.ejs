@@ -38,11 +38,12 @@
                 </thead>
                 <tbody id="table-body">
                     <% breakdowns.forEach(function(r) { %>
-                    <tr class="data-row" data-row-id="<%= r.id %>" data-search="<%= (r.employee.firstName + ' ' + r.employee.lastName + ' ' + r.truckPlate + ' ' + r.type + ' ' + (r.comment || '')).toLowerCase() %>">
+                    <% const name = empName(r); %>
+                    <tr class="data-row" data-row-id="<%= r.id %>" data-search="<%= (name + ' ' + r.truckPlate + ' ' + r.type + ' ' + (r.comment || '')).toLowerCase() %>">
                         <td class="mono" style="color:var(--text-muted)"><%= r.id %></td>
                         <td><span style="font-family:var(--font-mono);font-size:12px;color:var(--accent)">S<%= r.week %></span></td>
                         <td class="mono" style="color:var(--text-secondary);font-size:11px"><%= new Date(r.createdAt).toLocaleString('fr-FR') %></td>
-                        <td style="font-weight:500"><%= r.employee.firstName %> <%= r.employee.lastName %></td>
+                        <td style="font-weight:500"><%= name %><% if (!r.employee) { %> <span style="font-size:10px;color:var(--text-muted);font-style:italic">(supprimé)</span><% } %></td>
                         <td class="mono" style="font-size:12px"><%= r.truckPlate %></td>
                         <td class="mono" style="font-size:12px"><%= r.tankerPlate || '—' %></td>
                         <td><span class="status-badge inactive"><%= r.type %></span></td>

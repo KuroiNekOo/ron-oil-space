@@ -376,6 +376,8 @@ router.post('/absences', requireEmployee, async (req, res) => {
     await prisma.absence.create({
       data: {
         employeeId: req.session.employeeId,
+        employeeFirstName: req.employee.firstName,
+        employeeLastName: req.employee.lastName,
         week: currentWeek,
         year: currentYear,
         type,
@@ -410,6 +412,8 @@ router.post('/frais', requireEmployee, async (req, res) => {
     await prisma.expense.create({
       data: {
         employeeId: req.session.employeeId,
+        employeeFirstName: req.employee.firstName,
+        employeeLastName: req.employee.lastName,
         week: currentWeek,
         year: currentYear,
         type,
@@ -447,6 +451,8 @@ router.post('/pannes', requireEmployee, async (req, res) => {
     await prisma.breakdown.create({
       data: {
         employeeId: req.session.employeeId,
+        employeeFirstName: req.employee.firstName,
+        employeeLastName: req.employee.lastName,
         week: currentWeek,
         year: currentYear,
         truckPlate: plaqueCamion,
@@ -498,6 +504,8 @@ router.post('/rapatriements', requireEmployee, requireRapatriementAccess, async 
     await prisma.repatriation.create({
       data: {
         employeeId: req.session.employeeId,
+        employeeFirstName: req.employee.firstName,
+        employeeLastName: req.employee.lastName,
         week: currentWeek,
         year: currentYear,
         truckPlate: plaqueCamion,

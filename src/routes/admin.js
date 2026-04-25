@@ -512,12 +512,23 @@ router.post('/achats', async (req, res) => {
     const purchaseDate = date ? new Date(date) : new Date();
     const wy = getWeekAndYear(purchaseDate);
     const weekNum = parseInt(week) || wy.week;
+    const empId = employeeId ? parseInt(employeeId) : null;
+
+    let snapshot = { employeeFirstName: null, employeeLastName: null };
+    if (empId) {
+      const emp = await prisma.employee.findUnique({
+        where: { id: empId },
+        select: { firstName: true, lastName: true },
+      });
+      if (emp) snapshot = { employeeFirstName: emp.firstName, employeeLastName: emp.lastName };
+    }
 
     const purchase = await prisma.purchase.create({
       data: {
         week: weekNum,
         typeId: parseInt(typeId),
-        employeeId: employeeId ? parseInt(employeeId) : null,
+        employeeId: empId,
+        ...snapshot,
         qty: parseFloat(qty),
         unitPrice: parseFloat(unitPrice),
         date: purchaseDate,
@@ -595,7 +606,6 @@ router.get('/absences', async (req, res) => {
   try {
     const [absences, frozenKeys] = await Promise.all([
       prisma.absence.findMany({
-        where: { employee: { status: 'active' } },
         include: { employee: true },
         orderBy: { createdAt: 'desc' },
       }),
@@ -654,7 +664,6 @@ router.get('/frais', async (req, res) => {
   try {
     const [expenses, frozenKeys, expenseTypes] = await Promise.all([
       prisma.expense.findMany({
-        where: { employee: { status: 'active' } },
         include: { employee: true },
         orderBy: { createdAt: 'desc' },
       }),
@@ -712,7 +721,6 @@ router.get('/pannes', async (req, res) => {
   try {
     const [breakdowns, frozenKeys] = await Promise.all([
       prisma.breakdown.findMany({
-        where: { employee: { status: 'active' } },
         include: { employee: true },
         orderBy: { createdAt: 'desc' },
       }),
@@ -771,7 +779,6 @@ router.get('/rapatriements', async (req, res) => {
   try {
     const [repatriations, frozenKeys] = await Promise.all([
       prisma.repatriation.findMany({
-        where: { employee: { status: 'active' } },
         include: { employee: true },
         orderBy: { createdAt: 'desc' },
       }),
@@ -846,7 +853,6 @@ router.get('/primes', async (req, res) => {
       }),
       getBonusRates(),
       prisma.specialBonus.findMany({
-        where: { employee: { status: 'active' } },
         include: { employee: true },
         orderBy: [{ week: 'desc' }, { id: 'desc' }],
       }),
@@ -1054,10 +1060,24 @@ router.post('/special-bonus', async (req, res) => {
     if (await isWeekFrozen(w, y)) {
       return res.status(409).json({ error: 'Semaine figée, action interdite' });
     }
+    const emp = await prisma.employee.findUnique({
+      where: { id: empId },
+      select: { firstName: true, lastName: true },
+    });
+    if (!emp) return res.status(404).json({ error: 'Employé introuvable' });
     const bonus = await prisma.specialBonus.upsert({
       where: { employeeId_week_year: { employeeId: empId, week: w, year: y } },
-      create: { employeeId: empId, week: w, year: y, amount: amt, reason: reason || null },
-      update: { amount: amt, reason: reason || null },
+      create: {
+        employeeId: empId,
+        employeeFirstName: emp.firstName,
+        employeeLastName: emp.lastName,
+        week: w, year: y, amount: amt, reason: reason || null,
+      },
+      update: {
+        employeeFirstName: emp.firstName,
+        employeeLastName: emp.lastName,
+        amount: amt, reason: reason || null,
+      },
     });
     res.json({ ok: true, id: bonus.id });
   } catch (err) {
@@ -1167,14 +1187,15 @@ router.get('/statistiques', async (req, res) => {
 
     // Semaine en cours : on calcule "à blanc" (computeFrozenWeek ne sauve rien)
     // pour avoir le même format que les WeekStats figés.
-    // Filtrage employee.status='active' sur l'historique : un employé désactivé
-    // disparaît des stats jusqu'à réactivation (ses WeekStats restent en BDD).
+    // L'historique inclut TOUS les WeekStats figés (y compris employés désactivés
+    // ou supprimés) — l'historique est figé dans le temps. Le nom est résolu via
+    // l'Employee lié si présent, sinon via les colonnes snapshot
+    // (employeeFirstName/employeeLastName).
     const [liveRows, allFrozen, allPurchases] = await Promise.all([
       computeFrozenWeek(currentWeek, currentYear),
       prisma.weekStats.findMany({
         where: {
           NOT: { AND: [{ week: currentWeek }, { year: currentYear }] },
-          employee: { status: 'active' },
         },
         include: { employee: true },
         orderBy: [{ year: 'desc' }, { week: 'desc' }],
@@ -1215,7 +1236,11 @@ router.get('/statistiques', async (req, res) => {
         totals,
         rows: w.rows.map(r => ({
           employeeId: r.employeeId,
-          name: r.employee ? r.employee.firstName + ' ' + r.employee.lastName : '—',
+          name: r.employee
+            ? r.employee.firstName + ' ' + r.employee.lastName
+            : (r.employeeFirstName || r.employeeLastName)
+              ? ((r.employeeFirstName || '') + ' ' + (r.employeeLastName || '')).trim()
+              : '—',
           deliveries: r.deliveries,
           gainEnterprise: r.gainEnterprise,
           gainEmployee: r.gainEmployee,

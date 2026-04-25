@@ -88,8 +88,12 @@ model Purchase {
   unitPrice   Float
   description String
   date        DateTime
-  employeeId  Int?
-  employee    Employee?    @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  // employeeId pendu (SetNull) à la suppression de l'Employee : on conserve l'achat
+  // (dépense entreprise) + le nom snapshot pour l'affichage rétrospectif.
+  employeeId        Int?
+  employee          Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  employeeFirstName String?
+  employeeLastName  String?
   createdAt   DateTime     @default(now())
 }
 
@@ -97,8 +101,11 @@ model Purchase {
 
 model Absence {
   id           Int      @id @default(autoincrement())
-  employeeId   Int
-  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  // SetNull à la suppression de l'Employee : on conserve la soumission historique.
+  employeeId        Int?
+  employee          Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  employeeFirstName String?
+  employeeLastName  String?
   week         Int
   year               Int
   type         String   // conge | maladie | accident | perso | autre
@@ -113,8 +120,10 @@ model Absence {
 
 model Expense {
   id         Int      @id @default(autoincrement())
-  employeeId Int
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId        Int?
+  employee          Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  employeeFirstName String?
+  employeeLastName  String?
   week       Int
   year               Int
   type       String   // slug = ExpenseType.key (pas de FK pour conserver les valeurs historiques même si le type est supprimé)
@@ -137,8 +146,10 @@ model ExpenseType {
 
 model Breakdown {
   id             Int      @id @default(autoincrement())
-  employeeId     Int
-  employee       Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId        Int?
+  employee          Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  employeeFirstName String?
+  employeeLastName  String?
   week           Int
   year               Int
   truckPlate     String
@@ -153,8 +164,10 @@ model Breakdown {
 
 model Repatriation {
   id           Int      @id @default(autoincrement())
-  employeeId   Int
-  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId        Int?
+  employee          Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  employeeFirstName String?
+  employeeLastName  String?
   week         Int
   year               Int
   truckPlate   String
@@ -173,8 +186,12 @@ model Repatriation {
 // Une fois écrit, ces valeurs ne changent plus même si les taux/règles évoluent.
 model WeekStats {
   id                 Int      @id @default(autoincrement())
-  employeeId         Int
-  employee           Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  // SetNull à la suppression de l'Employee : les stats figées survivent et restent
+  // affichables dans /admin/statistiques grâce au snapshot du nom.
+  employeeId         Int?
+  employee           Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  employeeFirstName  String?
+  employeeLastName   String?
   week               Int
   deliveries         Int      @default(0)
   gainEmployee       Float    @default(0)
@@ -236,8 +253,10 @@ model Config {
 // Prime spéciale manuelle attribuée par un admin à un employé pour une semaine donnée.
 model SpecialBonus {
   id         Int      @id @default(autoincrement())
-  employeeId Int
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId        Int?
+  employee          Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  employeeFirstName String?
+  employeeLastName  String?
   week       Int
   year               Int
   amount     Float

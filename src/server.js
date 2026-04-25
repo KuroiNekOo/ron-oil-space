@@ -50,9 +50,21 @@ app.use(session({
 
 // Make session data + helpers de permission available in all views
 const { canRapatriement } = require('./services/permissions');
+// Helper pour résoudre le nom d'un employé sur une row qui peut référencer un
+// employé supprimé : on fallback sur les colonnes snapshot
+// (employeeFirstName/employeeLastName) qui sont écrites à chaque create/upsert.
+function empName(row) {
+  if (!row) return '—';
+  if (row.employee) return row.employee.firstName + ' ' + row.employee.lastName;
+  const fn = row.employeeFirstName || '';
+  const ln = row.employeeLastName || '';
+  const full = (fn + ' ' + ln).trim();
+  return full || '—';
+}
 app.use((req, res, next) => {
   res.locals.session = req.session;
   res.locals.canRapatriement = canRapatriement;
+  res.locals.empName = empName;
   next();
 });
 

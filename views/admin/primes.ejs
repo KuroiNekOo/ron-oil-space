@@ -281,7 +281,7 @@
                     <% specialBonuses.forEach(function(b) { %>
                     <tr data-bonus-id="<%= b.id %>">
                         <td><span style="font-family:var(--font-mono);font-size:13px;color:var(--accent)">S<%= b.week %></span></td>
-                        <td style="font-weight:500"><%= b.employee.firstName %> <%= b.employee.lastName %></td>
+                        <td style="font-weight:500"><%= empName(b) %><% if (!b.employee) { %> <span style="font-size:10px;color:var(--text-muted);font-style:italic">(supprimé)</span><% } %></td>
                         <td class="mono" style="color:var(--gold);font-weight:600"><%= b.amount.toFixed(2) %>$</td>
                         <td style="font-size:12px;color:var(--text-secondary);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="<%= b.reason || '' %>"><%= b.reason || '—' %></td>
                         <td class="mono" style="font-size:11px;color:var(--text-muted)"><%= new Date(b.createdAt).toLocaleString('fr-FR') %></td>

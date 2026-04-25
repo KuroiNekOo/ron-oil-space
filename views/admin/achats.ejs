@@ -86,12 +86,13 @@
                 </thead>
                 <tbody id="achats-body">
                     <% purchases.forEach(function(a) { %>
-                    <tr class="achat-row" data-achat-id="<%= a.id %>" data-search="<%= ((a.type ? a.type.name : '') + ' ' + a.description + ' ' + (a.employee ? a.employee.firstName + ' ' + a.employee.lastName : '')).toLowerCase() %>">
+                    <% const name = (a.employeeId || a.employeeFirstName) ? empName(a) : null; %>
+                    <tr class="achat-row" data-achat-id="<%= a.id %>" data-search="<%= ((a.type ? a.type.name : '') + ' ' + a.description + ' ' + (name || '')).toLowerCase() %>">
                         <td class="mono" style="color:var(--text-muted)"><%= a.id %></td>
                         <td><span style="font-family:var(--font-mono);font-size:13px;color:var(--accent)">S<%= a.week %></span></td>
                         <td class="mono" style="color:var(--text-secondary)"><%= new Date(a.date).toLocaleDateString('fr-FR') %></td>
                         <td><%= a.type ? a.type.name : '—' %></td>
-                        <td style="color:var(--text-secondary)"><%= a.employee ? a.employee.firstName + ' ' + a.employee.lastName : '—' %></td>
+                        <td style="color:var(--text-secondary)"><%= name || '—' %><% if (name && !a.employee) { %> <span style="font-size:10px;color:var(--text-muted);font-style:italic">(supprimé)</span><% } %></td>
                         <td class="mono"><%= a.qty %></td>
                         <td class="mono"><%= a.unitPrice.toFixed(2) %>$</td>
                         <td class="mono" style="color:var(--gold);font-weight:600"><%= (a.qty * a.unitPrice).toFixed(2) %>$</td>

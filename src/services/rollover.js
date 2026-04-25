@@ -197,10 +197,14 @@ async function saveFrozenWeek(frozenResults) {
       impoundReimbursement: r.impoundReimbursement,
       primeFinale: r.primeFinale,
     };
+    const snapshot = {
+      employeeFirstName: r.employee.firstName,
+      employeeLastName: r.employee.lastName,
+    };
     await prisma.weekStats.upsert({
       where: { employeeId_week_year: { employeeId: r.employee.id, week: r.week, year: r.year } },
-      create: { employeeId: r.employee.id, week: r.week, year: r.year, ...data },
-      update: data,
+      create: { employeeId: r.employee.id, week: r.week, year: r.year, ...snapshot, ...data },
+      update: { ...snapshot, ...data },
     });
   }
 }
