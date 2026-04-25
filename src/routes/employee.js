@@ -71,7 +71,7 @@ async function computeWeekStats(week, year) {
       where: { type: 'delivery', week, year },
       select: { data: true },
     }),
-    prisma.employee.findMany(),
+    prisma.employee.findMany({ where: { status: 'active' } }),
     getTiers(),
     getTierPrimeShares(),
     getPodiumPrizes(),
@@ -86,12 +86,15 @@ async function computeWeekStats(week, year) {
 
   // qtySum = somme des % de chaque livraison. Une livraison partagée en deux
   // (ex: 27% + 73%) est comptée comme 1 livraison et pas 2 → aligné avec le jeu.
+  // Les livraisons d'employés inactifs ou supprimés sont ignorées (pas comptées
+  // dans totalGainEnterprise → n'influencent ni les points collectifs ni le rang).
   const byName = new Map();
   let totalGainEnterprise = 0;
   for (const log of logs) {
     const d = JSON.parse(log.data);
     const key = normalizeName(d[0]);
     if (!key) continue;
+    if (!empByKey.has(key)) continue;
     if (!byName.has(key)) byName.set(key, { qtySum: 0, gainEmployee: 0, gainEnterprise: 0 });
     const s = byName.get(key);
     s.qtySum += parseFloat(d[2]) || 0;
@@ -105,7 +108,6 @@ async function computeWeekStats(week, year) {
   const stats = [];
   for (const [key, s] of byName) {
     const emp = empByKey.get(key);
-    if (!emp) continue;
     const deliveries = Math.round(s.qtySum / 100);
     stats.push({
       employeeId: emp.id,
@@ -140,22 +142,34 @@ async function computeWeekStats(week, year) {
 }
 
 // Records tous employés, toutes semaines confondues (année-aware → S1 2026 ≠ S1 2027).
+// Les livraisons d'employés inactifs ou supprimés sont exclues : leurs perf passées
+// disparaissent des records jusqu'à éventuelle réactivation.
 async function computeRecords() {
-  const logs = await prisma.logEntry.findMany({
-    where: { type: 'delivery' },
-    select: { data: true, week: true, year: true },
-  });
+  const [logs, activeEmployees] = await Promise.all([
+    prisma.logEntry.findMany({
+      where: { type: 'delivery' },
+      select: { data: true, week: true, year: true },
+    }),
+    prisma.employee.findMany({
+      where: { status: 'active' },
+      select: { firstName: true, lastName: true },
+    }),
+  ]);
+  const activeKeys = new Set(
+    activeEmployees.map(e => normalizeName(e.firstName + ' ' + e.lastName))
+  );
 
   // Clé composite year|week pour éviter les collisions inter-années.
   const weekQty = new Map();
   const empWeekQty = new Map();
   for (const log of logs) {
     const d = JSON.parse(log.data);
+    const name = (d[0] || '').trim();
+    if (!name) continue;
+    if (!activeKeys.has(normalizeName(name))) continue;
     const q = parseFloat(d[2]) || 0;
     const wk = log.year + '|' + log.week;
     weekQty.set(wk, (weekQty.get(wk) || 0) + q);
-    const name = (d[0] || '').trim();
-    if (!name) continue;
     const k = name + '|' + wk;
     empWeekQty.set(k, (empWeekQty.get(k) || 0) + q);
   }

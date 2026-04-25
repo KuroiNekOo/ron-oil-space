@@ -533,6 +533,7 @@ router.get('/absences', async (req, res) => {
   try {
     const [absences, frozenKeys] = await Promise.all([
       prisma.absence.findMany({
+        where: { employee: { status: 'active' } },
         include: { employee: true },
         orderBy: { createdAt: 'desc' },
       }),
@@ -591,6 +592,7 @@ router.get('/frais', async (req, res) => {
   try {
     const [expenses, frozenKeys, expenseTypes] = await Promise.all([
       prisma.expense.findMany({
+        where: { employee: { status: 'active' } },
         include: { employee: true },
         orderBy: { createdAt: 'desc' },
       }),
@@ -648,6 +650,7 @@ router.get('/pannes', async (req, res) => {
   try {
     const [breakdowns, frozenKeys] = await Promise.all([
       prisma.breakdown.findMany({
+        where: { employee: { status: 'active' } },
         include: { employee: true },
         orderBy: { createdAt: 'desc' },
       }),
@@ -706,6 +709,7 @@ router.get('/rapatriements', async (req, res) => {
   try {
     const [repatriations, frozenKeys] = await Promise.all([
       prisma.repatriation.findMany({
+        where: { employee: { status: 'active' } },
         include: { employee: true },
         orderBy: { createdAt: 'desc' },
       }),
@@ -780,6 +784,7 @@ router.get('/primes', async (req, res) => {
       }),
       getBonusRates(),
       prisma.specialBonus.findMany({
+        where: { employee: { status: 'active' } },
         include: { employee: true },
         orderBy: [{ week: 'desc' }, { id: 'desc' }],
       }),
@@ -1100,10 +1105,15 @@ router.get('/statistiques', async (req, res) => {
 
     // Semaine en cours : on calcule "à blanc" (computeFrozenWeek ne sauve rien)
     // pour avoir le même format que les WeekStats figés.
+    // Filtrage employee.status='active' sur l'historique : un employé désactivé
+    // disparaît des stats jusqu'à réactivation (ses WeekStats restent en BDD).
     const [liveRows, allFrozen, allPurchases] = await Promise.all([
       computeFrozenWeek(currentWeek, currentYear),
       prisma.weekStats.findMany({
-        where: { NOT: { AND: [{ week: currentWeek }, { year: currentYear }] } },
+        where: {
+          NOT: { AND: [{ week: currentWeek }, { year: currentYear }] },
+          employee: { status: 'active' },
+        },
         include: { employee: true },
         orderBy: [{ year: 'desc' }, { week: 'desc' }],
       }),

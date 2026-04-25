@@ -41,7 +41,7 @@ async function computeFrozenWeek(week, year) {
       where: { type: 'delivery', ...whereWeek },
       select: { data: true },
     }),
-    prisma.employee.findMany(),
+    prisma.employee.findMany({ where: { status: 'active' } }),
     prisma.specialBonus.findMany({ where: whereWeek }),
     getBonusRates(),
     getTiers(),
@@ -63,12 +63,16 @@ async function computeFrozenWeek(week, year) {
   const empByKey = new Map();
   for (const e of employees) empByKey.set(normalizeName(e.firstName + ' ' + e.lastName), e);
 
+  // Livraisons d'employés inactifs ou supprimés ignorées : pas de contribution
+  // au gain entreprise total, donc pas d'influence sur les points collectifs ni
+  // sur le rang des autres. Cohérent avec l'affichage live.
   const byName = new Map();
   let totalGainEnterprise = 0;
   for (const l of logs) {
     const d = JSON.parse(l.data);
     const name = normalizeName(d[0]);
     if (!name) continue;
+    if (!empByKey.has(name)) continue;
     if (!byName.has(name)) byName.set(name, { qtySum: 0, gainEmployee: 0, gainEnterprise: 0 });
     const s = byName.get(name);
     s.qtySum += parseFloat(d[2]) || 0;
