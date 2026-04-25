@@ -105,22 +105,30 @@
                         <th style="width:60px;">Rang</th>
                         <th>Employé</th>
                         <th>Livraisons</th>
+                        <th>Gain entreprise</th>
                         <th>Gain employé</th>
-                        <th>Prime de livraisons</th>
+                        <th>Primes</th>
+                        <th>Frais</th>
                         <th>Prime finale</th>
                     </tr>
                 </thead>
                 <tbody>
                     <% if (currentTop.length === 0) { %>
-                        <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-muted);">Aucune donnée pour cette semaine.</td></tr>
+                        <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text-muted);">Aucune donnée pour cette semaine.</td></tr>
                     <% } %>
                     <% currentTop.forEach(function(r) { %>
+                        <%
+                            const primes = (r.bonusSalary || 0) + (r.tierPrime || 0) + (r.podiumPrize || 0) + (r.specialBonus || 0);
+                            const frais  = (r.expenseRefund || 0) + (r.repatBonus || 0) + (r.impoundReimbursement || 0);
+                        %>
                         <tr>
                             <td><span style="font-family:var(--font-mono);color:<%= r.rank <= 3 ? 'var(--gold)' : 'var(--text-secondary)' %>">#<%= r.rank %></span></td>
                             <td style="font-weight:500;"><%= r.name %></td>
                             <td class="mono"><%= r.deliveries %></td>
+                            <td class="mono c-gold"><%= fmt(r.gainEnterprise) %></td>
                             <td class="mono" style="color:var(--text-secondary);"><%= fmt(r.gainEmployee) %></td>
-                            <td class="mono"><%= fmt(r.bonusSalary) %></td>
+                            <td class="mono"><%= fmt(primes) %></td>
+                            <td class="mono"><%= fmt(frais) %></td>
                             <td class="mono <%= r.primeFinale >= 0 ? 'c-success' : 'c-danger' %>" style="font-weight:600;"><%= r.primeFinale >= 0 ? '' : '-' %><%= fmt(Math.abs(r.primeFinale)) %></td>
                         </tr>
                     <% }); %>
@@ -172,6 +180,8 @@
                                         <th style="width:60px;">Rang</th>
                                         <th>Employé</th>
                                         <th>Livraisons</th>
+                                        <th>Gain entreprise</th>
+                                        <th>Gain employé</th>
                                         <th>Primes</th>
                                         <th>Frais</th>
                                         <th>Prime finale</th>
@@ -245,6 +255,8 @@
                         <td><span style="font-family:var(--font-mono);color:${rankColor}">#${r.rank || '—'}</span></td>
                         <td style="font-weight:500;">${r.name}</td>
                         <td class="mono">${r.deliveries || 0}</td>
+                        <td class="mono c-gold">${fmt(r.gainEnterprise || 0)}</td>
+                        <td class="mono" style="color:var(--text-secondary);">${fmt(r.gainEmployee || 0)}</td>
                         <td class="mono">${fmt(primes)}</td>
                         <td class="mono">${fmt(frais)}</td>
                         <td class="mono ${finale >= 0 ? 'c-success' : 'c-danger'}" style="font-weight:600;">${finale >= 0 ? '' : '-'}${fmt(Math.abs(finale))}</td>

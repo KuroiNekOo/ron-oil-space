@@ -1130,7 +1130,7 @@ router.get('/statistiques', async (req, res) => {
       purchasesByWeek.set(k, (purchasesByWeek.get(k) || 0) + (p.qty || 0) * (p.unitPrice || 0));
     }
 
-    const liveTop = liveRows.slice().sort((a, b) => b.primeFinale - a.primeFinale);
+    const liveTop = liveRows.slice().sort((a, b) => b.gainEnterprise - a.gainEnterprise);
     const currentTotals = sumWeekStats(liveRows);
     currentTotals.achats = purchasesByWeek.get(currentYear + '|' + currentWeek) || 0;
     currentTotals.totalDepenses =
@@ -1155,6 +1155,7 @@ router.get('/statistiques', async (req, res) => {
           employeeId: r.employeeId,
           name: r.employee ? r.employee.firstName + ' ' + r.employee.lastName : '—',
           deliveries: r.deliveries,
+          gainEnterprise: r.gainEnterprise,
           gainEmployee: r.gainEmployee,
           bonusSalary: r.bonusSalary,
           tierPrime: r.tierPrime,
@@ -1166,7 +1167,7 @@ router.get('/statistiques', async (req, res) => {
           impoundPenalty: r.impoundPenalty,
           primeFinale: r.primeFinale,
           rank: r.rank,
-        })).sort((a, b) => b.primeFinale - a.primeFinale),
+        })).sort((a, b) => b.gainEnterprise - a.gainEnterprise),
       };
     });
 
@@ -1177,8 +1178,15 @@ router.get('/statistiques', async (req, res) => {
         employeeId: r.employee.id,
         name: r.employee.firstName + ' ' + r.employee.lastName,
         deliveries: r.deliveries,
+        gainEnterprise: r.gainEnterprise,
         gainEmployee: r.gainEmployee,
         bonusSalary: r.bonusSalary,
+        tierPrime: r.tierPrime,
+        podiumPrize: r.podiumPrize,
+        specialBonus: r.specialBonus,
+        expenseRefund: r.expenseRefund,
+        repatBonus: r.repatBonus,
+        impoundReimbursement: r.impoundReimbursement,
         primeFinale: r.primeFinale,
         rank: r.rank,
       })),
