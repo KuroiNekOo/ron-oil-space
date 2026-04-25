@@ -57,7 +57,7 @@
                             <% var dutyClass = (e.duty && e.duty.onDuty) ? 'on' : 'off'; %>
                             <% var dutyTitle = e.duty ? ((e.duty.onDuty ? 'En service' : 'Hors service') + ' depuis ' + new Date(e.duty.since).toLocaleString('fr-FR')) : 'Hors service (aucun log)'; %>
                             <span class="duty-dot <%= dutyClass %>" title="<%= dutyTitle %>"></span>
-                            <%= e.firstName %> <%= e.lastName %>
+                            <a href="#" class="employee-name-link" onclick="event.preventDefault(); openRecap(<%= e.id %>)" title="Voir le récap"><%= e.firstName %> <%= e.lastName %></a>
                         </td>
                         <td><span class="contract-badge <%= e.contract.toLowerCase() %>"><%= e.contract %></span></td>
                         <td><%= e.role %></td>
@@ -227,6 +227,43 @@
         </div>
     </div>
 
+    <!-- Modal Récap -->
+    <div class="modal-overlay" id="modal-recap">
+        <div class="modal" style="width:1100px;">
+            <div class="modal-header">
+                <div class="modal-title" id="recap-title">Récap salarié</div>
+                <button class="modal-close" onclick="closeModal('modal-recap')">&#10005;</button>
+            </div>
+            <div class="modal-body" id="recap-body">
+                <div class="detail-empty"><div class="detail-empty-inner"><i class="fa-solid fa-spinner fa-spin"></i>Chargement…</div></div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .employee-name-link { color:var(--text-primary); text-decoration:none; cursor:pointer; transition:color .15s; }
+        .employee-name-link:hover { color:var(--accent); text-decoration:underline; }
+        .recap-section-title { font-family:var(--font-display); font-size:13px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--text-secondary); margin:0 0 14px; }
+        .recap-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px; }
+        .recap-card { background:var(--bg-card); border:1px solid var(--border); padding:14px 16px; }
+        .recap-card-label { font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px; }
+        .recap-card-value { font-family:var(--font-mono); font-size:18px; font-weight:600; }
+        .recap-card-sub { font-size:11px; color:var(--text-muted); margin-top:4px; }
+        .recap-history-grid { display:grid; grid-template-columns:240px 1fr; gap:18px; }
+        .recap-history-list { display:flex; flex-direction:column; gap:5px; max-height:360px; overflow-y:auto; }
+        .recap-hi {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:11px 14px; background:var(--bg-card); border:1px solid var(--border);
+            cursor:pointer; transition:border-color .15s, background .15s;
+        }
+        .recap-hi:hover { border-color:rgba(255,255,255,.1); }
+        .recap-hi.active { border-color:var(--accent); background:var(--accent-dim); }
+        .recap-hi-week { font-family:var(--font-display); font-size:13px; font-weight:700; }
+        .recap-hi-info { font-size:11px; color:var(--text-muted); margin-top:2px; }
+        .recap-hi-rank { font-family:var(--font-mono); font-size:13px; font-weight:600; }
+        .recap-empty { padding:18px; color:var(--text-muted); text-align:center; font-size:13px; }
+    </style>
+
     <script type="application/json" id="employees-data"><%- JSON.stringify(employees).replace(/</g, '\\u003c') %></script>
 
     <div class="toast success" id="toast">
@@ -323,6 +360,120 @@
                     return AdminAjax.reloadMain();
                 })
                 .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+
+        var recapState = { history: [], selectedKey: null };
+        var fmtMoney = function(n) { return new Intl.NumberFormat('fr-FR').format(Math.round(n || 0)) + '$'; };
+
+        function openRecap(id) {
+            openModal('modal-recap');
+            var emp = employeesData.find(function(e) { return e.id === id; });
+            document.getElementById('recap-title').textContent = emp
+                ? 'Récap — ' + emp.firstName + ' ' + emp.lastName
+                : 'Récap salarié';
+            document.getElementById('recap-body').innerHTML =
+                '<div class="detail-empty"><div class="detail-empty-inner"><i class="fa-solid fa-spinner fa-spin"></i>Chargement…</div></div>';
+
+            fetch('/admin/salaries/' + id + '/recap', { credentials: 'same-origin' })
+                .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                .then(function(data) { renderRecap(data); })
+                .catch(function(err) {
+                    document.getElementById('recap-body').innerHTML =
+                        '<div class="recap-empty">Erreur de chargement : ' + err.message + '</div>';
+                });
+        }
+
+        function renderRecap(data) {
+            recapState.history = data.history || [];
+            recapState.selectedKey = null;
+
+            var c = data.current || {};
+            var currentHtml;
+            if (c.empty) {
+                currentHtml =
+                    '<div class="recap-empty">Aucune activité enregistrée pour cette semaine.</div>';
+            } else {
+                var primes = (c.bonusSalary || 0) + (c.tierPrime || 0) + (c.podiumPrize || 0) + (c.specialBonus || 0);
+                var frais = (c.expenseRefund || 0) + (c.repatBonus || 0) + (c.impoundReimbursement || 0);
+                var finaleColor = (c.primeFinale || 0) >= 0 ? 'c-success' : 'c-danger';
+                var finaleSign = (c.primeFinale || 0) >= 0 ? '+' : '-';
+                currentHtml =
+                    '<div class="recap-grid">' +
+                        '<div class="recap-card"><div class="recap-card-label">Rang</div><div class="recap-card-value">#' + (c.rank || '—') + '</div></div>' +
+                        '<div class="recap-card"><div class="recap-card-label">Livraisons</div><div class="recap-card-value c-accent">' + (c.deliveries || 0) + '</div></div>' +
+                        '<div class="recap-card"><div class="recap-card-label">Gain entreprise</div><div class="recap-card-value c-gold">' + fmtMoney(c.gainEnterprise) + '</div></div>' +
+                        '<div class="recap-card"><div class="recap-card-label">Gain employé</div><div class="recap-card-value">' + fmtMoney(c.gainEmployee) + '</div></div>' +
+                        '<div class="recap-card"><div class="recap-card-label">Prime de livraisons</div><div class="recap-card-value">' + fmtMoney(c.bonusSalary) + '</div></div>' +
+                        '<div class="recap-card"><div class="recap-card-label">Prime palier</div><div class="recap-card-value">' + fmtMoney(c.tierPrime) + '<div class="recap-card-sub">Palier ' + (c.tierLevel || 0) + '</div></div></div>' +
+                        '<div class="recap-card"><div class="recap-card-label">Prime podium</div><div class="recap-card-value c-gold">' + fmtMoney(c.podiumPrize) + '</div></div>' +
+                        '<div class="recap-card"><div class="recap-card-label">Prime spéciale</div><div class="recap-card-value c-accent">' + fmtMoney(c.specialBonus) +
+                            (c.specialBonusReason ? '<div class="recap-card-sub">' + escapeHtml(c.specialBonusReason) + '</div>' : '') + '</div></div>' +
+                        '<div class="recap-card"><div class="recap-card-label">Notes de frais</div><div class="recap-card-value">' + fmtMoney(c.expenseRefund) + '<div class="recap-card-sub">sur ' + fmtMoney(c.expenseCost) + ' déclarés</div></div></div>' +
+                        '<div class="recap-card"><div class="recap-card-label">Rapatriements</div><div class="recap-card-value">' + fmtMoney(c.repatBonus) + '<div class="recap-card-sub">' + (c.repatCount || 0) + ' évt.</div></div></div>' +
+                        '<div class="recap-card"><div class="recap-card-label">Fourrières</div><div class="recap-card-value c-danger">-' + fmtMoney(c.impoundPenalty) + '<div class="recap-card-sub">' + (c.impoundCount || 0) + ' évt.</div></div></div>' +
+                        '<div class="recap-card"><div class="recap-card-label">Prime finale</div><div class="recap-card-value ' + finaleColor + '">' + finaleSign + fmtMoney(Math.abs(c.primeFinale || 0)) + '</div></div>' +
+                    '</div>';
+            }
+
+            var historyListHtml;
+            if (recapState.history.length === 0) {
+                historyListHtml = '<div class="recap-empty">Aucun historique figé.</div>';
+            } else {
+                historyListHtml = '<div class="recap-history-list">' + recapState.history.map(function(h, i) {
+                    var rankColor = h.rank <= 3 ? 'var(--gold)' : 'var(--text-secondary)';
+                    return '<div class="recap-hi" id="recap-hi-' + i + '" onclick="selectRecapWeek(' + i + ')">' +
+                        '<div><div class="recap-hi-week">S' + h.week + ' &middot; ' + h.year + '</div>' +
+                        '<div class="recap-hi-info">' + h.deliveries + ' livr. &middot; Palier ' + h.tierLevel + '</div></div>' +
+                        '<div class="recap-hi-rank" style="color:' + rankColor + '">#' + h.rank + '</div>' +
+                    '</div>';
+                }).join('') + '</div>';
+            }
+
+            document.getElementById('recap-body').innerHTML =
+                '<div class="recap-section-title">Semaine en cours — S' + (c.week || '?') + '</div>' +
+                currentHtml +
+                '<div class="recap-section-title">Historique</div>' +
+                '<div class="recap-history-grid">' +
+                    '<div>' + historyListHtml + '</div>' +
+                    '<div id="recap-detail">' +
+                        '<div class="detail-empty"><div class="detail-empty-inner"><i class="fa-solid fa-clock-rotate-left"></i>Sélectionnez une semaine pour afficher le détail</div></div>' +
+                    '</div>' +
+                '</div>';
+        }
+
+        function selectRecapWeek(i) {
+            var h = recapState.history[i];
+            if (!h) return;
+            recapState.selectedKey = i;
+            document.querySelectorAll('.recap-hi').forEach(function(el) { el.classList.remove('active'); });
+            var node = document.getElementById('recap-hi-' + i);
+            if (node) node.classList.add('active');
+
+            var primes = (h.bonusSalary || 0) + (h.tierPrime || 0) + (h.podiumPrize || 0) + (h.specialBonus || 0);
+            var frais = (h.expenseRefund || 0) + (h.repatBonus || 0) + (h.impoundReimbursement || 0);
+            var finaleColor = (h.primeFinale || 0) >= 0 ? 'c-success' : 'c-danger';
+            var finaleSign = (h.primeFinale || 0) >= 0 ? '+' : '-';
+            document.getElementById('recap-detail').innerHTML =
+                '<div class="recap-grid" style="grid-template-columns:repeat(3,1fr);">' +
+                    '<div class="recap-card"><div class="recap-card-label">Livraisons</div><div class="recap-card-value c-accent">' + (h.deliveries || 0) + '</div></div>' +
+                    '<div class="recap-card"><div class="recap-card-label">Gain entreprise</div><div class="recap-card-value c-gold">' + fmtMoney(h.gainEnterprise) + '</div></div>' +
+                    '<div class="recap-card"><div class="recap-card-label">Gain employé</div><div class="recap-card-value">' + fmtMoney(h.gainEmployee) + '</div></div>' +
+                    '<div class="recap-card"><div class="recap-card-label">Prime de livraisons</div><div class="recap-card-value">' + fmtMoney(h.bonusSalary) + '</div></div>' +
+                    '<div class="recap-card"><div class="recap-card-label">Prime palier</div><div class="recap-card-value">' + fmtMoney(h.tierPrime) + '<div class="recap-card-sub">Palier ' + (h.tierLevel || 0) + '</div></div></div>' +
+                    '<div class="recap-card"><div class="recap-card-label">Prime podium</div><div class="recap-card-value c-gold">' + fmtMoney(h.podiumPrize) + '</div></div>' +
+                    '<div class="recap-card"><div class="recap-card-label">Prime spéciale</div><div class="recap-card-value c-accent">' + fmtMoney(h.specialBonus) +
+                        (h.specialBonusReason ? '<div class="recap-card-sub">' + escapeHtml(h.specialBonusReason) + '</div>' : '') + '</div></div>' +
+                    '<div class="recap-card"><div class="recap-card-label">Notes de frais</div><div class="recap-card-value">' + fmtMoney(h.expenseRefund) + '<div class="recap-card-sub">sur ' + fmtMoney(h.expenseCost) + ' déclarés</div></div></div>' +
+                    '<div class="recap-card"><div class="recap-card-label">Rapatriements</div><div class="recap-card-value">' + fmtMoney(h.repatBonus) + '<div class="recap-card-sub">' + (h.repatCount || 0) + ' évt.</div></div></div>' +
+                    '<div class="recap-card"><div class="recap-card-label">Fourrières</div><div class="recap-card-value c-danger">-' + fmtMoney(h.impoundPenalty) + '<div class="recap-card-sub">' + (h.impoundCount || 0) + ' évt.</div></div></div>' +
+                    '<div class="recap-card"><div class="recap-card-label">Prime finale</div><div class="recap-card-value ' + finaleColor + '">' + finaleSign + fmtMoney(Math.abs(h.primeFinale || 0)) + '</div></div>' +
+                '</div>';
+        }
+
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
 
         function openModal(id) {

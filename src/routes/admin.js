@@ -189,6 +189,68 @@ router.post('/salaries', async (req, res) => {
   }
 });
 
+// Récap d'un employé pour la modal admin : stats live de la semaine en cours
+// (computeFrozenWeek à blanc, sans sauvegarde) + historique figé des semaines
+// précédentes. Ne dépend pas de WeekStats pour la semaine courante (qui n'est
+// jamais figée tant que le rollover n'a pas tourné).
+router.get('/salaries/:id/recap', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const employee = await prisma.employee.findUnique({ where: { id } });
+    if (!employee) return res.status(404).json({ error: 'Not found' });
+
+    const { week: currentWeek, year: currentYear } = getWeekAndYear(new Date());
+    const liveRows = await computeFrozenWeek(currentWeek, currentYear);
+    const live = liveRows.find(r => r.employee.id === id) || null;
+    const current = live ? {
+      week: currentWeek,
+      year: currentYear,
+      rank: live.rank,
+      deliveries: live.deliveries,
+      gainEnterprise: live.gainEnterprise,
+      gainEmployee: live.gainEmployee,
+      bonusSalary: live.bonusSalary,
+      tierLevel: live.tierLevel,
+      tierPrime: live.tierPrime,
+      podiumPrize: live.podiumPrize,
+      specialBonus: live.specialBonus,
+      specialBonusReason: live.specialBonusReason,
+      expenseRefund: live.expenseRefund,
+      expenseCost: live.expenseCost,
+      repatBonus: live.repatBonus,
+      repatCount: live.repatCount,
+      impoundReimbursement: live.impoundReimbursement,
+      impoundPenalty: live.impoundPenalty,
+      impoundCount: live.impoundCount,
+      primeFinale: live.primeFinale,
+    } : { week: currentWeek, year: currentYear, empty: true };
+
+    const history = await prisma.weekStats.findMany({
+      where: {
+        employeeId: id,
+        NOT: { AND: [{ week: currentWeek }, { year: currentYear }] },
+      },
+      orderBy: [{ year: 'desc' }, { week: 'desc' }],
+    });
+
+    res.json({
+      employee: {
+        id: employee.id,
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        role: employee.role,
+        contract: employee.contract,
+        status: employee.status,
+      },
+      current,
+      history,
+    });
+  } catch (err) {
+    console.error('GET /salaries/:id/recap error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/salaries/:id/edit', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
