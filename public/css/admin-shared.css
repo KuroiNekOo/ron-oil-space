@@ -188,9 +188,10 @@ body {
     padding:14px 16px; font-size:14px;
     border-bottom:1px solid rgba(255,255,255,.05);
     vertical-align:middle; white-space:nowrap;
+    transition:background .12s;
 }
 .admin-table tr:last-child td { border-bottom:none; }
-.admin-table tr:hover td { background:rgba(255,255,255,.02); }
+.admin-table tr:hover td { background:rgba(255,255,255,.05); }
 
 .table-actions { display:flex; gap:8px; }
 
