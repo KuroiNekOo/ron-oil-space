@@ -33,6 +33,26 @@ async function requireAdmin(req, res, next) {
   if (!isPrimary && !isActiveEmployeeAdmin) {
     return killSession(req, res, '/admin/login');
   }
+  // Identité admin exposée à toutes les vues admin (sidebar, etc.).
+  // Admin primaire (sans Employee) → libellé générique basé sur le username.
+  // Admin secondaire (Employee.isAdmin) → prénom/nom/role réels.
+  const initials = s => String(s || '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
+  if (user.employee) {
+    const fullName = (user.employee.firstName + ' ' + user.employee.lastName).trim();
+    res.locals.adminUser = {
+      name: fullName,
+      role: user.employee.role || 'Administration',
+      initials: initials(fullName),
+      isPrimary: false,
+    };
+  } else {
+    res.locals.adminUser = {
+      name: user.username,
+      role: 'Administration',
+      initials: initials(user.username),
+      isPrimary: true,
+    };
+  }
   next();
 }
 

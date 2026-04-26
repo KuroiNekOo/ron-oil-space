@@ -58,10 +58,10 @@
         <% } %>
     </nav>
     <div class="sidebar-user">
-        <div class="user-avatar">KL</div>
+        <div class="user-avatar"><%= adminUser ? adminUser.initials : '?' %></div>
         <div>
-            <div class="user-name">Kei Lenz</div>
-            <div class="user-role">PDG &middot; Administration</div>
+            <div class="user-name"><%= adminUser ? adminUser.name : '—' %></div>
+            <div class="user-role"><%= adminUser ? adminUser.role + ' · Administration' : 'Administration' %></div>
         </div>
         <a class="btn-logout" href="/admin/logout" title="D&eacute;connexion">
             <i class="fa-solid fa-right-from-bracket"></i>
