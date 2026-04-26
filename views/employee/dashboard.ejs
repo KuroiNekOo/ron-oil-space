@@ -306,6 +306,9 @@
                 <% if (podiumPrize > 0) { %>
                     <div class="card-value c-gold"><%= fmt(podiumPrize) %></div>
                     <div class="card-sub"><%= stats.rank %><%= stats.rank === 1 ? 'ère' : 'ème' %> place du classement</div>
+                <% } else if (!stats.rank) { %>
+                    <div class="card-value sm c-muted">—</div>
+                    <div class="card-sub">Non classé cette semaine</div>
                 <% } else { %>
                     <div class="card-value sm c-muted">—</div>
                     <div class="card-sub">Hors podium (top 3 requis)</div>

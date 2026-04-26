@@ -101,13 +101,12 @@ async function computeFrozenWeek(week, year) {
     if (!emp) continue;
     entries.push({ emp, qtySum: s.qtySum, gainEmployee: s.gainEmployee, gainEnterprise: s.gainEnterprise });
   }
-  // + employés sans livraisons mais avec prime spéciale / frais / rapatriements / pannes
+  // + TOUS les employés actifs absents : on fige une ligne à 0 pour qu'ils apparaissent
+  // dans le classement et dans l'historique, même sans livraisons ni contribution annexe.
   const hasEntryIds = new Set(entries.map(e => e.emp.id));
   for (const emp of employees) {
     if (hasEntryIds.has(emp.id)) continue;
-    if (sbByEmp.has(emp.id) || expenseRefundMap.has(emp.id) || repatMap.has(emp.id) || breakdownMap.has(emp.id)) {
-      entries.push({ emp, qtySum: 0, gainEmployee: 0, gainEnterprise: 0 });
-    }
+    entries.push({ emp, qtySum: 0, gainEmployee: 0, gainEnterprise: 0 });
   }
 
   entries.sort((a, b) => b.gainEnterprise - a.gainEnterprise);
@@ -118,8 +117,12 @@ async function computeFrozenWeek(week, year) {
   const tierBasePoints = collectiveTier ? collectiveTier.points : 0;
   const tierBasePrime = collectiveTier ? collectiveTier.prime : 0;
 
-  return entries.map((e, i) => {
-    const rank = i + 1;
+  // Le rang n'est attribué qu'aux employés ayant contribué au gain entreprise.
+  // Les employés à 0 conservent rank = 0 (sentinel "non classé") → pas de podium,
+  // pas de part de tier prime (getPodiumPrize/getShareForRank renvoient 0 pour rank ∉ {1,2,3}).
+  let nextRank = 1;
+  return entries.map((e) => {
+    const rank = e.gainEnterprise > 0 ? nextRank++ : 0;
     const deliveries = Math.round(e.qtySum / 100);
     const share = getShareForRank(rank, shares);
     const tierPrime = tierBasePrime * share;
@@ -254,7 +257,7 @@ async function rolloverWeek(opts) {
         totalNotesDeFrais: r.expenseRefund,
         totalRapatriements: r.repatBonus,
         totalFourrieres: r.impoundPenalty,
-        podiumPlace: r.rank <= 3 ? r.rank : null,
+        podiumPlace: r.rank >= 1 && r.rank <= 3 ? r.rank : null,
         primePodium: r.podiumPrize,
         primePalier: r.tierPrime,
         palierLevel: r.tierLevel,

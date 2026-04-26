@@ -420,11 +420,11 @@
                 historyListHtml = '<div class="recap-empty">Aucun historique figé.</div>';
             } else {
                 historyListHtml = '<div class="recap-history-list">' + recapState.history.map(function(h, i) {
-                    var rankColor = h.rank <= 3 ? 'var(--gold)' : 'var(--text-secondary)';
+                    var rankColor = h.rank >= 1 && h.rank <= 3 ? 'var(--gold)' : 'var(--text-secondary)';
                     return '<div class="recap-hi" id="recap-hi-' + i + '" onclick="selectRecapWeek(' + i + ')">' +
                         '<div><div class="recap-hi-week">S' + h.week + ' &middot; ' + h.year + '</div>' +
                         '<div class="recap-hi-info">' + h.deliveries + ' livr. &middot; Palier ' + h.tierLevel + '</div></div>' +
-                        '<div class="recap-hi-rank" style="color:' + rankColor + '">#' + h.rank + '</div>' +
+                        '<div class="recap-hi-rank" style="color:' + rankColor + '">' + (h.rank ? '#' + h.rank : '—') + '</div>' +
                     '</div>';
                 }).join('') + '</div>';
             }

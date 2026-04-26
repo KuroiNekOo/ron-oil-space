@@ -122,7 +122,7 @@
                             const frais  = (r.expenseRefund || 0) + (r.repatBonus || 0) + (r.impoundReimbursement || 0);
                         %>
                         <tr>
-                            <td><span style="font-family:var(--font-mono);color:<%= r.rank <= 3 ? 'var(--gold)' : 'var(--text-secondary)' %>">#<%= r.rank %></span></td>
+                            <td><span style="font-family:var(--font-mono);color:<%= r.rank >= 1 && r.rank <= 3 ? 'var(--gold)' : 'var(--text-secondary)' %>">#<%= r.rank || '—' %></span></td>
                             <td style="font-weight:500;"><%= r.name %></td>
                             <td class="mono"><%= r.deliveries %></td>
                             <td class="mono c-gold"><%= fmt(r.gainEnterprise) %></td>
@@ -249,7 +249,7 @@
                 const primes = (r.bonusSalary || 0) + (r.tierPrime || 0) + (r.podiumPrize || 0) + (r.specialBonus || 0);
                 const frais = (r.expenseRefund || 0) + (r.repatBonus || 0) + (r.impoundReimbursement || 0);
                 const finale = r.primeFinale || 0;
-                const rankColor = r.rank <= 3 ? 'var(--gold)' : 'var(--text-secondary)';
+                const rankColor = r.rank >= 1 && r.rank <= 3 ? 'var(--gold)' : 'var(--text-secondary)';
                 return `
                     <tr>
                         <td><span style="font-family:var(--font-mono);color:${rankColor}">#${r.rank || '—'}</span></td>

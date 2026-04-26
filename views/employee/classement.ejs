@@ -165,8 +165,9 @@
 
         <%
             const initials = name => name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-            const sorted = [...leaderboard].sort((a, b) => a.rank - b.rank);
-            const top3 = sorted.slice(0, 3);
+            // Tri : rangs 1..N d'abord, puis "non classés" (rank=0) en queue.
+            const sorted = [...leaderboard].sort((a, b) => (a.rank || 999) - (b.rank || 999));
+            const top3 = sorted.filter(p => p.rank >= 1 && p.rank <= 3);
             const byRank = r => top3.find(p => p.rank === r);
             const maxDel = sorted[0] ? sorted[0].deliveries : 1;
 
@@ -221,17 +222,17 @@
         <!-- Classement complet -->
         <div class="section-title">Classement complet</div>
         <div class="cl-list">
-            <% leaderboard.forEach(function(p) { %>
+            <% sorted.forEach(function(p) { %>
                 <%
                     const fullName = p.employee.firstName + ' ' + p.employee.lastName;
                     const pct = maxDel > 0 ? Math.round((p.deliveries / maxDel) * 100) : 0;
                     const isSelf = p.employeeId === employee.id;
-                    const isTop3 = p.rank <= 3;
+                    const isTop3 = p.rank >= 1 && p.rank <= 3;
                     const rankColor = p.rank === 1 ? 'var(--gold)' : p.rank === 2 ? 'var(--silver)' : p.rank === 3 ? 'var(--bronze)' : 'var(--text-muted)';
                     const barColor = isSelf ? 'var(--accent)' : isTop3 ? rankColor : 'rgba(255,255,255,.12)';
                 %>
                 <div class="cl-row <%= isSelf ? 'cl-self' : '' %>">
-                    <div class="cl-rank" style="color:<%= rankColor %>"><%= p.rank %></div>
+                    <div class="cl-rank" style="color:<%= rankColor %>"><%= p.rank || '—' %></div>
                     <div class="cl-ava <%= isSelf ? 'cl-ava-self' : '' %>"><%= initials(fullName) %></div>
                     <div class="cl-info">
                         <div class="cl-name">

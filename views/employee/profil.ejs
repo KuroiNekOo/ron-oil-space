@@ -36,8 +36,8 @@
             <div>
                 <div class="history-list" id="p-history-list">
                     <% history.forEach(function(h, i) { %>
-                        <% const rankLabel = h.rank === 1 ? '1' : h.rank === 2 ? '2' : h.rank === 3 ? '3' : '#' + h.rank; %>
-                        <% const rankColor = h.rank <= 3 ? 'var(--gold)' : 'var(--text-secondary)'; %>
+                        <% const rankLabel = h.rank === 1 ? '1' : h.rank === 2 ? '2' : h.rank === 3 ? '3' : (h.rank ? '#' + h.rank : '—'); %>
+                        <% const rankColor = h.rank >= 1 && h.rank <= 3 ? 'var(--gold)' : 'var(--text-secondary)'; %>
                         <div class="history-item" id="hi-<%= i %>" onclick="showDetail(<%= i %>)">
                             <div>
                                 <div class="hi-week">Semaine <%= h.week %></div>
@@ -112,7 +112,7 @@
                 </div>
                 <div class="card">
                     <div class="card-label">Position</div>
-                    <div class="card-value ${h.rank === 1 ? 'c-gold' : ''}">#${h.rank}</div>
+                    <div class="card-value ${h.rank === 1 ? 'c-gold' : ''}">${h.rank ? '#' + h.rank : '—'}</div>
                 </div>
                 <div class="card">
                     <div class="card-label">Gain employ\u00e9</div>

@@ -106,8 +106,10 @@ async function computeWeekStats(week, year) {
   const collectivePoints = computeCollectivePoints(totalGainEnterprise, pointsPerGain);
 
   const stats = [];
+  const matchedEmpIds = new Set();
   for (const [key, s] of byName) {
     const emp = empByKey.get(key);
+    matchedEmpIds.add(emp.id);
     const deliveries = Math.round(s.qtySum / 100);
     stats.push({
       employeeId: emp.id,
@@ -119,9 +121,26 @@ async function computeWeekStats(week, year) {
       points: collectivePoints,
     });
   }
+  // Tous les employés actifs sans livraison apparaissent à 0 dans le classement.
+  for (const emp of employees) {
+    if (matchedEmpIds.has(emp.id)) continue;
+    stats.push({
+      employeeId: emp.id,
+      employee: emp,
+      week,
+      deliveries: 0,
+      gainEmployee: 0,
+      gainEnterprise: 0,
+      points: collectivePoints,
+    });
+  }
 
+  // Tri : contributifs d'abord (par gainEnterprise desc), zéros ensuite (ordre stable).
+  // Rang attribué uniquement aux contributifs ; rang = 0 = non classé (pas de podium,
+  // pas de part de tier prime via getPodiumPrize/getShareForRank).
   stats.sort((a, b) => b.gainEnterprise - a.gainEnterprise);
-  stats.forEach((s, i) => { s.rank = i + 1; });
+  let nextRank = 1;
+  stats.forEach((s) => { s.rank = s.gainEnterprise > 0 ? nextRank++ : 0; });
 
   const rates = await getBonusRates();
   const empIds = stats.map(s => s.employeeId);
