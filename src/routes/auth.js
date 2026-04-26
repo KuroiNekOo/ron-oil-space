@@ -12,7 +12,10 @@ router.get('/login', (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    if (!username || !password) {
+    // Type-check explicite : un body JSON peut envoyer un objet (`{match_all:{}}`)
+    // que `!username` ne rejette pas → Prisma crashe ensuite. Bloque les scans
+    // NoSQL-injection à l'entrée.
+    if (typeof username !== 'string' || typeof password !== 'string' || !username || !password) {
       return res.redirect('/login?error=1');
     }
 
@@ -54,7 +57,7 @@ router.get('/admin/login', (req, res) => {
 router.post('/admin/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    if (!username || !password) {
+    if (typeof username !== 'string' || typeof password !== 'string' || !username || !password) {
       return res.redirect('/admin/login?error=1');
     }
 
