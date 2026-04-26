@@ -164,7 +164,10 @@
         </div>
 
         <!-- TIMER DE REINITIALISATION -->
-        <div class="reset-timer-card">
+        <!-- data-no-refresh : le DOM morphing du soft-reload ignore ce sous-arbre,
+             sinon le textContent du timer serait écrasé par les "00" du HTML serveur
+             à chaque tick et provoquerait un flash visuel toutes les 5 sec. -->
+        <div class="reset-timer-card" data-no-refresh>
             <div class="reset-timer-label">
                 <i class="fa-solid fa-rotate"></i>
             </div>

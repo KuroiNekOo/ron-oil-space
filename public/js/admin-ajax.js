@@ -81,6 +81,9 @@
     }
   }
   function patch(from, to) {
+    // Sous-arbres marqués data-no-refresh : non touchés (timers live, animations
+    // pilotées côté client qu'un patch serveur écraserait à chaque tick).
+    if (from.nodeType === 1 && from.hasAttribute('data-no-refresh')) return;
     // Texte et commentaires : maj de la valeur, pas d'attributs à patcher.
     if ((from.nodeType === 3 || from.nodeType === 8) && from.nodeType === to.nodeType) {
       if (from.nodeValue !== to.nodeValue) from.nodeValue = to.nodeValue;
