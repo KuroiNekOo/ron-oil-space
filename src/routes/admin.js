@@ -507,11 +507,10 @@ router.get('/achats', async (req, res) => {
 
 router.post('/achats', async (req, res) => {
   try {
-    const { typeId, employeeId, qty, unitPrice, date, description, week } = req.body;
+    const { typeId, employeeId, qty, unitPrice, date, description } = req.body;
 
     const purchaseDate = date ? new Date(date) : new Date();
-    const wy = getWeekAndYear(purchaseDate);
-    const weekNum = parseInt(week) || wy.week;
+    const { week: weekNum } = getWeekAndYear(purchaseDate);
     const empId = employeeId ? parseInt(employeeId) : null;
 
     let snapshot = { employeeFirstName: null, employeeLastName: null };
@@ -538,6 +537,50 @@ router.post('/achats', async (req, res) => {
     res.json({ ok: true, id: purchase.id });
   } catch (err) {
     console.error('POST /achats error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Modification d'un achat — pas de check semaine figée : les achats ne sont jamais
+// figés (totaux par semaine recalculés en live à partir de Purchase.date). Changer
+// la date déplace donc l'achat d'une semaine à l'autre côté affichage stats.
+router.post('/achats/:id/edit', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const existing = await prisma.purchase.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Not found' });
+
+    const { typeId, employeeId, qty, unitPrice, date, description } = req.body;
+
+    const purchaseDate = date ? new Date(date) : existing.date;
+    const { week: weekNum } = getWeekAndYear(purchaseDate);
+    const empId = employeeId ? parseInt(employeeId) : null;
+
+    let snapshot = { employeeFirstName: null, employeeLastName: null };
+    if (empId) {
+      const emp = await prisma.employee.findUnique({
+        where: { id: empId },
+        select: { firstName: true, lastName: true },
+      });
+      if (emp) snapshot = { employeeFirstName: emp.firstName, employeeLastName: emp.lastName };
+    }
+
+    await prisma.purchase.update({
+      where: { id },
+      data: {
+        week: weekNum,
+        typeId: parseInt(typeId),
+        employeeId: empId,
+        ...snapshot,
+        qty: parseFloat(qty),
+        unitPrice: parseFloat(unitPrice),
+        date: purchaseDate,
+        description: description || '',
+      },
+    });
+    res.json({ ok: true, id });
+  } catch (err) {
+    console.error('POST /achats/:id/edit error:', err);
     res.status(500).json({ error: err.message });
   }
 });

@@ -90,7 +90,7 @@
                     <tr class="achat-row" data-achat-id="<%= a.id %>" data-search="<%= ((a.type ? a.type.name : '') + ' ' + a.description + ' ' + (name || '')).toLowerCase() %>">
                         <td class="mono" style="color:var(--text-muted)"><%= a.id %></td>
                         <td><span style="font-family:var(--font-mono);font-size:13px;color:var(--accent)">S<%= a.week %></span></td>
-                        <td class="mono" style="color:var(--text-secondary)"><%= new Date(a.date).toLocaleDateString('fr-FR') %></td>
+                        <td class="mono" style="color:var(--text-secondary);font-size:11px"><%= new Date(a.date).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) %></td>
                         <td><%= a.type ? a.type.name : '—' %></td>
                         <td style="color:var(--text-secondary)"><%= name || '—' %><% if (name && !a.employee) { %> <span style="font-size:10px;color:var(--text-muted);font-style:italic">(supprimé)</span><% } %></td>
                         <td class="mono"><%= a.qty %></td>
@@ -99,6 +99,7 @@
                         <td style="color:var(--text-secondary);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="<%= a.description %>"><%= a.description %></td>
                         <td>
                             <div class="table-actions">
+                                <button type="button" class="btn-edit" onclick="editPurchase(<%= a.id %>)" title="Modifier"><i class="fa-solid fa-pen"></i></button>
                                 <button type="button" class="btn-delete" onclick="deletePurchase(<%= a.id %>)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
                             </div>
                         </td>
@@ -153,8 +154,8 @@
                             <input type="number" class="f-input" name="unitPrice" placeholder="0.00" step="0.01" min="0" required>
                         </div>
                         <div>
-                            <label class="f-label">Date</label>
-                            <input type="date" class="f-input" name="date" id="add-purchase-date">
+                            <label class="f-label f-required">Date &amp; heure</label>
+                            <input type="datetime-local" class="f-input" name="date" id="add-purchase-date" required>
                             <div style="margin-top:4px;font-size:12px;color:var(--text-muted)">
                                 Semaine calcul&eacute;e : <strong id="add-purchase-week" style="color:var(--accent)">—</strong>
                             </div>
@@ -172,6 +173,65 @@
             </form>
         </div>
     </div>
+
+    <!-- Modal Modifier achat -->
+    <div class="modal-overlay" id="modal-edit">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">Modifier un achat</div>
+                <button class="modal-close" onclick="closeModal('modal-edit')">&#10005;</button>
+            </div>
+            <form method="POST" id="form-edit" action="">
+                <div class="modal-body">
+                    <div class="form-grid">
+                        <div class="form-group-full">
+                            <label class="f-label f-required">Type d'achat</label>
+                            <select class="f-select" name="typeId" id="edit-type" required>
+                                <option value="" disabled>S&eacute;lectionner...</option>
+                                <% types.forEach(function(t) { %>
+                                <option value="<%= t.id %>"><%= t.name %></option>
+                                <% }); %>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Effectu&eacute; par</label>
+                            <select class="f-select" name="employeeId" id="edit-employee" required>
+                                <option value="" disabled>S&eacute;lectionner...</option>
+                                <% employees.forEach(function(e) { %>
+                                <option value="<%= e.id %>"><%= e.firstName %> <%= e.lastName %> &middot; <%= e.role %></option>
+                                <% }); %>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Quantit&eacute;</label>
+                            <input type="number" class="f-input" name="qty" id="edit-qty" placeholder="0" min="1" required>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Prix unitaire ($)</label>
+                            <input type="number" class="f-input" name="unitPrice" id="edit-unitPrice" placeholder="0.00" step="0.01" min="0" required>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Date &amp; heure</label>
+                            <input type="datetime-local" class="f-input" name="date" id="edit-purchase-date" required>
+                            <div style="margin-top:4px;font-size:12px;color:var(--text-muted)">
+                                Semaine calcul&eacute;e : <strong id="edit-purchase-week" style="color:var(--accent)">—</strong>
+                            </div>
+                        </div>
+                        <div class="form-group-full">
+                            <label class="f-label f-required">Description</label>
+                            <textarea class="f-textarea" name="description" id="edit-description" placeholder="D&eacute;crivez l'achat en d&eacute;tail..." required></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('modal-edit')">Annuler</button>
+                    <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="application/json" id="rows-data"><%- JSON.stringify(purchases.map(function(p) { return { id: p.id, typeId: p.typeId, employeeId: p.employeeId, qty: p.qty, unitPrice: p.unitPrice, date: p.date, description: p.description }; })).replace(/</g, '\\u003c') %></script>
 
     <!-- Modal G&eacute;rer les types -->
     <div class="modal-overlay" id="modal-types">
@@ -229,19 +289,71 @@
             });
         })();
 
-        // Affichage en direct de la semaine à partir de la date saisie (ISO + offset 6h)
-        (function() {
-            var input = document.getElementById('add-purchase-date');
-            var out = document.getElementById('add-purchase-week');
+        // Format YYYY-MM-DDTHH:MM en HEURE LOCALE (compatible <input type="datetime-local">).
+        function toLocalDatetimeInput(d) {
+            return d.getFullYear() + '-'
+                + String(d.getMonth() + 1).padStart(2, '0') + '-'
+                + String(d.getDate()).padStart(2, '0') + 'T'
+                + String(d.getHours()).padStart(2, '0') + ':'
+                + String(d.getMinutes()).padStart(2, '0');
+        }
+
+        // Affichage en direct de la semaine à partir de la date+heure saisie (ISO + offset 6h)
+        function attachLiveWeek(inputId, outId) {
+            var input = document.getElementById(inputId);
+            var out = document.getElementById(outId);
             if (!input || !out || !window.ronWeek) return;
             function refresh() {
                 if (!input.value) { out.textContent = '—'; return; }
-                var w = window.ronWeek.getWeekFromTimestamp(new Date(input.value + 'T12:00:00'));
+                // input.value au format YYYY-MM-DDTHH:MM (heure locale) → new Date l'interprète comme local.
+                var w = window.ronWeek.getWeekFromTimestamp(new Date(input.value));
                 out.textContent = 'S' + w;
             }
             input.addEventListener('input', refresh);
             refresh();
+        }
+        attachLiveWeek('add-purchase-date', 'add-purchase-week');
+        attachLiveWeek('edit-purchase-date', 'edit-purchase-week');
+
+        // Date par défaut sur la modale de création = maintenant (semaine en cours)
+        (function() {
+            var input = document.getElementById('add-purchase-date');
+            if (!input) return;
+            input.value = toLocalDatetimeInput(new Date());
+            input.dispatchEvent(new Event('input'));
         })();
+
+        // ── Édition d'un achat ──
+        var rowsData = JSON.parse(document.getElementById('rows-data').textContent);
+        window.addEventListener('admin:reloaded', function() {
+            var el = document.getElementById('rows-data');
+            if (el) rowsData = JSON.parse(el.textContent);
+        });
+
+        function editPurchase(id) {
+            var r = rowsData.find(function(x) { return x.id === id; });
+            if (!r) { showToast('Achat introuvable', 'error'); return; }
+            var form = document.getElementById('form-edit');
+            form.action = '/admin/achats/' + id + '/edit';
+            form.typeId.value = r.typeId != null ? String(r.typeId) : '';
+            form.employeeId.value = r.employeeId != null ? String(r.employeeId) : '';
+            form.qty.value = r.qty != null ? r.qty : '';
+            form.unitPrice.value = r.unitPrice != null ? r.unitPrice : '';
+            form.description.value = r.description || '';
+            // Date stockée en ISO (UTC) — on reformate en YYYY-MM-DDTHH:MM local pour l'input datetime-local.
+            form.date.value = toLocalDatetimeInput(new Date(r.date));
+            form.date.dispatchEvent(new Event('input'));
+            openModal('modal-edit');
+        }
+
+        document.getElementById('form-edit').addEventListener('submit', function(e) {
+            e.preventDefault();
+            AdminAjax.postForm(e.target).then(function() {
+                closeModal('modal-edit');
+                showToast('Achat modifié');
+                return AdminAjax.reloadMain();
+            }).catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        });
 
         // ── Type management via fetch ──
         function loadTypes() {
