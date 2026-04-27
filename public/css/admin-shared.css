@@ -69,7 +69,20 @@ body {
 
 .sidebar-nav { flex:1; padding:18px 0 8px; overflow-y:auto; }
 
-.nav-section-label { font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--text-muted); padding:6px 22px 8px; }
+.nav-section-label {
+    font-size:11px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--text-muted); padding:6px 22px 8px;
+    display:flex; align-items:center; justify-content:space-between;
+    background:none; border:0; width:100%;
+    font-family:inherit; font-weight:inherit; text-align:left;
+    cursor:pointer; transition:color .15s;
+}
+.nav-section-label:hover { color:var(--text-secondary); }
+.nav-chevron { font-size:9px; opacity:.55; transition:transform .2s, opacity .15s; }
+.nav-section-label:hover .nav-chevron { opacity:1; }
+.nav-section.collapsed .nav-chevron { transform:rotate(-90deg); }
+.nav-section.collapsed .nav-section-items { display:none; }
+.nav-section + .nav-section { margin-top:8px; }
 
 .nav-item {
     display:flex; align-items:center; gap:12px;

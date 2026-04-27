@@ -8,37 +8,49 @@
         <div class="sidebar-week-num"><%= currentWeek %></div>
     </div>
     <nav class="sidebar-nav">
-        <div class="nav-section-label">Navigation</div>
-        <a class="nav-item<%= currentPage === 'dashboard' ? ' active' : '' %>" id="nav-dashboard" href="/dashboard">
-            <i class="fa-solid fa-gauge-high"></i> Dashboard
-        </a>
-        <a class="nav-item<%= currentPage === 'profil' ? ' active' : '' %>" id="nav-profil" href="/profil">
-            <i class="fa-solid fa-user"></i> Mon Profil
-        </a>
-        <a class="nav-item<%= currentPage === 'classement' ? ' active' : '' %>" id="nav-classement" href="/classement">
-            <i class="fa-solid fa-trophy"></i> Classement
-        </a>
-        <div class="nav-section-label" style="margin-top:12px;">Formulaires</div>
-        <a class="nav-item<%= currentPage === 'absences' ? ' active' : '' %>" id="nav-absences" href="/absences">
-            <i class="fa-solid fa-calendar-xmark"></i> Absences
-        </a>
-        <a class="nav-item<%= currentPage === 'frais' ? ' active' : '' %>" id="nav-frais" href="/frais">
-            <i class="fa-solid fa-receipt"></i> Notes de frais
-        </a>
-        <a class="nav-item<%= currentPage === 'pannes' ? ' active' : '' %>" id="nav-pannes" href="/pannes">
-            <i class="fa-solid fa-triangle-exclamation"></i> Pannes
-        </a>
-        <% if (canRapatriement(employee.role)) { %>
-        <a class="nav-item<%= currentPage === 'rapatriements' ? ' active' : '' %>" id="nav-rapatriements" href="/rapatriements">
-            <i class="fa-solid fa-truck-arrow-right"></i> Rapatriements
-        </a>
-        <% } %>
+        <div class="nav-section" data-section="emp-navigation">
+            <button type="button" class="nav-section-label">Navigation <i class="fa-solid fa-chevron-down nav-chevron"></i></button>
+            <div class="nav-section-items">
+                <a class="nav-item<%= currentPage === 'dashboard' ? ' active' : '' %>" id="nav-dashboard" href="/dashboard">
+                    <i class="fa-solid fa-gauge-high"></i> Dashboard
+                </a>
+                <a class="nav-item<%= currentPage === 'profil' ? ' active' : '' %>" id="nav-profil" href="/profil">
+                    <i class="fa-solid fa-user"></i> Mon Profil
+                </a>
+                <a class="nav-item<%= currentPage === 'classement' ? ' active' : '' %>" id="nav-classement" href="/classement">
+                    <i class="fa-solid fa-trophy"></i> Classement
+                </a>
+            </div>
+        </div>
+        <div class="nav-section" data-section="emp-formulaires">
+            <button type="button" class="nav-section-label">Formulaires <i class="fa-solid fa-chevron-down nav-chevron"></i></button>
+            <div class="nav-section-items">
+                <a class="nav-item<%= currentPage === 'absences' ? ' active' : '' %>" id="nav-absences" href="/absences">
+                    <i class="fa-solid fa-calendar-xmark"></i> Absences
+                </a>
+                <a class="nav-item<%= currentPage === 'frais' ? ' active' : '' %>" id="nav-frais" href="/frais">
+                    <i class="fa-solid fa-receipt"></i> Notes de frais
+                </a>
+                <a class="nav-item<%= currentPage === 'pannes' ? ' active' : '' %>" id="nav-pannes" href="/pannes">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Pannes
+                </a>
+                <% if (canRapatriement(employee.role)) { %>
+                <a class="nav-item<%= currentPage === 'rapatriements' ? ' active' : '' %>" id="nav-rapatriements" href="/rapatriements">
+                    <i class="fa-solid fa-truck-arrow-right"></i> Rapatriements
+                </a>
+                <% } %>
+            </div>
+        </div>
 
         <% if (session && session.isAdmin) { %>
-            <div class="nav-section-label" style="margin-top:12px;">Administration</div>
-            <a class="nav-item" href="/admin/salaries">
-                <i class="fa-solid fa-shield-halved"></i> Panel Admin
-            </a>
+            <div class="nav-section" data-section="emp-administration">
+                <button type="button" class="nav-section-label">Administration <i class="fa-solid fa-chevron-down nav-chevron"></i></button>
+                <div class="nav-section-items">
+                    <a class="nav-item" href="/admin/salaries">
+                        <i class="fa-solid fa-shield-halved"></i> Panel Admin
+                    </a>
+                </div>
+            </div>
         <% } %>
     </nav>
     <div class="sidebar-user">
@@ -52,3 +64,4 @@
         </a>
     </div>
 </aside>
+<script src="/js/sidebar-collapse.js"></script>

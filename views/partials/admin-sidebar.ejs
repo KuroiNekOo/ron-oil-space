@@ -5,59 +5,75 @@
         <div class="admin-tag"><i class="fa-solid fa-shield-halved"></i> Admin</div>
     </div>
     <nav class="sidebar-nav">
-        <div class="nav-section-label">Gestion</div>
-        <a class="nav-item<%= currentPage === 'salaries' ? ' active' : '' %>" id="nav-salaries" href="/admin/salaries">
-            <i class="fa-solid fa-users"></i> Salari&eacute;s
-        </a>
-        <a class="nav-item<%= currentPage === 'vehicules' ? ' active' : '' %>" id="nav-vehicules" href="/admin/vehicules">
-            <i class="fa-solid fa-truck"></i> V&eacute;hicules
-        </a>
-        <a class="nav-item<%= currentPage === 'achats' ? ' active' : '' %>" id="nav-achats" href="/admin/achats">
-            <i class="fa-solid fa-bag-shopping"></i> Achats
-        </a>
-        <a class="nav-item<%= currentPage === 'primes' ? ' active' : '' %>" id="nav-primes" href="/admin/primes">
-            <i class="fa-solid fa-percent"></i> Primes
-        </a>
-        <a class="nav-item<%= currentPage === 'roles' ? ' active' : '' %>" id="nav-roles" href="/admin/roles">
-            <i class="fa-solid fa-id-badge"></i> R&ocirc;les
-        </a>
-        <div class="nav-section-label" style="margin-top:12px;">Formulaires</div>
-        <a class="nav-item<%= currentPage === 'absences' ? ' active' : '' %>" id="nav-absences" href="/admin/absences">
-            <i class="fa-solid fa-calendar-xmark"></i> Absences
-        </a>
-        <a class="nav-item<%= currentPage === 'frais' ? ' active' : '' %>" id="nav-frais" href="/admin/frais">
-            <i class="fa-solid fa-receipt"></i> Frais
-        </a>
-        <a class="nav-item<%= currentPage === 'pannes' ? ' active' : '' %>" id="nav-pannes" href="/admin/pannes">
-            <i class="fa-solid fa-triangle-exclamation"></i> Pannes
-        </a>
-        <a class="nav-item<%= currentPage === 'rapatriements' ? ' active' : '' %>" id="nav-rapatriements" href="/admin/rapatriements">
-            <i class="fa-solid fa-truck-arrow-right"></i> Rapatriements
-        </a>
-        <div class="nav-section-label" style="margin-top:12px;">Donn&eacute;es</div>
-        <a class="nav-item<%= currentPage === 'statistiques' ? ' active' : '' %>" id="nav-statistiques" href="/admin/statistiques">
-            <i class="fa-solid fa-chart-line"></i> Statistiques
-        </a>
-        <a class="nav-item<%= currentPage === 'standard' ? ' active' : '' %>" id="nav-standard" href="/admin/standard">
-            <i class="fa-solid fa-phone"></i> Standard
-        </a>
-        <a class="nav-item<%= currentPage === 'livraisons' ? ' active' : '' %>" id="nav-livraisons" href="/admin/livraisons">
-            <i class="fa-solid fa-gas-pump"></i> Livraisons
-        </a>
-        <a class="nav-item<%= currentPage === 'facturations' ? ' active' : '' %>" id="nav-facturations" href="/admin/facturations">
-            <i class="fa-solid fa-file-invoice-dollar"></i> Facturations
-        </a>
-        <a class="nav-item<%= currentPage === 'entrees-sorties' ? ' active' : '' %>" id="nav-entrees-sorties" href="/admin/entrees-sorties">
-            <i class="fa-solid fa-right-left"></i> Entr&eacute;es / Sorties
-        </a>
-        <a class="nav-item<%= currentPage === 'services' ? ' active' : '' %>" id="nav-services" href="/admin/services">
-            <i class="fa-solid fa-clock"></i> Services
-        </a>
+        <div class="nav-section" data-section="admin-gestion">
+            <button type="button" class="nav-section-label">Gestion <i class="fa-solid fa-chevron-down nav-chevron"></i></button>
+            <div class="nav-section-items">
+                <a class="nav-item<%= currentPage === 'salaries' ? ' active' : '' %>" id="nav-salaries" href="/admin/salaries">
+                    <i class="fa-solid fa-users"></i> Salari&eacute;s
+                </a>
+                <a class="nav-item<%= currentPage === 'vehicules' ? ' active' : '' %>" id="nav-vehicules" href="/admin/vehicules">
+                    <i class="fa-solid fa-truck"></i> V&eacute;hicules
+                </a>
+                <a class="nav-item<%= currentPage === 'achats' ? ' active' : '' %>" id="nav-achats" href="/admin/achats">
+                    <i class="fa-solid fa-bag-shopping"></i> Achats
+                </a>
+                <a class="nav-item<%= currentPage === 'primes' ? ' active' : '' %>" id="nav-primes" href="/admin/primes">
+                    <i class="fa-solid fa-percent"></i> Primes
+                </a>
+                <a class="nav-item<%= currentPage === 'roles' ? ' active' : '' %>" id="nav-roles" href="/admin/roles">
+                    <i class="fa-solid fa-id-badge"></i> R&ocirc;les
+                </a>
+            </div>
+        </div>
+        <div class="nav-section" data-section="admin-formulaires">
+            <button type="button" class="nav-section-label">Formulaires <i class="fa-solid fa-chevron-down nav-chevron"></i></button>
+            <div class="nav-section-items">
+                <a class="nav-item<%= currentPage === 'absences' ? ' active' : '' %>" id="nav-absences" href="/admin/absences">
+                    <i class="fa-solid fa-calendar-xmark"></i> Absences
+                </a>
+                <a class="nav-item<%= currentPage === 'frais' ? ' active' : '' %>" id="nav-frais" href="/admin/frais">
+                    <i class="fa-solid fa-receipt"></i> Frais
+                </a>
+                <a class="nav-item<%= currentPage === 'pannes' ? ' active' : '' %>" id="nav-pannes" href="/admin/pannes">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Pannes
+                </a>
+                <a class="nav-item<%= currentPage === 'rapatriements' ? ' active' : '' %>" id="nav-rapatriements" href="/admin/rapatriements">
+                    <i class="fa-solid fa-truck-arrow-right"></i> Rapatriements
+                </a>
+            </div>
+        </div>
+        <div class="nav-section" data-section="admin-donnees">
+            <button type="button" class="nav-section-label">Donn&eacute;es <i class="fa-solid fa-chevron-down nav-chevron"></i></button>
+            <div class="nav-section-items">
+                <a class="nav-item<%= currentPage === 'statistiques' ? ' active' : '' %>" id="nav-statistiques" href="/admin/statistiques">
+                    <i class="fa-solid fa-chart-line"></i> Statistiques
+                </a>
+                <a class="nav-item<%= currentPage === 'standard' ? ' active' : '' %>" id="nav-standard" href="/admin/standard">
+                    <i class="fa-solid fa-phone"></i> Standard
+                </a>
+                <a class="nav-item<%= currentPage === 'livraisons' ? ' active' : '' %>" id="nav-livraisons" href="/admin/livraisons">
+                    <i class="fa-solid fa-gas-pump"></i> Livraisons
+                </a>
+                <a class="nav-item<%= currentPage === 'facturations' ? ' active' : '' %>" id="nav-facturations" href="/admin/facturations">
+                    <i class="fa-solid fa-file-invoice-dollar"></i> Facturations
+                </a>
+                <a class="nav-item<%= currentPage === 'entrees-sorties' ? ' active' : '' %>" id="nav-entrees-sorties" href="/admin/entrees-sorties">
+                    <i class="fa-solid fa-right-left"></i> Entr&eacute;es / Sorties
+                </a>
+                <a class="nav-item<%= currentPage === 'services' ? ' active' : '' %>" id="nav-services" href="/admin/services">
+                    <i class="fa-solid fa-clock"></i> Services
+                </a>
+            </div>
+        </div>
         <% if (session && session.employeeId) { %>
-            <div class="nav-section-label" style="margin-top:12px;">Mon espace</div>
-            <a class="nav-item" href="/dashboard">
-                <i class="fa-solid fa-gauge-high"></i> Panel Employé
-            </a>
+            <div class="nav-section" data-section="admin-mon-espace">
+                <button type="button" class="nav-section-label">Mon espace <i class="fa-solid fa-chevron-down nav-chevron"></i></button>
+                <div class="nav-section-items">
+                    <a class="nav-item" href="/dashboard">
+                        <i class="fa-solid fa-gauge-high"></i> Panel Employé
+                    </a>
+                </div>
+            </div>
         <% } %>
     </nav>
     <div class="sidebar-user">
@@ -71,3 +87,4 @@
         </a>
     </div>
 </aside>
+<script src="/js/sidebar-collapse.js"></script>
