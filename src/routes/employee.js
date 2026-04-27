@@ -474,10 +474,10 @@ router.post('/pannes', requireEmployee, async (req, res) => {
         employeeLastName: req.employee.lastName,
         week: currentWeek,
         year: currentYear,
-        truckPlate: plaqueCamion,
+        truckPlate: plaqueCamion || null,
         tankerPlate: plaqueCiterne || null,
-        type,
-        position,
+        type: type || null,
+        position: position || null,
         comment: comment || null
       }
     });
@@ -520,6 +520,7 @@ router.post('/rapatriements', requireEmployee, requireRapatriementAccess, async 
   try {
     const { week: currentWeek, year: currentYear } = getCurrentWeekAndYear();
     const { plaqueCamion, plaqueCiterne, fuel, departure, comment } = req.body;
+    const fuelNum = parseInt(fuel);
     await prisma.repatriation.create({
       data: {
         employeeId: req.session.employeeId,
@@ -527,9 +528,9 @@ router.post('/rapatriements', requireEmployee, requireRapatriementAccess, async 
         employeeLastName: req.employee.lastName,
         week: currentWeek,
         year: currentYear,
-        truckPlate: plaqueCamion,
+        truckPlate: plaqueCamion || null,
         tankerPlate: plaqueCiterne || null,
-        fuel: parseInt(fuel),
+        fuel: isFinite(fuelNum) ? fuelNum : null,
         departure: departure || null,
         comment: comment || null
       }

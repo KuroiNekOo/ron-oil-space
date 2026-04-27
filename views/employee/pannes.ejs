@@ -38,27 +38,27 @@
                 <form class="form-card" id="main-form" method="POST" action="/pannes" novalidate>
                     <div class="form-grid">
                         <div>
-                            <label class="f-label f-required">Plaque du camion</label>
-                            <select class="f-select" name="plaqueCamion" required>
-                                <option value="" disabled selected>S&eacute;lectionner un camion...</option>
+                            <label class="f-label">Plaque du camion</label>
+                            <select class="f-select" name="plaqueCamion">
+                                <option value="" selected>S&eacute;lectionner un camion...</option>
                                 <% trucks.forEach(function(v) { %>
                                     <option value="<%= v.plate %>"><%= v.plate %></option>
                                 <% }); %>
                             </select>
                         </div>
                         <div>
-                            <label class="f-label f-required">Plaque de la citerne</label>
-                            <select class="f-select" name="plaqueCiterne" required>
-                                <option value="" disabled selected>S&eacute;lectionner une citerne...</option>
+                            <label class="f-label">Plaque de la citerne</label>
+                            <select class="f-select" name="plaqueCiterne">
+                                <option value="" selected>S&eacute;lectionner une citerne...</option>
                                 <% tankers.forEach(function(v) { %>
                                     <option value="<%= v.plate %>"><%= v.plate %></option>
                                 <% }); %>
                             </select>
                         </div>
                         <div>
-                            <label class="f-label f-required">Type de panne</label>
-                            <select class="f-select" name="type" required>
-                                <option value="" disabled selected>S&eacute;lectionner...</option>
+                            <label class="f-label">Type de panne</label>
+                            <select class="f-select" name="type">
+                                <option value="" selected>S&eacute;lectionner...</option>
                                 <option value="moteur">Moteur</option>
                                 <option value="pneu">Pneu / Roue</option>
                                 <option value="electricite">&Eacute;lectricit&eacute;</option>
@@ -69,8 +69,8 @@
                             </select>
                         </div>
                         <div>
-                            <label class="f-label f-required">Position</label>
-                            <input type="text" class="f-input" name="position" placeholder="Localisation approximative" required>
+                            <label class="f-label">Position</label>
+                            <input type="text" class="f-input" name="position" placeholder="Localisation approximative">
                         </div>
                         <div class="form-group-full">
                             <label class="f-label">Commentaire</label>

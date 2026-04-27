@@ -152,10 +152,10 @@ model Breakdown {
   employeeLastName  String?
   week           Int
   year               Int
-  truckPlate     String
+  truckPlate     String?
   tankerPlate    String?
-  type           String   // moteur | pneu | electricite | citerne | freins | accident | autre
-  position       String
+  type           String?  // moteur | pneu | electricite | citerne | freins | accident | autre
+  position       String?
   comment        String?
   createdAt      DateTime @default(now())
 
@@ -170,9 +170,9 @@ model Repatriation {
   employeeLastName  String?
   week         Int
   year               Int
-  truckPlate   String
+  truckPlate   String?
   tankerPlate  String?
-  fuel         Int
+  fuel         Int?
   departure    String?
   comment      String?
   createdAt    DateTime @default(now())

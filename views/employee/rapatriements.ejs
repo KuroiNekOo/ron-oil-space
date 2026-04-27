@@ -38,26 +38,26 @@
                 <form class="form-card" id="main-form" method="POST" action="/rapatriements" novalidate>
                     <div class="form-grid">
                         <div>
-                            <label class="f-label f-required">Plaque du camion</label>
-                            <select class="f-select" name="plaqueCamion" required>
-                                <option value="" disabled selected>S&eacute;lectionner un camion...</option>
+                            <label class="f-label">Plaque du camion</label>
+                            <select class="f-select" name="plaqueCamion">
+                                <option value="" selected>S&eacute;lectionner un camion...</option>
                                 <% trucks.forEach(function(v) { %>
                                     <option value="<%= v.plate %>"><%= v.plate %></option>
                                 <% }); %>
                             </select>
                         </div>
                         <div>
-                            <label class="f-label f-required">Plaque de la citerne</label>
-                            <select class="f-select" name="plaqueCiterne" required>
-                                <option value="" disabled selected>S&eacute;lectionner une citerne...</option>
+                            <label class="f-label">Plaque de la citerne</label>
+                            <select class="f-select" name="plaqueCiterne">
+                                <option value="" selected>S&eacute;lectionner une citerne...</option>
                                 <% tankers.forEach(function(v) { %>
                                     <option value="<%= v.plate %>"><%= v.plate %></option>
                                 <% }); %>
                             </select>
                         </div>
                         <div>
-                            <label class="f-label f-required">Niveau d'essence (%)</label>
-                            <input type="number" class="f-input" name="fuel" placeholder="0 – 100" min="0" max="100" required>
+                            <label class="f-label">Niveau d'essence (%)</label>
+                            <input type="number" class="f-input" name="fuel" placeholder="0 – 100" min="0" max="100">
                             <div class="f-hint">Niveau au retour au d&eacute;p&ocirc;t</div>
                         </div>
                         <div>

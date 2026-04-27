@@ -788,10 +788,10 @@ router.post('/pannes/:id/edit', async (req, res) => {
     await prisma.breakdown.update({
       where: { id },
       data: {
-        truckPlate,
+        truckPlate: truckPlate || null,
         tankerPlate: tankerPlate || null,
-        type,
-        position,
+        type: type || null,
+        position: position || null,
         comment: comment || null,
       },
     });
@@ -843,12 +843,13 @@ router.post('/rapatriements/:id/edit', async (req, res) => {
       return res.status(409).json({ error: 'Semaine figée, action interdite' });
     }
     const { truckPlate, tankerPlate, fuel, departure, comment } = req.body;
+    const fuelNum = parseInt(fuel);
     await prisma.repatriation.update({
       where: { id },
       data: {
-        truckPlate,
+        truckPlate: truckPlate || null,
         tankerPlate: tankerPlate || null,
-        fuel: parseInt(fuel),
+        fuel: isFinite(fuelNum) ? fuelNum : null,
         departure: departure || null,
         comment: comment || null,
       },

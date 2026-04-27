@@ -86,6 +86,13 @@
     </main>
 
     <!-- Modal Ajouter -->
+    <%
+        const _pad = n => String(n).padStart(2, '0');
+        const _fmtIso = d => d.getFullYear() + '-' + _pad(d.getMonth() + 1) + '-' + _pad(d.getDate());
+        const _today = new Date();
+        const _todayIso = _fmtIso(_today);
+        const _todayPlus21Iso = _fmtIso(new Date(_today.getTime() + 21 * 86400000));
+    %>
     <div class="modal-overlay" id="modal-add">
         <div class="modal">
             <div class="modal-header">
@@ -106,16 +113,14 @@
                         <div>
                             <label class="f-label f-required">Contrat</label>
                             <select class="f-select" name="contract" required>
-                                <option value="" disabled selected>S&eacute;lectionner...</option>
                                 <option value="CDI">CDI</option>
-                                <option value="CDD">CDD</option>
+                                <option value="CDD" selected>CDD</option>
                             </select>
                         </div>
                         <div>
                             <label class="f-label f-required">Poste</label>
                             <select class="f-select" name="role" required>
-                                <option value="" disabled selected>S&eacute;lectionner...</option>
-                                <option value="Livreur">Livreur</option>
+                                <option value="Livreur" selected>Livreur</option>
                                 <option value="Superviseur">Superviseur</option>
                                 <option value="Direction">Direction</option>
                                 <option value="PDG">PDG</option>
@@ -127,11 +132,11 @@
                         </div>
                         <div>
                             <label class="f-label f-required">Date d'embauche</label>
-                            <input type="date" class="f-input" name="hireDate" required>
+                            <input type="date" class="f-input" name="hireDate" value="<%= _todayIso %>" required>
                         </div>
                         <div>
                             <label class="f-label f-required">Date de fin de contrat</label>
-                            <input type="date" class="f-input" name="endDate" required>
+                            <input type="date" class="f-input" name="endDate" value="<%= _todayPlus21Iso %>" required>
                         </div>
                         <div>
                             <label class="f-label">IBAN</label>
