@@ -562,7 +562,7 @@ body {
     border: 1px solid var(--border);
     color: var(--text-primary);
     font-family: var(--font-body); font-size: 14px;
-    padding: 10px 14px; outline: none; width: 260px;
+    padding: 10px 14px; outline: none; width: 420px; max-width: 100%;
     transition: border-color .2s;
 }
 

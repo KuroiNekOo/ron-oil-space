@@ -15,7 +15,6 @@
 
         <form class="admin-toolbar" method="GET" action="/admin/standard" style="display:flex;gap:8px;align-items:center;">
             <input type="text" class="admin-search" placeholder="Rechercher un num&eacute;ro, &eacute;tat..." name="q" value="<%= query.q || '' %>">
-            <button type="submit" class="btn-primary" style="padding:6px 14px;"><i class="fa-solid fa-magnifying-glass"></i></button>
             <% if (query.q) { %><a href="/admin/standard" style="font-size:12px;color:var(--text-muted);">R&eacute;initialiser</a><% } %>
         </form>
 
@@ -53,6 +52,7 @@
             <%- include('../partials/pagination', { page, totalPages, total, query }) %>
         </div>
     </main>
+    <script src="/js/search-autosubmit.js"></script>
     <script src="/js/auto-refresh.js"></script>
 </body>
 </html>

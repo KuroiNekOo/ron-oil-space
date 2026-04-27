@@ -162,7 +162,7 @@ body {
 .admin-search {
     background:var(--bg-input); border:1px solid var(--border);
     color:var(--text-primary); font-family:var(--font-body); font-size:14px;
-    padding:10px 14px; outline:none; width:260px; transition:border-color .2s;
+    padding:10px 14px; outline:none; width:420px; max-width:100%; transition:border-color .2s;
 }
 .admin-search:focus { border-color:var(--accent); }
 .admin-search::placeholder { color:var(--text-muted); }
