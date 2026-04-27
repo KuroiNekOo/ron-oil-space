@@ -489,13 +489,13 @@ router.post('/pannes', requireEmployee, async (req, res) => {
 });
 
 // ─── GET/POST /rapatriements ───
-// Réservé aux Superviseurs et plus (voir services/permissions.js).
+// Accès dépend du flag canRapatriement défini par rôle dans /admin/roles.
 async function requireRapatriementAccess(req, res, next) {
   const emp = await prisma.employee.findUnique({
     where: { id: req.session.employeeId },
     select: { role: true },
   });
-  if (!emp || !canRapatriement(emp.role)) {
+  if (!emp || !(await canRapatriement(emp.role))) {
     return res.redirect('/dashboard');
   }
   next();

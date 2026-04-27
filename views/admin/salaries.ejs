@@ -120,10 +120,9 @@
                         <div>
                             <label class="f-label f-required">Poste</label>
                             <select class="f-select" name="role" required>
-                                <option value="Livreur" selected>Livreur</option>
-                                <option value="Superviseur">Superviseur</option>
-                                <option value="Direction">Direction</option>
-                                <option value="PDG">PDG</option>
+                                <% roles.forEach(function(r) { %>
+                                    <option value="<%= r.name %>"<%= r.name === 'Livreur' ? ' selected' : '' %>><%= r.name %></option>
+                                <% }); %>
                             </select>
                         </div>
                         <div>
@@ -188,10 +187,9 @@
                         <div>
                             <label class="f-label f-required">Poste</label>
                             <select class="f-select" name="role" required>
-                                <option value="Livreur">Livreur</option>
-                                <option value="Superviseur">Superviseur</option>
-                                <option value="Direction">Direction</option>
-                                <option value="PDG">PDG</option>
+                                <% roles.forEach(function(r) { %>
+                                    <option value="<%= r.name %>"><%= r.name %></option>
+                                <% }); %>
                             </select>
                         </div>
                         <div>
@@ -330,7 +328,7 @@
             form.firstName.value = emp.firstName || '';
             form.lastName.value  = emp.lastName  || '';
             form.contract.value  = emp.contract  || 'CDD';
-            form.role.value      = emp.role      || 'Livreur';
+            form.role.value      = emp.role      || '';
             form.phone.value     = emp.phone     || '';
             form.hireDate.value  = toDateInput(emp.hireDate);
             form.endDate.value   = toDateInput(emp.endDate);

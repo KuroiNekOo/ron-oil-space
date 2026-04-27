@@ -25,6 +25,7 @@ const {
 const {
   getExpenseTypes, createExpenseType, updateExpenseType, deleteExpenseType,
 } = require('../services/expenseTypes');
+const { getRoles, setRoles, getRoleNames } = require('../services/roles');
 
 // ── Helpers : génération d'identifiants ──
 
@@ -81,13 +82,14 @@ router.use(requireAdmin);
 
 router.get('/salaries', async (req, res) => {
   try {
-    const [employees, dutyLogs] = await Promise.all([
+    const [employees, dutyLogs, roles] = await Promise.all([
       prisma.employee.findMany({ orderBy: { id: 'asc' } }),
       prisma.logEntry.findMany({
         where: { type: 'duty' },
         orderBy: { timestamp: 'desc' },
         select: { data: true, timestamp: true },
       }),
+      getRoles(),
     ]);
 
     // Dernier log de service par nom normalisé (first-wins car trié desc).
@@ -107,7 +109,7 @@ router.get('/salaries', async (req, res) => {
       return { ...e, duty };
     });
 
-    res.render('admin/salaries', { employees: enriched });
+    res.render('admin/salaries', { employees: enriched, roles });
   } catch (err) {
     console.error('GET /salaries error:', err);
     res.status(500).send('Erreur serveur');
@@ -878,23 +880,54 @@ router.post('/rapatriements/:id/delete', async (req, res) => {
 });
 
 // ══════════════════════════════════════
+//  ROLES (configuration + accès rapatriement)
+// ══════════════════════════════════════
+
+router.get('/roles', async (req, res) => {
+  try {
+    const roles = await getRoles();
+    res.render('admin/roles', { roles });
+  } catch (err) {
+    console.error('GET /roles error:', err);
+    res.status(500).send('Erreur serveur');
+  }
+});
+
+// Body attendu : roles[N][name] + roles[N][canRapatriement] (checkbox).
+// On reconstruit l'array depuis les indices, on filtre/dédoublonne via sanitize().
+router.post('/roles', async (req, res) => {
+  try {
+    const raw = (req.body && req.body.roles) || {};
+    const list = [];
+    if (Array.isArray(raw)) {
+      list.push(...raw);
+    } else {
+      // express-urlencoded sérialise roles[0][name]=... → { '0': {...}, '1': {...} }
+      const indices = Object.keys(raw).sort((a, b) => parseInt(a) - parseInt(b));
+      for (const i of indices) list.push(raw[i]);
+    }
+    const saved = await setRoles(list);
+    res.json({ ok: true, roles: saved });
+  } catch (err) {
+    console.error('POST /roles error:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ══════════════════════════════════════
 //  PRIMES DE LIVRAISON (taux par rôle)
 // ══════════════════════════════════════
 
 router.get('/primes', async (req, res) => {
   try {
     const [
-      roles, rates, specialBonuses, employees,
+      roleNames, rates, specialBonuses, employees,
       tiers, tierShares, podiumPrizes, pointsPerGain,
       bonusMinDeliveries, weeklyDeliveryQuota, frozenKeys,
       expenseTypes, repatCostPerEvent, repatReimbursementPercent,
       impoundCostPerEvent, impoundReimbursementPercent,
     ] = await Promise.all([
-      prisma.employee.findMany({
-        distinct: ['role'],
-        select: { role: true },
-        orderBy: { role: 'asc' },
-      }),
+      getRoleNames(),
       getBonusRates(),
       prisma.specialBonus.findMany({
         include: { employee: true },
@@ -917,10 +950,7 @@ router.get('/primes', async (req, res) => {
       getImpoundCostPerEvent(),
       getImpoundReimbursementPercent(),
     ]);
-    const rows = roles
-      .map(r => r.role)
-      .filter(Boolean)
-      .map(role => ({ role, rate: rates[role] || 0 }));
+    const rows = roleNames.map(role => ({ role, rate: rates[role] || 0 }));
     const { week: currentWeek, year: currentYear } = getWeekAndYear(new Date());
     res.render('admin/primes', {
       rows, specialBonuses, employees, currentWeek, currentYear,

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL Admin — R&ocirc;les</title>
+    <link rel="stylesheet" href="/css/admin-shared.css">
+</head>
+<body>
+    <%- include('../partials/admin-sidebar', { currentPage: 'roles' }) %>
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title">R&ocirc;les</div>
+            <div class="page-subtitle">Liste des r&ocirc;les disponibles + acc&egrave;s au formulaire de rapatriement</div>
+        </div>
+
+        <div class="card" style="padding:24px;max-width:720px;">
+            <form id="form-roles" method="POST" action="/admin/roles">
+                <table class="admin-table" id="roles-table" style="margin-bottom:16px;">
+                    <thead>
+                        <tr>
+                            <th style="width:60%;">Nom du r&ocirc;le</th>
+                            <th>Acc&egrave;s rapatriement</th>
+                            <th style="width:60px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="roles-body">
+                        <% roles.forEach(function(r, i) { %>
+                            <tr class="role-row">
+                                <td>
+                                    <input type="text" class="f-input" name="roles[<%= i %>][name]" value="<%= r.name %>" required style="width:100%;">
+                                </td>
+                                <td>
+                                    <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;">
+                                        <input type="checkbox" name="roles[<%= i %>][canRapatriement]" value="on"<%= r.canRapatriement ? ' checked' : '' %>>
+                                        <span style="font-size:12px;color:var(--text-secondary);">Autoris&eacute;</span>
+                                    </label>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn-delete" onclick="removeRow(this)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                    <button type="button" class="btn-secondary" onclick="addRow()"><i class="fa-solid fa-plus"></i> Ajouter un r&ocirc;le</button>
+                    <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <div class="toast success" id="toast">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toast-msg">R&ocirc;les enregistr&eacute;s</span>
+    </div>
+
+    <script src="/js/admin-ajax.js"></script>
+    <script>
+        function reindexRows() {
+            var rows = document.querySelectorAll('#roles-body .role-row');
+            rows.forEach(function(row, i) {
+                row.querySelectorAll('input[name]').forEach(function(input) {
+                    var n = input.getAttribute('name');
+                    input.setAttribute('name', n.replace(/^roles\[\d+\]/, 'roles[' + i + ']'));
+                });
+            });
+        }
+
+        function addRow() {
+            var tbody = document.getElementById('roles-body');
+            var i = tbody.querySelectorAll('.role-row').length;
+            var tr = document.createElement('tr');
+            tr.className = 'role-row';
+            tr.innerHTML =
+                '<td><input type="text" class="f-input" name="roles[' + i + '][name]" required style="width:100%;"></td>' +
+                '<td><label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;">' +
+                    '<input type="checkbox" name="roles[' + i + '][canRapatriement]" value="on">' +
+                    '<span style="font-size:12px;color:var(--text-secondary);">Autoris&eacute;</span>' +
+                '</label></td>' +
+                '<td><button type="button" class="btn-delete" onclick="removeRow(this)" title="Supprimer"><i class="fa-solid fa-trash"></i></button></td>';
+            tbody.appendChild(tr);
+            tr.querySelector('input[type="text"]').focus();
+        }
+
+        function removeRow(btn) {
+            var rows = document.querySelectorAll('#roles-body .role-row');
+            if (rows.length <= 1) {
+                showToast('Au moins un r&ocirc;le est requis', 'error');
+                return;
+            }
+            btn.closest('tr').remove();
+            reindexRows();
+        }
+
+        document.getElementById('form-roles').addEventListener('submit', function(e) {
+            e.preventDefault();
+            reindexRows();
+            AdminAjax.postForm(e.target).then(function() {
+                showToast('R&ocirc;les enregistr&eacute;s');
+            }).catch(function(err) {
+                showToast('Erreur : ' + err.message, 'error');
+            });
+        });
+
+        function showToast(msg, type) {
+            type = type || 'success';
+            var t = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            t.className = 'toast ' + type + ' show';
+            setTimeout(function() { t.classList.remove('show'); }, 3500);
+        }
+    </script>
+    <script src="/js/auto-refresh.js"></script>
+</body>
+</html>

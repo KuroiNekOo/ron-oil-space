@@ -49,7 +49,7 @@ app.use(session({
 }));
 
 // Make session data + helpers de permission available in all views
-const { canRapatriement } = require('./services/permissions');
+const { getRoles, isRapatriementRole } = require('./services/roles');
 // Helper pour résoudre le nom d'un employé sur une row qui peut référencer un
 // employé supprimé : on fallback sur les colonnes snapshot
 // (employeeFirstName/employeeLastName) qui sont écrites à chaque create/upsert.
@@ -61,10 +61,18 @@ function empName(row) {
   const full = (fn + ' ' + ln).trim();
   return full || '—';
 }
-app.use((req, res, next) => {
+// Pré-résout la liste de rôles pour exposer un canRapatriement sync utilisable
+// depuis les vues EJS (la liste est cachée côté service, donc ~zéro hit DB).
+app.use(async (req, res, next) => {
   res.locals.session = req.session;
-  res.locals.canRapatriement = canRapatriement;
   res.locals.empName = empName;
+  try {
+    const roles = await getRoles();
+    res.locals.canRapatriement = (role) => isRapatriementRole(role, roles);
+  } catch (err) {
+    console.error('[locals] getRoles failed:', err.message);
+    res.locals.canRapatriement = () => false;
+  }
   next();
 });
 
