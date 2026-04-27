@@ -1425,7 +1425,7 @@ router.get('/entrees-sorties', async (req, res) => {
       id: r.id, timestamp: r.timestamp, week: r.week,
       employee: d[0] || '',
       plate: d[1] || '',
-      isOut: d[2] === 'true',
+      isOut: d[2] !== 'true',
     }))).filter(Boolean);
     res.render('admin/entrees-sorties', { ...result, rows });
   } catch (err) {
