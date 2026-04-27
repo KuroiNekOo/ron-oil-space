@@ -26,8 +26,23 @@
         </div>
 
         <div class="admin-toolbar">
-            <div class="admin-toolbar-left">
-                <input type="text" class="admin-search" placeholder="Rechercher un salari&eacute;..." id="search-input" oninput="filterTable()">
+            <div class="admin-toolbar-left" style="flex-wrap:wrap;gap:10px;">
+                <input type="text" class="admin-search" placeholder="Rechercher un salari&eacute;..." id="search-input" oninput="applyFilters()">
+                <select class="f-select toolbar-select" id="duty-filter" onchange="applyFilters()" title="Filtrer par service">
+                    <option value="all">Tous les statuts</option>
+                    <option value="on">En service</option>
+                    <option value="off">Hors service</option>
+                </select>
+                <select class="f-select toolbar-select" id="sort-mode" onchange="sortTable()" title="Trier le tableau">
+                    <option value="default">Tri par d&eacute;faut</option>
+                    <option value="name-asc">Nom A &rarr; Z</option>
+                    <option value="name-desc">Nom Z &rarr; A</option>
+                    <option value="hire-desc">Embauche r&eacute;cente</option>
+                    <option value="hire-asc">Embauche ancienne</option>
+                </select>
+                <button type="button" class="btn-secondary toolbar-reset" onclick="resetFilters()" title="R&eacute;initialiser filtres et tri">
+                    <i class="fa-solid fa-rotate-left"></i> R&eacute;initialiser
+                </button>
             </div>
             <button class="btn-add" onclick="openModal('modal-add')">
                 <i class="fa-solid fa-plus"></i> Ajouter un salari&eacute;
@@ -51,7 +66,13 @@
                 </thead>
                 <tbody id="salaries-body">
                     <% employees.forEach(function(e, i) { %>
-                    <tr class="employee-row" data-employee-id="<%= e.id %>" data-search="<%= (e.firstName + ' ' + e.lastName + ' ' + e.role).toLowerCase() %>">
+                    <tr class="employee-row"
+                        data-employee-id="<%= e.id %>"
+                        data-search="<%= (e.firstName + ' ' + e.lastName + ' ' + e.role).toLowerCase() %>"
+                        data-duty="<%= (e.duty && e.duty.onDuty) ? 'on' : 'off' %>"
+                        data-name="<%= (e.lastName + ' ' + e.firstName).toLowerCase() %>"
+                        data-hire="<%= e.hireDate ? new Date(e.hireDate).getTime() : 0 %>"
+                        data-default="<%= i %>">
                         <td class="mono" style="color:var(--text-muted)"><%= i + 1 %></td>
                         <td style="font-weight:500">
                             <% var dutyClass = (e.duty && e.duty.onDuty) ? 'on' : 'off'; %>
@@ -244,6 +265,8 @@
     </div>
 
     <style>
+        .toolbar-select { width:auto; min-width:180px; padding:9px 34px 9px 13px; cursor:pointer; }
+        .toolbar-reset { padding:9px 14px; display:inline-flex; align-items:center; gap:6px; }
         .employee-name-link { color:var(--text-primary); text-decoration:none; cursor:pointer; transition:color .15s; }
         .employee-name-link:hover { color:var(--accent); text-decoration:underline; }
         .recap-section-title { font-family:var(--font-display); font-size:13px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--text-secondary); margin:0 0 14px; }
@@ -276,13 +299,35 @@
 
     <script src="/js/admin-ajax.js"></script>
     <script>
-        function filterTable() {
+        function applyFilters() {
             var q = document.getElementById('search-input').value.toLowerCase();
-            var rows = document.querySelectorAll('.employee-row');
-            rows.forEach(function(row) {
-                var search = row.getAttribute('data-search');
-                row.style.display = search.includes(q) ? '' : 'none';
+            var duty = document.getElementById('duty-filter').value;
+            document.querySelectorAll('.employee-row').forEach(function(row) {
+                var matchSearch = row.getAttribute('data-search').includes(q);
+                var matchDuty = duty === 'all' || row.getAttribute('data-duty') === duty;
+                row.style.display = (matchSearch && matchDuty) ? '' : 'none';
             });
+        }
+
+        function sortTable() {
+            var mode = document.getElementById('sort-mode').value;
+            var tbody = document.getElementById('salaries-body');
+            var rows = Array.prototype.slice.call(tbody.querySelectorAll('.employee-row'));
+            var cmp;
+            if (mode === 'name-asc')       cmp = function(a, b) { return a.dataset.name.localeCompare(b.dataset.name, 'fr'); };
+            else if (mode === 'name-desc') cmp = function(a, b) { return b.dataset.name.localeCompare(a.dataset.name, 'fr'); };
+            else if (mode === 'hire-desc') cmp = function(a, b) { return Number(b.dataset.hire) - Number(a.dataset.hire); };
+            else if (mode === 'hire-asc')  cmp = function(a, b) { return Number(a.dataset.hire) - Number(b.dataset.hire); };
+            else                           cmp = function(a, b) { return Number(a.dataset.default) - Number(b.dataset.default); };
+            rows.sort(cmp).forEach(function(r) { tbody.appendChild(r); });
+        }
+
+        function resetFilters() {
+            document.getElementById('search-input').value = '';
+            document.getElementById('duty-filter').value = 'all';
+            document.getElementById('sort-mode').value = 'default';
+            applyFilters();
+            sortTable();
         }
 
         var employeesData = JSON.parse(document.getElementById('employees-data').textContent);
