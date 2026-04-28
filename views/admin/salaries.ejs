@@ -332,10 +332,14 @@
 
         var employeesData = JSON.parse(document.getElementById('employees-data').textContent);
 
-        // Re-parse le cache JSON après un soft-reload
+        // Re-parse le cache JSON après un soft-reload + ré-applique filtre/tri
+        // (sinon la bulle service met à jour son état mais la rangée reste cachée
+        // ou affichée selon l'ancien filtre, et le tri custom est perdu).
         window.addEventListener('admin:reloaded', function() {
             var el = document.getElementById('employees-data');
             if (el) employeesData = JSON.parse(el.textContent);
+            applyFilters();
+            sortTable();
         });
 
         // Interception des submits add/edit en AJAX
