@@ -26,14 +26,19 @@
             <span style="font-family:var(--font-mono);font-size:14px;color:var(--accent);">S<%= currentWeek %> &middot; <%= currentYear %></span>
         </div>
 
-        <div class="g4" style="margin-bottom:28px;">
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:28px;">
             <div class="card">
                 <div class="card-label">Livraisons</div>
                 <div class="card-value c-accent"><%= currentTotals.livraisons %></div>
             </div>
             <div class="card">
-                <div class="card-label">CA entreprise</div>
+                <div class="card-label">Gain entreprise</div>
                 <div class="card-value c-gold">+<%= fmt(currentTotals.gainEnterprise) %></div>
+            </div>
+            <div class="card">
+                <div class="card-label">Gain employé</div>
+                <div class="card-value" style="color:var(--text-secondary);"><%= fmt(currentTotals.gainEmployee) %></div>
+                <div class="card-sub">part directe versée aux livreurs</div>
             </div>
             <div class="card">
                 <div class="card-label">Dépenses totales</div>
@@ -43,7 +48,7 @@
             <div class="card">
                 <div class="card-label">Bénéfice net</div>
                 <div class="card-value <%= currentTotals.beneficeNet >= 0 ? 'c-success' : 'c-danger' %>"><%= currentTotals.beneficeNet >= 0 ? '+' : '-' %><%= fmt(Math.abs(currentTotals.beneficeNet)) %></div>
-                <div class="card-sub">CA − dépenses</div>
+                <div class="card-sub">gain entreprise − dépenses</div>
             </div>
         </div>
 
@@ -171,7 +176,7 @@
                         </div>
                     </div>
                     <div id="h-detail-body" style="display:none;">
-                        <div class="g4" id="h-detail-totals" style="margin-bottom:14px;"></div>
+                        <div id="h-detail-totals" style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:14px;"></div>
                         <div id="h-detail-breakdown" style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:18px;"></div>
                         <div class="card" style="padding:0;overflow:hidden;">
                             <table class="admin-table">
@@ -231,9 +236,10 @@
             const beneficeSign = t.beneficeNet >= 0 ? '+' : '-';
             document.getElementById('h-detail-totals').innerHTML = `
                 <div class="card"><div class="card-label">Livraisons</div><div class="card-value c-accent">${t.livraisons}</div></div>
-                <div class="card"><div class="card-label">CA entreprise</div><div class="card-value c-gold">+${fmt(t.gainEnterprise)}</div></div>
+                <div class="card"><div class="card-label">Gain entreprise</div><div class="card-value c-gold">+${fmt(t.gainEnterprise)}</div></div>
+                <div class="card"><div class="card-label">Gain employé</div><div class="card-value" style="color:var(--text-secondary);">${fmt(t.gainEmployee)}</div><div class="card-sub">part directe versée aux livreurs</div></div>
                 <div class="card"><div class="card-label">Dépenses totales</div><div class="card-value c-danger">-${fmt(t.totalDepenses)}</div><div class="card-sub">primes + remboursements + achats</div></div>
-                <div class="card"><div class="card-label">Bénéfice net</div><div class="card-value ${beneficeColor}">${beneficeSign}${fmt(Math.abs(t.beneficeNet))}</div><div class="card-sub">CA − dépenses</div></div>
+                <div class="card"><div class="card-label">Bénéfice net</div><div class="card-value ${beneficeColor}">${beneficeSign}${fmt(Math.abs(t.beneficeNet))}</div><div class="card-sub">gain entreprise − dépenses</div></div>
             `;
             const detailRow = document.getElementById('h-detail-breakdown');
             if (detailRow) detailRow.innerHTML = `
