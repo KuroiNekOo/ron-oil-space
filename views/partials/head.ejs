@@ -17,8 +17,9 @@
 <meta property="og:image:alt" content="Logo RON OIL">
 <meta property="og:locale" content="fr_FR">
 
-<!-- Twitter Card (fallback pour certains clients qui ne lisent que Twitter) -->
-<meta name="twitter:card" content="summary_large_image">
+<!-- Twitter Card (fallback pour certains clients qui ne lisent que Twitter).
+     Pas de twitter:card → Discord rend l'embed en mode "summary" (petite
+     vignette à droite), aligné avec /equipe. -->
 <meta name="twitter:title" content="<%= og.title %>">
 <meta name="twitter:description" content="<%= og.description %>">
 <meta name="twitter:image" content="<%= og.image %>">
