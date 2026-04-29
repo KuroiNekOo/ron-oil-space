@@ -35,7 +35,7 @@
                 </div>
             </div>
             <div class="form-page-main">
-                <form class="form-card" id="main-form" method="POST" action="/frais" novalidate>
+                <form class="form-card" id="main-form" method="POST" action="/frais">
                     <div class="form-grid">
                         <div>
                             <label class="f-label f-required">Type de frais</label>
@@ -48,7 +48,11 @@
                         </div>
                         <div>
                             <label class="f-label f-required">Montant ($)</label>
-                            <input type="number" class="f-input" name="montant" placeholder="0.00" min="0" step="0.01" required>
+                            <input type="text" class="f-input" name="montant" placeholder="0,00 ou 0.00"
+                                   inputmode="decimal"
+                                   pattern="^\d+([.,]\d{1,2})?$"
+                                   title="Nombre positif, virgule ou point comme séparateur décimal (ex. 12,50 ou 12.50)"
+                                   required>
                         </div>
                         <div class="form-group-full">
                             <label class="f-label">Commentaire</label>
@@ -86,6 +90,6 @@
             })();
         <% } %>
     </script>
-    <script src="/js/form-guard.js"></script>
+    <script src="/js/employee-form.js"></script>
 </body>
 </html>

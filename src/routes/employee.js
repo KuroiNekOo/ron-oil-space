@@ -22,6 +22,21 @@ function fmt(n) {
   return new Intl.NumberFormat('fr-FR').format(Math.round(n)) + '$';
 }
 
+// Normalise un montant FR : trim, virgule décimale → point, parseFloat.
+// Renvoie NaN si non parsable.
+function parseAmountFr(raw) {
+  if (raw == null) return NaN;
+  const s = String(raw).trim().replace(',', '.');
+  if (s === '') return NaN;
+  return parseFloat(s);
+}
+
+// Helper : renvoie une erreur 400 JSON et log côté serveur pour traçabilité.
+function badRequest(res, message, context) {
+  if (context) console.warn('[validation]', context, '→', message);
+  return res.status(400).json({ error: message });
+}
+
 // Semaine ISO courante + année ISO (offset 6h → changement dimanche 18h).
 async function getCurrentWeek() {
   return getWeekFromTimestamp(new Date());
@@ -344,10 +359,26 @@ router.get('/absences', requireEmployee, async (req, res) => {
   });
 });
 
+const ABSENCE_TYPES = ['conge', 'maladie', 'accident', 'perso', 'autre'];
+const JUSTIFICATIF_VALUES = ['oui', 'non', 'a_venir'];
+
 router.post('/absences', requireEmployee, async (req, res) => {
   try {
     const { week: currentWeek, year: currentYear } = getCurrentWeekAndYear();
     const { dateStart, dateEnd, type, justificatif, comment } = req.body;
+
+    if (!ABSENCE_TYPES.includes(type)) {
+      return badRequest(res, 'Type d’absence invalide', 'absence');
+    }
+    const start = new Date(dateStart);
+    const end = new Date(dateEnd);
+    if (isNaN(start.getTime())) return badRequest(res, 'Date de début invalide', 'absence');
+    if (isNaN(end.getTime())) return badRequest(res, 'Date de fin invalide', 'absence');
+    if (end < start) return badRequest(res, 'La date de fin doit être après la date de début', 'absence');
+    if (justificatif && !JUSTIFICATIF_VALUES.includes(justificatif)) {
+      return badRequest(res, 'Justificatif invalide', 'absence');
+    }
+
     await prisma.absence.create({
       data: {
         employeeId: req.session.employeeId,
@@ -356,16 +387,16 @@ router.post('/absences', requireEmployee, async (req, res) => {
         week: currentWeek,
         year: currentYear,
         type,
-        dateStart: new Date(dateStart),
-        dateEnd: new Date(dateEnd),
+        dateStart: start,
+        dateEnd: end,
         justificatif: justificatif || null,
-        comment: comment || null
-      }
+        comment: comment || null,
+      },
     });
-    res.redirect('/absences?success=1');
+    res.json({ ok: true, message: 'Absence enregistrée' });
   } catch (err) {
     console.error('Absence error:', err);
-    res.status(500).send('Erreur serveur');
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -384,6 +415,19 @@ router.post('/frais', requireEmployee, async (req, res) => {
   try {
     const { week: currentWeek, year: currentYear } = getCurrentWeekAndYear();
     const { type, montant, comment } = req.body;
+
+    if (typeof type !== 'string' || !type.trim()) {
+      return badRequest(res, 'Type de frais requis', 'frais');
+    }
+    const known = await getExpenseTypes();
+    if (!known.some(t => t.key === type)) {
+      return badRequest(res, 'Type de frais inconnu', 'frais');
+    }
+    const amount = parseAmountFr(montant);
+    if (!isFinite(amount) || amount <= 0) {
+      return badRequest(res, 'Montant invalide (doit être un nombre > 0)', 'frais');
+    }
+
     await prisma.expense.create({
       data: {
         employeeId: req.session.employeeId,
@@ -392,14 +436,14 @@ router.post('/frais', requireEmployee, async (req, res) => {
         week: currentWeek,
         year: currentYear,
         type,
-        amount: parseFloat(montant),
-        comment: comment || null
-      }
+        amount,
+        comment: comment || null,
+      },
     });
-    res.redirect('/frais?success=1');
+    res.json({ ok: true, message: 'Note de frais enregistrée' });
   } catch (err) {
     console.error('Frais error:', err);
-    res.status(500).send('Erreur serveur');
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -419,10 +463,17 @@ router.get('/pannes', requireEmployee, async (req, res) => {
   });
 });
 
+const BREAKDOWN_TYPES = ['moteur', 'pneu', 'electricite', 'citerne', 'freins', 'accident', 'autre'];
+
 router.post('/pannes', requireEmployee, async (req, res) => {
   try {
     const { week: currentWeek, year: currentYear } = getCurrentWeekAndYear();
     const { plaqueCamion, plaqueCiterne, type, position, comment } = req.body;
+
+    if (!BREAKDOWN_TYPES.includes(type)) {
+      return badRequest(res, 'Type de panne requis', 'pannes');
+    }
+
     await prisma.breakdown.create({
       data: {
         employeeId: req.session.employeeId,
@@ -434,13 +485,13 @@ router.post('/pannes', requireEmployee, async (req, res) => {
         tankerPlate: plaqueCiterne || null,
         type: type || null,
         position: position || null,
-        comment: comment || null
-      }
+        comment: comment || null,
+      },
     });
-    res.redirect('/pannes?success=1');
+    res.json({ ok: true, message: 'Panne enregistrée' });
   } catch (err) {
     console.error('Pannes error:', err);
-    res.status(500).send('Erreur serveur');
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -476,7 +527,23 @@ router.post('/rapatriements', requireEmployee, requireRapatriementAccess, async 
   try {
     const { week: currentWeek, year: currentYear } = getCurrentWeekAndYear();
     const { plaqueCamion, plaqueCiterne, fuel, departure, comment } = req.body;
-    const fuelNum = parseInt(fuel);
+
+    const hasAnyValue = (plaqueCamion && plaqueCamion.trim())
+      || (plaqueCiterne && plaqueCiterne.trim())
+      || (fuel != null && String(fuel).trim() !== '')
+      || (departure && departure.trim());
+    if (!hasAnyValue) {
+      return badRequest(res, 'Renseignez au moins un champ', 'rapatriements');
+    }
+
+    let fuelNum = null;
+    if (fuel != null && String(fuel).trim() !== '') {
+      fuelNum = parseInt(fuel, 10);
+      if (!isFinite(fuelNum) || fuelNum < 0 || fuelNum > 100) {
+        return badRequest(res, 'Niveau d’essence invalide (0–100)', 'rapatriements');
+      }
+    }
+
     await prisma.repatriation.create({
       data: {
         employeeId: req.session.employeeId,
@@ -486,15 +553,15 @@ router.post('/rapatriements', requireEmployee, requireRapatriementAccess, async 
         year: currentYear,
         truckPlate: plaqueCamion || null,
         tankerPlate: plaqueCiterne || null,
-        fuel: isFinite(fuelNum) ? fuelNum : null,
+        fuel: fuelNum,
         departure: departure || null,
-        comment: comment || null
-      }
+        comment: comment || null,
+      },
     });
-    res.redirect('/rapatriements?success=1');
+    res.json({ ok: true, message: 'Rapatriement enregistré' });
   } catch (err) {
     console.error('Rapatriements error:', err);
-    res.status(500).send('Erreur serveur');
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 

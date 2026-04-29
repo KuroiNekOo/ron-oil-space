@@ -35,7 +35,7 @@
                 </div>
             </div>
             <div class="form-page-main">
-                <form class="form-card" id="main-form" method="POST" action="/pannes" novalidate>
+                <form class="form-card" id="main-form" method="POST" action="/pannes">
                     <div class="form-grid">
                         <div>
                             <label class="f-label">Plaque du camion</label>
@@ -56,9 +56,9 @@
                             </select>
                         </div>
                         <div>
-                            <label class="f-label">Type de panne</label>
-                            <select class="f-select" name="type">
-                                <option value="" selected>S&eacute;lectionner...</option>
+                            <label class="f-label f-required">Type de panne</label>
+                            <select class="f-select" name="type" required>
+                                <option value="" disabled selected>S&eacute;lectionner...</option>
                                 <option value="moteur">Moteur</option>
                                 <option value="pneu">Pneu / Roue</option>
                                 <option value="electricite">&Eacute;lectricit&eacute;</option>
@@ -108,6 +108,6 @@
             })();
         <% } %>
     </script>
-    <script src="/js/form-guard.js"></script>
+    <script src="/js/employee-form.js"></script>
 </body>
 </html>
