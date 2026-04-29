@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL — FAQ</title>
+    <link rel="stylesheet" href="/css/shared.css">
+</head>
+<body>
+    <%- include('../partials/employee-sidebar', { currentPage: 'faq', employee: employee, currentWeek: currentWeek }) %>
+
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title">FAQ</div>
+            <div class="page-subtitle">R&eacute;ponses aux questions fr&eacute;quentes</div>
+        </div>
+
+        <% var totalEntries = categories.reduce(function(s, c) { return s + c.entries.length; }, 0); %>
+
+        <% if (totalEntries === 0) { %>
+            <div class="card faq-empty">
+                <i class="fa-solid fa-circle-info"></i>
+                <div>Aucune question pour le moment. La FAQ sera enrichie par l'administration.</div>
+            </div>
+        <% } else { %>
+            <div class="faq-toolbar">
+                <input type="text" class="admin-search faq-search" id="faq-search" placeholder="Rechercher une question, un mot-cl&eacute;...">
+                <div class="faq-search-stats" id="faq-stats"><%= totalEntries %> r&eacute;ponse<%= totalEntries > 1 ? 's' : '' %></div>
+            </div>
+
+            <div id="faq-list">
+                <% categories.forEach(function(cat) { %>
+                    <% if (cat.entries.length === 0) return; %>
+                    <div class="faq-cat-block" data-cat-id="<%= cat.id %>">
+                        <div class="faq-cat-title"><%= cat.name %></div>
+                        <div class="faq-cat-body">
+                            <% cat.entries.forEach(function(e) { %>
+                                <details class="faq-q" data-q="<%= e.question.toLowerCase() %>">
+                                    <summary>
+                                        <span class="faq-q-text"><%= e.question %></span>
+                                        <i class="fa-solid fa-chevron-down faq-q-chev"></i>
+                                    </summary>
+                                    <div class="faq-q-ans"><%- e.answer %></div>
+                                </details>
+                            <% }); %>
+                        </div>
+                    </div>
+                <% }); %>
+            </div>
+
+            <div class="faq-no-results" id="faq-no-results" style="display:none;">
+                <i class="fa-solid fa-circle-question"></i>
+                <div>Aucun r&eacute;sultat pour cette recherche.</div>
+            </div>
+        <% } %>
+    </main>
+
+    <style>
+        .faq-toolbar {
+            display:flex; align-items:center; gap:14px;
+            margin-bottom:18px;
+        }
+        .faq-search { flex:1; max-width:520px; }
+        .faq-search-stats { font-size:12px; color:var(--text-muted); font-family:var(--font-mono); }
+
+        .faq-cat-block { margin-bottom:24px; }
+        .faq-cat-title {
+            font-family:var(--font-display); font-size:13px; font-weight:700;
+            letter-spacing:.16em; text-transform:uppercase; color:var(--accent);
+            padding-bottom:8px; margin-bottom:10px;
+            border-bottom:1px solid var(--border-accent, rgba(255,84,34,.35));
+        }
+        .faq-cat-body { display:flex; flex-direction:column; gap:8px; }
+
+        details.faq-q {
+            background:var(--bg-card); border:1px solid var(--border);
+            transition:border-color .15s;
+        }
+        details.faq-q:hover { border-color:rgba(255,255,255,.14); }
+        details.faq-q[open] { border-color:var(--border-accent, rgba(255,84,34,.35)); }
+        details.faq-q summary {
+            display:flex; align-items:center; justify-content:space-between; gap:10px;
+            padding:14px 18px; cursor:pointer; user-select:none;
+            list-style:none; font-weight:500; font-size:14px;
+        }
+        details.faq-q summary::-webkit-details-marker { display:none; }
+        .faq-q-text { flex:1; }
+        .faq-q-chev { color:var(--text-muted); font-size:12px; transition:transform .2s, color .15s; }
+        details.faq-q[open] .faq-q-chev { transform:rotate(180deg); color:var(--accent); }
+        .faq-q-ans {
+            padding:0 18px 16px; font-size:13.5px; color:var(--text-secondary);
+            line-height:1.65; border-top:1px solid var(--border);
+            padding-top:14px; margin-top:0;
+        }
+        .faq-q-ans p { margin:0 0 10px; }
+        .faq-q-ans p:last-child { margin-bottom:0; }
+        .faq-q-ans ul, .faq-q-ans ol { margin:8px 0 8px 22px; }
+        .faq-q-ans li { margin:3px 0; }
+        .faq-q-ans a { color:var(--accent); text-decoration:none; border-bottom:1px solid currentColor; }
+        .faq-q-ans a:hover { color:var(--accent-hover, #FF6D3F); }
+        .faq-q-ans strong { color:var(--text-primary); }
+
+        .faq-empty, .faq-no-results {
+            padding:32px 24px; text-align:center; color:var(--text-secondary);
+            display:flex; flex-direction:column; align-items:center; gap:14px;
+        }
+        .faq-empty i, .faq-no-results i { font-size:28px; color:var(--text-muted); }
+
+        .faq-q.faq-hidden { display:none; }
+        .faq-cat-block.faq-hidden { display:none; }
+    </style>
+
+    <script>
+        (function() {
+            var input = document.getElementById('faq-search');
+            if (!input) return;
+            var stats = document.getElementById('faq-stats');
+            var noResults = document.getElementById('faq-no-results');
+            var list = document.getElementById('faq-list');
+            var qNodes = document.querySelectorAll('details.faq-q');
+            var catNodes = document.querySelectorAll('.faq-cat-block');
+
+            function applyFilter() {
+                var q = input.value.trim().toLowerCase();
+                var visible = 0;
+                qNodes.forEach(function(node) {
+                    var qText = node.dataset.q || '';
+                    var ansText = (node.querySelector('.faq-q-ans').textContent || '').toLowerCase();
+                    var match = !q || qText.indexOf(q) !== -1 || ansText.indexOf(q) !== -1;
+                    node.classList.toggle('faq-hidden', !match);
+                    if (match) visible++;
+                    // Auto-open les matchs quand recherche active
+                    if (q && match) node.open = true;
+                    if (!q) node.open = false;
+                });
+                catNodes.forEach(function(cat) {
+                    var anyVisible = cat.querySelectorAll('details.faq-q:not(.faq-hidden)').length > 0;
+                    cat.classList.toggle('faq-hidden', !anyVisible);
+                });
+                stats.textContent = visible + ' réponse' + (visible > 1 ? 's' : '');
+                noResults.style.display = (visible === 0 && q) ? 'flex' : 'none';
+                list.style.display = (visible === 0 && q) ? 'none' : '';
+            }
+            input.addEventListener('input', applyFilter);
+        })();
+    </script>
+</body>
+</html>

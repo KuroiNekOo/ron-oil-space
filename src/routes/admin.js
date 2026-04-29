@@ -1451,4 +1451,182 @@ router.get('/services', async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════
+//  FAQ
+// ══════════════════════════════════════
+
+// Charge toutes les catégories triées par position avec leurs entrées triées
+// par position. Utilisé à la fois par /admin/faq et /faq côté employé.
+async function loadFaqTree() {
+  return prisma.faqCategory.findMany({
+    orderBy: [{ position: 'asc' }, { id: 'asc' }],
+    include: {
+      entries: { orderBy: [{ position: 'asc' }, { id: 'asc' }] },
+    },
+  });
+}
+
+router.get('/faq', async (req, res) => {
+  try {
+    const categories = await loadFaqTree();
+    res.render('admin/faq', { categories });
+  } catch (err) {
+    console.error('GET /admin/faq error:', err);
+    res.status(500).send('Erreur serveur');
+  }
+});
+
+// ─── Catégories ───
+
+router.post('/faq/categories', async (req, res) => {
+  try {
+    const name = String(req.body.name || '').trim();
+    if (!name) return res.status(400).json({ error: 'Nom requis' });
+    const max = await prisma.faqCategory.aggregate({ _max: { position: true } });
+    const cat = await prisma.faqCategory.create({
+      data: { name, position: (max._max.position || 0) + 1 },
+    });
+    res.json({ ok: true, id: cat.id });
+  } catch (err) {
+    console.error('POST /admin/faq/categories error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/faq/categories/:id/edit', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const name = String(req.body.name || '').trim();
+    if (!name) return res.status(400).json({ error: 'Nom requis' });
+    await prisma.faqCategory.update({ where: { id }, data: { name } });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /admin/faq/categories/:id/edit error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/faq/categories/:id/delete', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    await prisma.faqCategory.delete({ where: { id } });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /admin/faq/categories/:id/delete error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Échange la position avec le voisin (haut ou bas) — beaucoup plus simple qu'une
+// renumérotation globale et suffisant pour de petites listes (~dizaines de cat).
+async function swapCategoryPosition(id, direction) {
+  const cat = await prisma.faqCategory.findUnique({ where: { id } });
+  if (!cat) return;
+  const op = direction === 'up' ? 'lt' : 'gt';
+  const order = direction === 'up' ? 'desc' : 'asc';
+  const neighbor = await prisma.faqCategory.findFirst({
+    where: { position: { [op]: cat.position } },
+    orderBy: { position: order },
+  });
+  if (!neighbor) return;
+  await prisma.$transaction([
+    prisma.faqCategory.update({ where: { id: cat.id }, data: { position: neighbor.position } }),
+    prisma.faqCategory.update({ where: { id: neighbor.id }, data: { position: cat.position } }),
+  ]);
+}
+
+router.post('/faq/categories/:id/move', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const direction = req.body.direction === 'up' ? 'up' : 'down';
+    await swapCategoryPosition(id, direction);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /admin/faq/categories/:id/move error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Entrées ───
+
+router.post('/faq/entries', async (req, res) => {
+  try {
+    const categoryId = parseInt(req.body.categoryId);
+    const question = String(req.body.question || '').trim();
+    const answer = String(req.body.answer || '').trim();
+    if (!categoryId || !question || !answer) {
+      return res.status(400).json({ error: 'Catégorie, question et réponse requises' });
+    }
+    const max = await prisma.faqEntry.aggregate({
+      where: { categoryId }, _max: { position: true },
+    });
+    const e = await prisma.faqEntry.create({
+      data: { categoryId, question, answer, position: (max._max.position || 0) + 1 },
+    });
+    res.json({ ok: true, id: e.id });
+  } catch (err) {
+    console.error('POST /admin/faq/entries error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/faq/entries/:id/edit', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const categoryId = parseInt(req.body.categoryId);
+    const question = String(req.body.question || '').trim();
+    const answer = String(req.body.answer || '').trim();
+    if (!categoryId || !question || !answer) {
+      return res.status(400).json({ error: 'Catégorie, question et réponse requises' });
+    }
+    await prisma.faqEntry.update({
+      where: { id },
+      data: { categoryId, question, answer },
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /admin/faq/entries/:id/edit error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/faq/entries/:id/delete', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    await prisma.faqEntry.delete({ where: { id } });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /admin/faq/entries/:id/delete error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+async function swapEntryPosition(id, direction) {
+  const entry = await prisma.faqEntry.findUnique({ where: { id } });
+  if (!entry) return;
+  const op = direction === 'up' ? 'lt' : 'gt';
+  const order = direction === 'up' ? 'desc' : 'asc';
+  const neighbor = await prisma.faqEntry.findFirst({
+    where: { categoryId: entry.categoryId, position: { [op]: entry.position } },
+    orderBy: { position: order },
+  });
+  if (!neighbor) return;
+  await prisma.$transaction([
+    prisma.faqEntry.update({ where: { id: entry.id }, data: { position: neighbor.position } }),
+    prisma.faqEntry.update({ where: { id: neighbor.id }, data: { position: entry.position } }),
+  ]);
+}
+
+router.post('/faq/entries/:id/move', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const direction = req.body.direction === 'up' ? 'up' : 'down';
+    await swapEntryPosition(id, direction);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /admin/faq/entries/:id/move error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

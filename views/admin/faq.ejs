@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL Admin — FAQ</title>
+    <link rel="stylesheet" href="/css/admin-shared.css">
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+</head>
+<body>
+    <%- include('../partials/admin-sidebar', { currentPage: 'faq' }) %>
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title">FAQ</div>
+            <div class="page-subtitle">Questions / r&eacute;ponses affich&eacute;es sur le panel employ&eacute;</div>
+        </div>
+
+        <div class="faq-layout">
+            <!-- Sidebar catégories -->
+            <aside class="faq-cats card" style="padding:0;">
+                <div class="faq-cats-header">
+                    <div class="faq-cats-title">Cat&eacute;gories</div>
+                    <button class="btn-add-mini" onclick="openCategoryModal()" title="Nouvelle cat&eacute;gorie">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+                <div class="faq-cats-list" id="faq-cats-list">
+                    <% if (categories.length === 0) { %>
+                        <div class="faq-empty-mini">Aucune cat&eacute;gorie.<br><span style="color:var(--text-muted);">Cliquez sur + pour commencer.</span></div>
+                    <% } %>
+                    <% categories.forEach(function(c, i) { %>
+                        <div class="faq-cat-item<%= i === 0 ? ' active' : '' %>" data-cat-id="<%= c.id %>" onclick="selectCategory(<%= c.id %>)">
+                            <div class="faq-cat-name">
+                                <%= c.name %>
+                                <span class="faq-cat-count"><%= c.entries.length %></span>
+                            </div>
+                            <div class="faq-cat-actions" onclick="event.stopPropagation();">
+                                <button class="btn-icon" title="Monter" onclick="moveCategory(<%= c.id %>, 'up')"><i class="fa-solid fa-chevron-up"></i></button>
+                                <button class="btn-icon" title="Descendre" onclick="moveCategory(<%= c.id %>, 'down')"><i class="fa-solid fa-chevron-down"></i></button>
+                                <button class="btn-icon" title="Renommer" onclick="editCategory(<%= c.id %>)"><i class="fa-solid fa-pen"></i></button>
+                                <button class="btn-icon btn-icon-danger" title="Supprimer" onclick="deleteCategory(<%= c.id %>)"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </div>
+                    <% }); %>
+                </div>
+            </aside>
+
+            <!-- Main : entrées de la catégorie sélectionnée -->
+            <section class="faq-entries card" style="padding:0;">
+                <div class="faq-entries-header">
+                    <div class="faq-entries-title" id="faq-entries-title">
+                        <%= categories.length > 0 ? categories[0].name : 'Aucune catégorie' %>
+                    </div>
+                    <button class="btn-add" onclick="openEntryModal()" id="btn-add-entry">
+                        <i class="fa-solid fa-plus"></i> Nouvelle entr&eacute;e
+                    </button>
+                </div>
+                <div class="faq-entries-list" id="faq-entries-list">
+                    <!-- Rempli par renderEntries() -->
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Modal Catégorie (create/edit) -->
+    <div class="modal-overlay" id="modal-category">
+        <div class="modal" style="max-width:480px;">
+            <div class="modal-header">
+                <div class="modal-title" id="modal-category-title">Nouvelle cat&eacute;gorie</div>
+                <button class="modal-close" onclick="closeModal('modal-category')">&#10005;</button>
+            </div>
+            <form id="form-category">
+                <input type="hidden" name="id" value="">
+                <div class="modal-body">
+                    <label class="f-label f-required">Nom</label>
+                    <input type="text" class="f-input" name="name" placeholder="ex. Salaires &amp; primes" required maxlength="80" autofocus>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('modal-category')">Annuler</button>
+                    <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Entrée (create/edit) -->
+    <div class="modal-overlay" id="modal-entry">
+        <div class="modal" style="max-width:780px;">
+            <div class="modal-header">
+                <div class="modal-title" id="modal-entry-title">Nouvelle entr&eacute;e</div>
+                <button class="modal-close" onclick="closeModal('modal-entry')">&#10005;</button>
+            </div>
+            <form id="form-entry">
+                <input type="hidden" name="id" value="">
+                <input type="hidden" name="answer" value="">
+                <div class="modal-body">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+                        <div>
+                            <label class="f-label f-required">Cat&eacute;gorie</label>
+                            <select class="f-select" name="categoryId" required>
+                                <% categories.forEach(function(c) { %>
+                                    <option value="<%= c.id %>"><%= c.name %></option>
+                                <% }); %>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="f-label f-required">Question</label>
+                            <input type="text" class="f-input" name="question" required maxlength="200" placeholder="Comment d&eacute;clarer une absence ?">
+                        </div>
+                    </div>
+                    <label class="f-label f-required">R&eacute;ponse</label>
+                    <div id="quill-editor" style="min-height:240px;background:var(--bg-card);"></div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">
+                        Mise en forme : gras, italique, listes, liens. La saisie est rendue telle quelle c&ocirc;t&eacute; employ&eacute;.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('modal-entry')">Annuler</button>
+                    <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="toast success" id="toast">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toast-msg">Action effectu&eacute;e</span>
+    </div>
+
+    <style>
+        .faq-layout { display:grid; grid-template-columns:320px 1fr; gap:20px; align-items:start; }
+        .faq-cats-header, .faq-entries-header {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:14px 16px; border-bottom:1px solid var(--border);
+        }
+        .faq-cats-title { font-family:var(--font-display); font-size:13px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--text-secondary); }
+        .faq-entries-title { font-family:var(--font-display); font-size:16px; font-weight:700; }
+        .btn-add-mini {
+            background:var(--accent); color:#fff; border:none; cursor:pointer;
+            width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center;
+            transition:background .15s;
+        }
+        .btn-add-mini:hover { background:var(--accent-hover, #FF6D3F); }
+        .faq-cats-list { padding:6px; max-height:600px; overflow-y:auto; }
+        .faq-cat-item {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:10px 12px; cursor:pointer; border:1px solid transparent;
+            transition:background .15s, border-color .15s;
+        }
+        .faq-cat-item:hover { background:var(--bg-card-hover); }
+        .faq-cat-item.active { background:var(--accent-dim); border-color:var(--border-accent); }
+        .faq-cat-name { font-weight:500; font-size:13.5px; display:flex; align-items:center; gap:8px; min-width:0; flex:1; }
+        .faq-cat-count {
+            font-family:var(--font-mono); font-size:11px; padding:1px 6px;
+            background:var(--bg-card); color:var(--text-muted); border-radius:2px;
+        }
+        .faq-cat-item.active .faq-cat-count { background:var(--bg-base); color:var(--text-secondary); }
+        .faq-cat-actions { display:none; gap:2px; }
+        .faq-cat-item:hover .faq-cat-actions, .faq-cat-item.active .faq-cat-actions { display:flex; }
+        .btn-icon {
+            background:none; border:none; color:var(--text-muted); cursor:pointer;
+            width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center;
+            font-size:11px; transition:color .15s, background .15s;
+        }
+        .btn-icon:hover { color:var(--text-primary); background:var(--bg-card); }
+        .btn-icon-danger:hover { color:var(--danger); }
+
+        .faq-entries-list { padding:14px 16px; min-height:300px; }
+        .faq-entry-item {
+            background:var(--bg-card); border:1px solid var(--border);
+            padding:14px 16px; margin-bottom:10px;
+        }
+        .faq-entry-head {
+            display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+        }
+        .faq-entry-q { font-weight:600; font-size:14px; flex:1; }
+        .faq-entry-actions { display:flex; gap:2px; flex-shrink:0; }
+        .faq-entry-a {
+            margin-top:8px; padding-top:8px; border-top:1px solid var(--border);
+            font-size:13px; color:var(--text-secondary); line-height:1.55;
+        }
+        .faq-entry-a p { margin:0 0 6px; }
+        .faq-entry-a p:last-child { margin-bottom:0; }
+        .faq-entry-a ul, .faq-entry-a ol { margin:6px 0 6px 20px; }
+        .faq-entry-a a { color:var(--accent); }
+        .faq-entry-a strong { color:var(--text-primary); }
+        .faq-empty-mini, .faq-empty {
+            padding:24px 16px; text-align:center; color:var(--text-secondary);
+            font-size:12.5px; line-height:1.55;
+        }
+        .faq-empty { padding:48px 16px; }
+
+        /* Quill dark mode tweaks */
+        .ql-toolbar.ql-snow {
+            border-color:var(--border) !important;
+            background:var(--bg-panel);
+        }
+        .ql-container.ql-snow {
+            border-color:var(--border) !important;
+            font-family:var(--font-body);
+            font-size:13.5px;
+        }
+        .ql-editor { color:var(--text-primary); min-height:200px; }
+        .ql-editor.ql-blank::before { color:var(--text-muted); font-style:normal; }
+        .ql-snow .ql-stroke { stroke:var(--text-secondary); }
+        .ql-snow .ql-fill { fill:var(--text-secondary); }
+        .ql-snow .ql-picker { color:var(--text-secondary); }
+        .ql-snow .ql-active .ql-stroke { stroke:var(--accent); }
+        .ql-snow .ql-active .ql-fill { fill:var(--accent); }
+
+        @media (max-width: 900px) {
+            .faq-layout { grid-template-columns:1fr; }
+        }
+    </style>
+
+    <script type="application/json" id="faq-data"><%- JSON.stringify(categories).replace(/</g, '\\u003c') %></script>
+    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+    <script src="/js/admin-ajax.js"></script>
+    <script>
+        var faqData = JSON.parse(document.getElementById('faq-data').textContent);
+        var selectedCatId = faqData.length > 0 ? faqData[0].id : null;
+
+        var quill = null;
+        function initQuill() {
+            if (quill) return quill;
+            quill = new Quill('#quill-editor', {
+                theme: 'snow',
+                placeholder: 'Rédigez la réponse...',
+                modules: {
+                    toolbar: [
+                        ['bold', 'italic', 'underline'],
+                        [{ list: 'ordered' }, { list: 'bullet' }],
+                        ['link'],
+                        ['clean'],
+                    ],
+                },
+            });
+            return quill;
+        }
+
+        function selectCategory(id) {
+            selectedCatId = id;
+            document.querySelectorAll('.faq-cat-item').forEach(function(el) {
+                el.classList.toggle('active', Number(el.dataset.catId) === id);
+            });
+            renderEntries();
+        }
+
+        function renderEntries() {
+            var cat = faqData.find(function(c) { return c.id === selectedCatId; });
+            var titleEl = document.getElementById('faq-entries-title');
+            var listEl = document.getElementById('faq-entries-list');
+            if (!cat) {
+                titleEl.textContent = 'Aucune catégorie';
+                listEl.innerHTML = '<div class="faq-empty">Créez d\'abord une catégorie pour ajouter des entrées.</div>';
+                return;
+            }
+            titleEl.textContent = cat.name;
+            if (cat.entries.length === 0) {
+                listEl.innerHTML = '<div class="faq-empty">Aucune entrée dans cette catégorie.</div>';
+                return;
+            }
+            listEl.innerHTML = cat.entries.map(function(e) {
+                return '<div class="faq-entry-item" data-entry-id="' + e.id + '">' +
+                        '<div class="faq-entry-head">' +
+                            '<div class="faq-entry-q">' + escapeHtml(e.question) + '</div>' +
+                            '<div class="faq-entry-actions">' +
+                                '<button class="btn-icon" title="Monter" onclick="moveEntry(' + e.id + ', \'up\')"><i class="fa-solid fa-chevron-up"></i></button>' +
+                                '<button class="btn-icon" title="Descendre" onclick="moveEntry(' + e.id + ', \'down\')"><i class="fa-solid fa-chevron-down"></i></button>' +
+                                '<button class="btn-icon" title="Modifier" onclick="editEntry(' + e.id + ')"><i class="fa-solid fa-pen"></i></button>' +
+                                '<button class="btn-icon btn-icon-danger" title="Supprimer" onclick="deleteEntry(' + e.id + ')"><i class="fa-solid fa-trash"></i></button>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="faq-entry-a">' + e.answer + '</div>' +
+                    '</div>';
+            }).join('');
+        }
+
+        // ── Catégories ──
+        function openCategoryModal() {
+            var form = document.getElementById('form-category');
+            form.id.value = '';
+            form.name.value = '';
+            document.getElementById('modal-category-title').textContent = 'Nouvelle catégorie';
+            openModal('modal-category');
+        }
+        function editCategory(id) {
+            var cat = faqData.find(function(c) { return c.id === id; });
+            if (!cat) return;
+            var form = document.getElementById('form-category');
+            form.id.value = id;
+            form.name.value = cat.name;
+            document.getElementById('modal-category-title').textContent = 'Renommer la catégorie';
+            openModal('modal-category');
+        }
+        function deleteCategory(id) {
+            var cat = faqData.find(function(c) { return c.id === id; });
+            if (!cat) return;
+            if (!confirm('Supprimer la catégorie "' + cat.name + '" et toutes ses entrées ?')) return;
+            AdminAjax.post('/admin/faq/categories/' + id + '/delete')
+                .then(function() { showToast('Catégorie supprimée'); reload(); })
+                .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+        function moveCategory(id, direction) {
+            var url = '/admin/faq/categories/' + id + '/move';
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+                body: 'direction=' + direction,
+            }).then(function(r) { return r.json(); })
+              .then(function() { reload(); })
+              .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+
+        document.getElementById('form-category').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var form = e.target;
+            var id = form.id.value;
+            var name = form.name.value.trim();
+            if (!name) return;
+            var url = id ? '/admin/faq/categories/' + id + '/edit' : '/admin/faq/categories';
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+                body: 'name=' + encodeURIComponent(name),
+            }).then(function(r) {
+                return r.json().then(function(d) { return { ok: r.ok, data: d }; });
+            }).then(function(res) {
+                if (!res.ok) throw new Error((res.data && res.data.error) || 'Erreur');
+                closeModal('modal-category');
+                showToast(id ? 'Catégorie renommée' : 'Catégorie créée');
+                reload(res.data && res.data.id ? res.data.id : null);
+            }).catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        });
+
+        // ── Entrées ──
+        // Repeuple le <select> des catégories à partir de faqData. Nécessaire
+        // car la modale est en dehors de <main>, donc AdminAjax.reloadMain()
+        // ne la touche pas → sinon le select garde l'état initial du render.
+        function refreshCategorySelect(selectedId) {
+            var sel = document.getElementById('form-entry').categoryId;
+            sel.innerHTML = faqData.map(function(c) {
+                return '<option value="' + c.id + '">' + escapeHtml(c.name) + '</option>';
+            }).join('');
+            if (selectedId != null) sel.value = selectedId;
+        }
+
+        function openEntryModal() {
+            if (faqData.length === 0) {
+                showToast('Créez d\'abord une catégorie', 'error');
+                return;
+            }
+            var form = document.getElementById('form-entry');
+            form.id.value = '';
+            form.question.value = '';
+            refreshCategorySelect(selectedCatId || faqData[0].id);
+            initQuill();
+            quill.setContents([]);
+            document.getElementById('modal-entry-title').textContent = 'Nouvelle entrée';
+            openModal('modal-entry');
+        }
+        function editEntry(id) {
+            var cat = faqData.find(function(c) { return c.id === selectedCatId; });
+            if (!cat) return;
+            var entry = cat.entries.find(function(e) { return e.id === id; });
+            if (!entry) return;
+            var form = document.getElementById('form-entry');
+            form.id.value = entry.id;
+            form.question.value = entry.question;
+            refreshCategorySelect(entry.categoryId);
+            initQuill();
+            // setContents requires Delta; use clipboard.dangerouslyPasteHTML for HTML import
+            quill.setContents([]);
+            quill.clipboard.dangerouslyPasteHTML(0, entry.answer);
+            document.getElementById('modal-entry-title').textContent = 'Modifier l’entrée';
+            openModal('modal-entry');
+        }
+        function deleteEntry(id) {
+            var cat = faqData.find(function(c) { return c.id === selectedCatId; });
+            var entry = cat && cat.entries.find(function(e) { return e.id === id; });
+            if (!entry) return;
+            if (!confirm('Supprimer la question "' + entry.question + '" ?')) return;
+            AdminAjax.post('/admin/faq/entries/' + id + '/delete')
+                .then(function() { showToast('Entrée supprimée'); reload(); })
+                .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+        function moveEntry(id, direction) {
+            fetch('/admin/faq/entries/' + id + '/move', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+                body: 'direction=' + direction,
+            }).then(function(r) { return r.json(); })
+              .then(function() { reload(); })
+              .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+
+        document.getElementById('form-entry').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var form = e.target;
+            var html = quill.getSemanticHTML().trim();
+            // Quill renvoie "<p></p>" pour un éditeur vide → considérer vide.
+            var text = quill.getText().trim();
+            if (!text) { showToast('Réponse vide', 'error'); return; }
+            form.answer.value = html;
+
+            var id = form.id.value;
+            var url = id ? '/admin/faq/entries/' + id + '/edit' : '/admin/faq/entries';
+            AdminAjax.postForm(form, url).then(function() {
+                closeModal('modal-entry');
+                showToast(id ? 'Entrée modifiée' : 'Entrée créée');
+                reload();
+            }).catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        });
+
+        // AdminAjax.postForm n'accepte pas une URL custom → wrapper via fetch direct
+        var origPostForm = AdminAjax.postForm;
+        AdminAjax.postForm = function(form, urlOverride) {
+            if (!urlOverride) return origPostForm(form);
+            var body = new URLSearchParams(new FormData(form));
+            return fetch(urlOverride, {
+                method: 'POST',
+                body: body,
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                },
+            }).then(function(r) {
+                if (!r.ok) return r.text().then(function(t) {
+                    try { var p = JSON.parse(t); throw new Error(p.error || 'HTTP ' + r.status); }
+                    catch (_) { throw new Error(t || 'HTTP ' + r.status); }
+                });
+                return r.json();
+            });
+        };
+
+        // ── Reload ──
+        function reload(focusCatId) {
+            return AdminAjax.reloadMain().then(function() {
+                var el = document.getElementById('faq-data');
+                if (el) faqData = JSON.parse(el.textContent);
+                // Préserve la sélection si la cat existe encore, sinon retombe sur la 1re
+                if (focusCatId && faqData.find(function(c) { return c.id === focusCatId; })) {
+                    selectedCatId = focusCatId;
+                } else if (!faqData.find(function(c) { return c.id === selectedCatId; })) {
+                    selectedCatId = faqData.length > 0 ? faqData[0].id : null;
+                }
+                document.querySelectorAll('.faq-cat-item').forEach(function(el) {
+                    el.classList.toggle('active', Number(el.dataset.catId) === selectedCatId);
+                });
+                renderEntries();
+            });
+        }
+
+        // ── Helpers ──
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+        function openModal(id) {
+            document.getElementById(id).classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('open');
+            document.body.style.overflow = '';
+        }
+        function showToast(msg, type) {
+            type = type || 'success';
+            var t = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            t.className = 'toast ' + type + ' show';
+            setTimeout(function() { t.classList.remove('show'); }, 3500);
+        }
+
+        // Outside-click-to-close modals
+        document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+            var downTarget = null;
+            overlay.addEventListener('mousedown', function(e) { downTarget = e.target; });
+            overlay.addEventListener('mouseup', function(e) {
+                if (downTarget === overlay && e.target === overlay) closeModal(overlay.id);
+                downTarget = null;
+            });
+        });
+
+        // Init
+        renderEntries();
+    </script>
+</body>
+</html>

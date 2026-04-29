@@ -565,4 +565,23 @@ router.post('/rapatriements', requireEmployee, requireRapatriementAccess, async 
   }
 });
 
+// ─── GET /faq ───
+router.get('/faq', requireEmployee, async (req, res) => {
+  try {
+    const { week: currentWeek } = getCurrentWeekAndYear();
+    const employee = await getEmployee(req.session.employeeId);
+    if (!employee) return res.redirect('/login');
+    const categories = await prisma.faqCategory.findMany({
+      orderBy: [{ position: 'asc' }, { id: 'asc' }],
+      include: {
+        entries: { orderBy: [{ position: 'asc' }, { id: 'asc' }] },
+      },
+    });
+    res.render('employee/faq', { employee, currentWeek, categories });
+  } catch (err) {
+    console.error('FAQ error:', err);
+    res.status(500).send('Erreur serveur');
+  }
+});
+
 module.exports = router;

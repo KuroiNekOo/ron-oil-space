@@ -269,6 +269,35 @@ model SpecialBonus {
   @@index([year, week])
 }
 
+// ── FAQ ──
+
+// Catégorie de questions affichée comme un groupe accordion côté employé.
+// position : ordre d'affichage (asc) — modifiable depuis l'admin.
+model FaqCategory {
+  id        Int        @id @default(autoincrement())
+  name      String
+  position  Int        @default(0)
+  entries   FaqEntry[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+// Entrée Q/R. answer est du HTML produit par Quill côté admin (gras, listes,
+// liens…). Affiché tel quel côté employé — l'admin est de confiance (panel
+// interne, pas de saisie publique).
+model FaqEntry {
+  id         Int         @id @default(autoincrement())
+  categoryId Int
+  category   FaqCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  question   String
+  answer     String      // HTML
+  position   Int         @default(0)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@index([categoryId])
+}
+
 // ── Logs importés Google Sheets ──
 
 model LogEntry {
