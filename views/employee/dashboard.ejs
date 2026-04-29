@@ -406,7 +406,7 @@
                         <% const cls = p.rank === 1 ? 'pod-1st' : p.rank === 2 ? 'pod-2nd' : 'pod-3rd'; %>
                         <div class="pod-place <%= cls %>">
                             <div class="pod-name"><%= p.name.split(' ')[0] %></div>
-                            <div class="pod-gain"><%= fmt(p.gain) %></div>
+                            <div class="pod-gain"><%= p.deliveries %> livr.</div>
                             <div class="pod-block"><%= p.rank %></div>
                         </div>
                     <% }); %>

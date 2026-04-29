@@ -242,7 +242,7 @@ router.get('/dashboard', requireEmployee, async (req, res) => {
       .map(l => ({
         rank: l.rank,
         name: l.employee.firstName + ' ' + l.employee.lastName,
-        gain: l.gainEnterprise,
+        deliveries: l.deliveries,
       }));
     const podiumDisplay = [];
     const p2 = podium.find(p => p.rank === 2);
