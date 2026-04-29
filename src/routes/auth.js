@@ -101,7 +101,7 @@ router.post('/admin/login', async (req, res) => {
 router.get('/equipe', async (req, res) => {
   try {
     const employees = await prisma.employee.findMany({
-      where: { status: 'active' },
+      where: { status: 'active', showInTeam: true },
       select: { firstName: true, lastName: true },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
     });

@@ -120,7 +120,7 @@ router.post('/salaries', async (req, res) => {
   try {
     const {
       firstName, lastName, contract, role, phone,
-      hireDate, endDate, iban, discordId, notes,
+      hireDate, endDate, iban, discordId, notes, showInTeam,
     } = req.body;
 
     if (!discordId) {
@@ -150,6 +150,7 @@ router.post('/salaries', async (req, res) => {
           endDate: endDate ? new Date(endDate) : null,
           iban: iban || null,
           discordId,
+          showInTeam: showInTeam === 'on',
           notes: notes || null,
         },
       });
@@ -258,7 +259,7 @@ router.post('/salaries/:id/edit', async (req, res) => {
     const id = parseInt(req.params.id);
     const {
       firstName, lastName, contract, role, phone,
-      hireDate, endDate, iban, discordId, casierId, notes,
+      hireDate, endDate, iban, discordId, casierId, notes, showInTeam,
     } = req.body;
 
     // ID casier manuel : on synchronise channelId et casierId (le bot lit channelId)
@@ -278,6 +279,7 @@ router.post('/salaries/:id/edit', async (req, res) => {
         discordId: discordId || null,
         casierId: casier,
         channelId: casier,
+        showInTeam: showInTeam === 'on',
         notes: notes || null,
       },
     });

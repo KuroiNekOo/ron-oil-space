@@ -167,6 +167,12 @@
                             <input type="text" class="f-input" name="discordId" placeholder="ex. 123456789012345678" required>
                         </div>
                         <div class="form-group-full">
+                            <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;">
+                                <input type="checkbox" name="showInTeam" value="on" checked>
+                                <span style="font-size:13px;color:var(--text-secondary);">Afficher sur la page publique <strong>/equipe</strong></span>
+                            </label>
+                        </div>
+                        <div class="form-group-full">
                             <label class="f-label">Notes</label>
                             <textarea class="f-textarea" name="notes" placeholder="Informations compl&eacute;mentaires sur l'employ&eacute;..."></textarea>
                         </div>
@@ -236,6 +242,12 @@
                         <div>
                             <label class="f-label">ID Casier (salon Discord)</label>
                             <input type="text" class="f-input" name="casierId" placeholder="ex. 123456789012345678">
+                        </div>
+                        <div class="form-group-full">
+                            <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;">
+                                <input type="checkbox" name="showInTeam" value="on">
+                                <span style="font-size:13px;color:var(--text-secondary);">Afficher sur la page publique <strong>/equipe</strong></span>
+                            </label>
                         </div>
                         <div class="form-group-full">
                             <label class="f-label">Notes</label>
@@ -384,6 +396,7 @@
             form.iban.value      = emp.iban      || '';
             form.discordId.value = emp.discordId || '';
             form.casierId.value  = emp.casierId  || emp.channelId || '';
+            form.showInTeam.checked = emp.showInTeam !== false;
             form.notes.value     = emp.notes     || '';
             openModal('modal-edit');
         }
