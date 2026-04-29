@@ -16,6 +16,7 @@ const {
   getTier, getNextTier, getShareForRank, getPodiumPrize,
   computeCollectivePoints,
 } = require('../services/tiers');
+const { getStoredRecords } = require('../services/records');
 
 function fmt(n) {
   return new Intl.NumberFormat('fr-FR').format(Math.round(n)) + '$';
@@ -160,54 +161,6 @@ async function computeWeekStats(week, year) {
   return enriched;
 }
 
-// Records tous employés, toutes semaines confondues (année-aware → S1 2026 ≠ S1 2027).
-// Les livraisons d'employés inactifs ou supprimés sont exclues : leurs perf passées
-// disparaissent des records jusqu'à éventuelle réactivation.
-async function computeRecords() {
-  const [logs, activeEmployees] = await Promise.all([
-    prisma.logEntry.findMany({
-      where: { type: 'delivery' },
-      select: { data: true, week: true, year: true },
-    }),
-    prisma.employee.findMany({
-      where: { status: 'active' },
-      select: { firstName: true, lastName: true },
-    }),
-  ]);
-  const activeKeys = new Set(
-    activeEmployees.map(e => normalizeName(e.firstName + ' ' + e.lastName))
-  );
-
-  // Clé composite year|week pour éviter les collisions inter-années.
-  const weekQty = new Map();
-  const empWeekQty = new Map();
-  for (const log of logs) {
-    const d = JSON.parse(log.data);
-    const name = (d[0] || '').trim();
-    if (!name) continue;
-    if (!activeKeys.has(normalizeName(name))) continue;
-    const q = parseFloat(d[2]) || 0;
-    const wk = log.year + '|' + log.week;
-    weekQty.set(wk, (weekQty.get(wk) || 0) + q);
-    const k = name + '|' + wk;
-    empWeekQty.set(k, (empWeekQty.get(k) || 0) + q);
-  }
-
-  let maxWeekQty = 0;
-  for (const q of weekQty.values()) if (q > maxWeekQty) maxWeekQty = q;
-
-  let maxEmpQty = 0;
-  let maxEmpName = '—';
-  for (const [k, q] of empWeekQty) {
-    if (q > maxEmpQty) { maxEmpQty = q; maxEmpName = k.split('|')[0]; }
-  }
-
-  return {
-    companyRecord: Math.round(maxWeekQty / 100),
-    individualRecord: { value: Math.round(maxEmpQty / 100), name: maxEmpName },
-  };
-}
-
 // ─── GET /dashboard ───
 router.get('/dashboard', requireEmployee, async (req, res) => {
   try {
@@ -221,7 +174,7 @@ router.get('/dashboard', requireEmployee, async (req, res) => {
       myExpenses, myRepatCount, myImpoundCount,
     ] = await Promise.all([
       computeWeekStats(currentWeek, currentYear),
-      computeRecords(),
+      getStoredRecords(),
       getTiers(),
       getTierPrimeShares(),
       getPodiumPrizes(),
@@ -312,8 +265,11 @@ router.get('/dashboard', requireEmployee, async (req, res) => {
       nextTier,
       totalPlayers: leaderboard.length,
       totalDeliveries: totalDeliveriesThisWeek,
-      companyRecord: records.companyRecord,
-      individualRecord: records.individualRecord,
+      companyRecord: records.companyRecord.value,
+      individualRecord: {
+        value: records.individualRecord.value,
+        name: records.individualRecord.name,
+      },
       podium: podiumDisplay,
       weeklyDeliveryQuota,
       bonusMinDeliveries,

@@ -8,6 +8,7 @@ const router = express.Router();
 const prisma = require('../db');
 const { getWeekFromTimestamp, getWeekAndYear } = require('../services/week');
 const { rolloverWeek } = require('../services/rollover');
+const { refreshRecords } = require('../services/records');
 
 const LOGS_API_SECRET = process.env.LOGS_API_SECRET || '';
 
@@ -105,6 +106,13 @@ router.post('/logs/import', requireLogsSecret, async (req, res) => {
       });
       if (existingSet.has(data.sheetRow)) updated++;
       else inserted++;
+    }
+
+    // Si au moins 1 ligne delivery a bougé, on réévalue les records
+    // immédiatement (évite l'attente du tick périodique).
+    const deliveryTouched = valid.some(v => v.type === 'delivery');
+    if (deliveryTouched) {
+      refreshRecords().catch(e => console.error('[api] refreshRecords après import:', e.message));
     }
 
     res.json({ inserted, updated, skipped });

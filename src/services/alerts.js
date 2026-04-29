@@ -6,11 +6,14 @@
 const prisma = require('../db');
 const { rolloverWeek } = require('./rollover');
 const { notifyWeeklyStats, notifyContractAlert } = require('./bot');
+const { refreshRecords } = require('./records');
 
 const PERIOD_START_HOUR = parseInt(process.env.PERIOD_START_HOUR) || 18;
 const CONTRACT_ALERT_HOURS = parseInt(process.env.CONTRACT_ALERT_HOURS) || 48;
 // Fréquence de vérification des contrats (minutes). Défaut : 1440 = 1 check par jour.
 const CONTRACT_CHECK_INTERVAL_MIN = parseInt(process.env.CONTRACT_CHECK_INTERVAL_MINUTES) || 1440;
+// Fréquence de rafraîchissement des records (minutes). Défaut : 60 = 1 check / heure.
+const RECORDS_REFRESH_INTERVAL_MIN = parseInt(process.env.RECORDS_REFRESH_INTERVAL_MINUTES) || 60;
 const ALERT_LOG_KEY = 'contractAlertLog';
 const WEEKLY_ROLLOVER_KEY = 'lastWeeklyRolloverKey';
 
@@ -158,6 +161,20 @@ async function tickWeekly() {
   runWeeklyRollover().catch(e => console.error('[alerts] weekly rollover failed:', e));
 }
 
+async function runRecordsRefresh() {
+  try {
+    const r = await refreshRecords();
+    console.log(
+      '[alerts] records rafraîchis : commun=' + r.companyRecord.value
+      + ' livr. (S' + r.companyRecord.week + ' ' + r.companyRecord.year + '), '
+      + 'indiv.=' + r.individualRecord.value + ' livr. ' + (r.individualRecord.name || '—')
+      + ' (S' + r.individualRecord.week + ' ' + r.individualRecord.year + ')'
+    );
+  } catch (err) {
+    console.error('[alerts] records refresh failed:', err.message);
+  }
+}
+
 function startSchedulers() {
   // Weekly rollover : check chaque 30s (fenêtre 1min)
   setInterval(() => tickWeekly().catch(e => console.error('[alerts] tickWeekly:', e)), 30 * 1000);
@@ -165,7 +182,10 @@ function startSchedulers() {
   setInterval(() => runContractAlertCheck(), CONTRACT_CHECK_INTERVAL_MIN * 60 * 1000);
   // Premier check contrats au démarrage
   setTimeout(() => runContractAlertCheck(), 5000);
-  console.log('[alerts] schedulers démarrés (rollover dim. ' + PERIOD_START_HOUR + 'h00, contrats toutes les ' + CONTRACT_CHECK_INTERVAL_MIN + 'min, 1 alerte max par contrat)');
+  // Records : refresh au boot + intervalle configurable (défaut 60min).
+  setTimeout(() => runRecordsRefresh(), 5000);
+  setInterval(() => runRecordsRefresh(), RECORDS_REFRESH_INTERVAL_MIN * 60 * 1000);
+  console.log('[alerts] schedulers démarrés (rollover dim. ' + PERIOD_START_HOUR + 'h00, contrats toutes les ' + CONTRACT_CHECK_INTERVAL_MIN + 'min, records toutes les ' + RECORDS_REFRESH_INTERVAL_MIN + 'min)');
 }
 
 module.exports = {

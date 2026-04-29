@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node src/server.js",
     "db:push": "npx prisma db push",
-    "db:generate": "npx prisma generate"
+    "db:generate": "npx prisma generate",
+    "records:refresh": "node scripts/refresh-records.js"
   },
   "keywords": [],
   "author": "",
