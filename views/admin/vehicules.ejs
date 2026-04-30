@@ -80,13 +80,33 @@
         </div>
 
         <div class="admin-toolbar">
-            <div class="admin-toolbar-left">
-                <input type="text" class="admin-search" placeholder="Rechercher une plaque..." id="search-input" oninput="filterTable()">
+            <div class="admin-toolbar-left" style="flex-wrap:wrap;gap:10px;">
+                <input type="text" class="admin-search" placeholder="Rechercher une plaque..." id="search-input" oninput="applyFilters()">
+                <select class="f-select toolbar-select" id="type-filter" onchange="applyFilters()" title="Filtrer par type">
+                    <option value="all">Tous les types</option>
+                    <option value="Camion">Camion</option>
+                    <option value="Citerne">Citerne</option>
+                    <option value="Autre">Autre</option>
+                </select>
+                <select class="f-select toolbar-select" id="sort-mode" onchange="sortTable()" title="Trier le tableau">
+                    <option value="type-asc" selected>Type A &rarr; Z</option>
+                    <option value="type-desc">Type Z &rarr; A</option>
+                    <option value="plate-asc">Plaque A &rarr; Z</option>
+                    <option value="plate-desc">Plaque Z &rarr; A</option>
+                </select>
+                <button type="button" class="btn-secondary toolbar-reset" onclick="resetFilters()" title="R&eacute;initialiser filtres et tri">
+                    <i class="fa-solid fa-rotate-left"></i> R&eacute;initialiser
+                </button>
             </div>
             <button class="btn-add" onclick="openModal('modal-add')">
                 <i class="fa-solid fa-plus"></i> Ajouter un v&eacute;hicule
             </button>
         </div>
+
+        <style>
+            .toolbar-select { width:auto; min-width:180px; padding:9px 34px 9px 13px; cursor:pointer; }
+            .toolbar-reset { padding:9px 14px; display:inline-flex; align-items:center; gap:6px; }
+        </style>
 
         <div class="card" style="padding:0;overflow:hidden;">
             <table class="admin-table">
@@ -102,7 +122,11 @@
                 </thead>
                 <tbody id="vehicles-body">
                     <% vehicles.forEach(function(v) { %>
-                    <tr class="vehicle-row" data-vehicle-id="<%= v.id %>" data-search="<%= (v.plate + ' ' + v.type).toLowerCase() %>">
+                    <tr class="vehicle-row"
+                        data-vehicle-id="<%= v.id %>"
+                        data-search="<%= (v.plate + ' ' + v.type).toLowerCase() %>"
+                        data-type="<%= v.type %>"
+                        data-plate="<%= v.plate.toLowerCase() %>">
                         <td class="mono" style="color:var(--text-muted)"><%= v.id %></td>
                         <td class="mono" style="font-weight:600"><%= v.plate %></td>
                         <td><%= v.type %></td>
@@ -206,12 +230,47 @@
         var maintPage = 0;
         var MAINT_PER_PAGE = 5;
 
-        function filterTable() {
+        function applyFilters() {
             var q = document.getElementById('search-input').value.toLowerCase();
+            var type = document.getElementById('type-filter').value;
             document.querySelectorAll('.vehicle-row').forEach(function(row) {
-                row.style.display = row.getAttribute('data-search').includes(q) ? '' : 'none';
+                var matchSearch = row.getAttribute('data-search').includes(q);
+                var matchType = type === 'all' || row.getAttribute('data-type') === type;
+                row.style.display = (matchSearch && matchType) ? '' : 'none';
             });
         }
+
+        function sortTable() {
+            var mode = document.getElementById('sort-mode').value;
+            var tbody = document.getElementById('vehicles-body');
+            var rows = Array.prototype.slice.call(tbody.querySelectorAll('.vehicle-row'));
+            // Tri stable secondaire sur plaque pour les égalités de type
+            var byPlate = function(a, b) { return a.dataset.plate.localeCompare(b.dataset.plate, 'fr'); };
+            var cmp;
+            if (mode === 'type-desc')       cmp = function(a, b) { return b.dataset.type.localeCompare(a.dataset.type, 'fr') || byPlate(a, b); };
+            else if (mode === 'plate-asc')  cmp = byPlate;
+            else if (mode === 'plate-desc') cmp = function(a, b) { return b.dataset.plate.localeCompare(a.dataset.plate, 'fr'); };
+            else                            cmp = function(a, b) { return a.dataset.type.localeCompare(b.dataset.type, 'fr') || byPlate(a, b); };
+            rows.sort(cmp).forEach(function(r) { tbody.appendChild(r); });
+        }
+
+        function resetFilters() {
+            document.getElementById('search-input').value = '';
+            document.getElementById('type-filter').value = 'all';
+            document.getElementById('sort-mode').value = 'type-asc';
+            applyFilters();
+            sortTable();
+        }
+
+        // Tri initial (avant tout filtrage utilisateur)
+        sortTable();
+
+        // Après morphing du <main> par auto-refresh.js (ex. nouveau véhicule créé
+        // alors qu'un filtre est actif), on ré-applique filtre + tri.
+        window.addEventListener('admin:reloaded', function() {
+            applyFilters();
+            sortTable();
+        });
 
         // Interception des submits add + maintenance en AJAX
         function hookForm(selector, modalId, successMsg, resetOnSuccess) {
