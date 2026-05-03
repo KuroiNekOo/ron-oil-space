@@ -13,12 +13,14 @@
             <div class="page-subtitle">D&eacute;clarations de pannes re&ccedil;ues</div>
         </div>
 
-        <div class="admin-toolbar">
+        <form class="admin-toolbar" method="GET" action="/admin/pannes">
             <div class="admin-toolbar-left">
-                <input type="text" class="admin-search" placeholder="Rechercher..." id="search-input" oninput="filterTable()">
-                <span id="count-label" style="font-size:12px;color:var(--text-muted)"><%= breakdowns.length %> enregistrement(s)</span>
+                <input type="text" class="admin-search" name="q" placeholder="Rechercher..." value="<%= query.q %>">
+                <% if (query.q) { %>
+                    <a href="/admin/pannes" style="font-size:13px;color:var(--text-muted);text-decoration:none;">R&eacute;initialiser</a>
+                <% } %>
             </div>
-        </div>
+        </form>
 
         <div class="card" style="padding:0;overflow:hidden;">
             <table class="admin-table">
@@ -37,9 +39,12 @@
                     </tr>
                 </thead>
                 <tbody id="table-body">
+                    <% if (breakdowns.length === 0) { %>
+                        <tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted)">Aucun r&eacute;sultat</td></tr>
+                    <% } %>
                     <% breakdowns.forEach(function(r) { %>
                     <% const name = empName(r); %>
-                    <tr class="data-row" data-row-id="<%= r.id %>" data-search="<%= (name + ' ' + (r.truckPlate || '') + ' ' + (r.type || '') + ' ' + (r.comment || '')).toLowerCase() %>">
+                    <tr class="data-row" data-row-id="<%= r.id %>">
                         <td class="mono" style="color:var(--text-muted)"><%= r.id %></td>
                         <td><span style="font-family:var(--font-mono);font-size:12px;color:var(--accent)">S<%= r.week %></span></td>
                         <td class="mono" style="color:var(--text-secondary);font-size:11px"><%= new Date(r.createdAt).toLocaleString('fr-FR') %></td>
@@ -63,6 +68,7 @@
                     <% }); %>
                 </tbody>
             </table>
+            <%- include('../partials/pagination', { page, totalPages, total, query }) %>
         </div>
     </main>
 
@@ -130,17 +136,6 @@
             if (el) rowsData = JSON.parse(el.textContent);
         });
 
-        function filterTable() {
-            var q = document.getElementById('search-input').value.toLowerCase();
-            var count = 0;
-            document.querySelectorAll('.data-row').forEach(function(row) {
-                var match = row.getAttribute('data-search').includes(q);
-                row.style.display = match ? '' : 'none';
-                if (match) count++;
-            });
-            document.getElementById('count-label').textContent = count + ' enregistrement(s)';
-        }
-
         function editRow(id) {
             var r = rowsData.find(function(x) { return x.id === id; });
             if (!r) { showToast('Ligne introuvable', 'error'); return; }
@@ -191,6 +186,7 @@
             });
         });
     </script>
+    <script src="/js/search-autosubmit.js"></script>
     <script src="/js/auto-refresh.js"></script>
 </body>
 </html>

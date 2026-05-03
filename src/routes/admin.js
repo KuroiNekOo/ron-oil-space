@@ -76,12 +76,22 @@ async function getFrozenWeekKeys() {
 // All routes protected
 router.use(requireAdmin);
 
+// Taille de page par défaut pour les listes admin paginées (salaries, vehicules,
+// achats, absences, frais, pannes, rapatriements). Les pages logs (livraisons,
+// facturations, etc.) utilisent paginateLogs() avec sa propre limite configurable.
+const LIST_PAGE_SIZE = 100;
+
 // ══════════════════════════════════════
 //  SALARIES
 // ══════════════════════════════════════
 
 router.get('/salaries', async (req, res) => {
   try {
+    const q = (req.query.q || '').trim();
+    const duty = req.query.duty || 'all';
+    const sort = req.query.sort || 'default';
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+
     const [employees, dutyLogs, roles] = await Promise.all([
       prisma.employee.findMany({ orderBy: { id: 'asc' } }),
       prisma.logEntry.findMany({
@@ -109,7 +119,51 @@ router.get('/salaries', async (req, res) => {
       return { ...e, duty };
     });
 
-    res.render('admin/salaries', { employees: enriched, roles });
+    // Compteurs globaux (avant filtrage) — affichés en haut de page.
+    const counters = {
+      total: enriched.length,
+      cdi: enriched.filter(e => e.contract === 'CDI').length,
+      cdd: enriched.filter(e => e.contract === 'CDD').length,
+      inactive: enriched.filter(e => e.status === 'inactive').length,
+    };
+
+    // Filtre + tri + pagination en mémoire : la liste reste petite (quelques
+    // dizaines), et le filtre `duty` dépend de logs hors BDD relationnelle.
+    let filtered = enriched;
+    if (q) {
+      const ql = q.toLowerCase();
+      filtered = filtered.filter(e =>
+        (e.firstName + ' ' + e.lastName + ' ' + e.role).toLowerCase().includes(ql)
+      );
+    }
+    if (duty === 'on') filtered = filtered.filter(e => e.duty && e.duty.onDuty);
+    else if (duty === 'off') filtered = filtered.filter(e => !(e.duty && e.duty.onDuty));
+
+    const sorters = {
+      'name-asc':  (a, b) => (a.lastName + ' ' + a.firstName).localeCompare(b.lastName + ' ' + b.firstName, 'fr'),
+      'name-desc': (a, b) => (b.lastName + ' ' + b.firstName).localeCompare(a.lastName + ' ' + a.firstName, 'fr'),
+      'hire-desc': (a, b) => (b.hireDate ? +new Date(b.hireDate) : 0) - (a.hireDate ? +new Date(a.hireDate) : 0),
+      'hire-asc':  (a, b) => (a.hireDate ? +new Date(a.hireDate) : 0) - (b.hireDate ? +new Date(b.hireDate) : 0),
+    };
+    if (sorters[sort]) filtered = filtered.slice().sort(sorters[sort]);
+
+    const total = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(total / LIST_PAGE_SIZE));
+    const safePage = Math.min(page, totalPages);
+    const pageOffset = (safePage - 1) * LIST_PAGE_SIZE;
+    const pageEmployees = filtered.slice(pageOffset, pageOffset + LIST_PAGE_SIZE);
+
+    // `allEmployees` est utilisé côté client pour les modals d'édition (qui doivent
+    // pouvoir éditer un employé même hors page courante) — donc on injecte la liste
+    // complète enrichie en JSON.
+    res.render('admin/salaries', {
+      employees: pageEmployees,
+      allEmployees: enriched,
+      roles,
+      counters,
+      page: safePage, totalPages, total, pageOffset,
+      query: { q, duty, sort },
+    });
   } catch (err) {
     console.error('GET /salaries error:', err);
     res.status(500).send('Erreur serveur');
@@ -385,6 +439,11 @@ router.post('/salaries/:id/delete', async (req, res) => {
 
 router.get('/vehicules', async (req, res) => {
   try {
+    const q = (req.query.q || '').trim();
+    const type = req.query.type || 'all';
+    const sort = req.query.sort || 'type-asc';
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+
     const vehicles = await prisma.vehicle.findMany({
       include: {
         maintenances: {
@@ -395,7 +454,41 @@ router.get('/vehicules', async (req, res) => {
       },
       orderBy: { id: 'asc' },
     });
-    res.render('admin/vehicules', { vehicles });
+
+    const counters = {
+      total: vehicles.length,
+      active: vehicles.filter(v => v.status === 'active').length,
+      inactive: vehicles.filter(v => v.status !== 'active').length,
+    };
+
+    let filtered = vehicles;
+    if (q) {
+      const ql = q.toLowerCase();
+      filtered = filtered.filter(v => (v.plate + ' ' + v.type).toLowerCase().includes(ql));
+    }
+    if (type !== 'all') filtered = filtered.filter(v => v.type === type);
+
+    const byPlate = (a, b) => a.plate.localeCompare(b.plate, 'fr');
+    const sorters = {
+      'type-asc':  (a, b) => a.type.localeCompare(b.type, 'fr') || byPlate(a, b),
+      'type-desc': (a, b) => b.type.localeCompare(a.type, 'fr') || byPlate(a, b),
+      'plate-asc':  byPlate,
+      'plate-desc': (a, b) => b.plate.localeCompare(a.plate, 'fr'),
+    };
+    if (sorters[sort]) filtered = filtered.slice().sort(sorters[sort]);
+
+    const total = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(total / LIST_PAGE_SIZE));
+    const safePage = Math.min(page, totalPages);
+    const pageOffset = (safePage - 1) * LIST_PAGE_SIZE;
+    const pageVehicles = filtered.slice(pageOffset, pageOffset + LIST_PAGE_SIZE);
+
+    res.render('admin/vehicules', {
+      vehicles: pageVehicles,
+      counters,
+      page: safePage, totalPages, total, pageOffset,
+      query: { q, type, sort },
+    });
   } catch (err) {
     console.error('GET /vehicules error:', err);
     res.status(500).send('Erreur serveur');
@@ -490,19 +583,60 @@ router.get('/vehicules/:id/maintenances', async (req, res) => {
 
 router.get('/achats', async (req, res) => {
   try {
-    const [purchases, types, employees] = await Promise.all([
+    const q = (req.query.q || '').trim();
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+
+    // Filtre couvert par les snapshots employee (suffisants pour les achats récents
+    // ET les achats orphelins après suppression d'un employé).
+    const where = q ? {
+      OR: [
+        { description: { contains: q } },
+        { type: { name: { contains: q } } },
+        { employeeFirstName: { contains: q } },
+        { employeeLastName: { contains: q } },
+      ],
+    } : {};
+
+    const currentWeek = getWeekFromTimestamp(new Date());
+
+    const [
+      purchases, totalFiltered,
+      allTotalsRows, weekTotalsRows, totalCount,
+      types, employees,
+    ] = await Promise.all([
       prisma.purchase.findMany({
+        where,
         include: { type: true, employee: true },
         orderBy: { id: 'desc' },
+        skip: (page - 1) * LIST_PAGE_SIZE,
+        take: LIST_PAGE_SIZE,
       }),
+      prisma.purchase.count({ where }),
+      prisma.purchase.findMany({ select: { qty: true, unitPrice: true } }),
+      prisma.purchase.findMany({ where: { week: currentWeek }, select: { qty: true, unitPrice: true } }),
+      prisma.purchase.count(),
       prisma.purchaseType.findMany({ orderBy: { name: 'asc' } }),
       prisma.employee.findMany({
         where: { status: 'active' },
         orderBy: { firstName: 'asc' },
       }),
     ]);
-    const currentWeek = getWeekFromTimestamp(new Date());
-    res.render('admin/achats', { purchases, types, employees, currentWeek });
+
+    const counters = {
+      total: totalCount,
+      totalSpent: allTotalsRows.reduce((s, a) => s + a.qty * a.unitPrice, 0),
+      weekTotal: weekTotalsRows.reduce((s, a) => s + a.qty * a.unitPrice, 0),
+    };
+
+    const totalPages = Math.max(1, Math.ceil(totalFiltered / LIST_PAGE_SIZE));
+    const safePage = Math.min(page, totalPages);
+    const pageOffset = (safePage - 1) * LIST_PAGE_SIZE;
+
+    res.render('admin/achats', {
+      purchases, types, employees, currentWeek, counters,
+      page: safePage, totalPages, total: totalFiltered, pageOffset,
+      query: { q },
+    });
   } catch (err) {
     console.error('GET /achats error:', err);
     res.status(500).send('Erreur serveur');
@@ -645,20 +779,69 @@ router.delete('/achats/types/:id', async (req, res) => {
   }
 });
 
+// Détail d'un achat (modal d'édition côté client). Doit rester APRÈS les routes
+// /achats/types* pour ne pas attraper "types" comme un :id.
+router.get('/achats/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'Bad id' });
+    const purchase = await prisma.purchase.findUnique({
+      where: { id },
+      select: {
+        id: true, typeId: true, employeeId: true,
+        qty: true, unitPrice: true, date: true, description: true,
+      },
+    });
+    if (!purchase) return res.status(404).json({ error: 'Not found' });
+    res.json(purchase);
+  } catch (err) {
+    console.error('GET /achats/:id error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ══════════════════════════════════════
 //  FORM SUBMISSIONS (read-only)
 // ══════════════════════════════════════
 
+// Helper commun aux 4 listes employé filtrables (absences/frais/pannes/rapatriements)
+// — pagination SQL + filtre par recherche texte avec OR sur les champs pertinents
+// + jointure employee.{firstName,lastName}. SQLite LIKE est insensible à la casse
+// pour l'ASCII (les accents ne matchent pas, limitation acceptée).
+async function paginateForms(model, req, searchFields) {
+  const q = (req.query.q || '').trim();
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const where = q ? {
+    OR: [
+      ...searchFields.map(f => ({ [f]: { contains: q } })),
+      { employee: { firstName: { contains: q } } },
+      { employee: { lastName: { contains: q } } },
+    ],
+  } : {};
+  const [rows, total, frozenKeys] = await Promise.all([
+    model.findMany({
+      where,
+      include: { employee: true },
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * LIST_PAGE_SIZE,
+      take: LIST_PAGE_SIZE,
+    }),
+    model.count({ where }),
+    getFrozenWeekKeys(),
+  ]);
+  const totalPages = Math.max(1, Math.ceil(total / LIST_PAGE_SIZE));
+  return {
+    rows, frozenKeys,
+    page: Math.min(page, totalPages),
+    totalPages, total,
+    query: { q },
+  };
+}
+
 router.get('/absences', async (req, res) => {
   try {
-    const [absences, frozenKeys] = await Promise.all([
-      prisma.absence.findMany({
-        include: { employee: true },
-        orderBy: { createdAt: 'desc' },
-      }),
-      getFrozenWeekKeys(),
-    ]);
-    res.render('admin/absences', { absences, frozenKeys });
+    const result = await paginateForms(prisma.absence, req, ['type', 'comment']);
+    res.render('admin/absences', { absences: result.rows, ...result });
   } catch (err) {
     console.error('GET /absences error:', err);
     res.status(500).send('Erreur serveur');
@@ -709,15 +892,11 @@ router.post('/absences/:id/delete', async (req, res) => {
 
 router.get('/frais', async (req, res) => {
   try {
-    const [expenses, frozenKeys, expenseTypes] = await Promise.all([
-      prisma.expense.findMany({
-        include: { employee: true },
-        orderBy: { createdAt: 'desc' },
-      }),
-      getFrozenWeekKeys(),
+    const [result, expenseTypes] = await Promise.all([
+      paginateForms(prisma.expense, req, ['type', 'comment']),
       getExpenseTypes(),
     ]);
-    res.render('admin/frais', { expenses, frozenKeys, expenseTypes });
+    res.render('admin/frais', { expenses: result.rows, expenseTypes, ...result });
   } catch (err) {
     console.error('GET /frais error:', err);
     res.status(500).send('Erreur serveur');
@@ -766,14 +945,9 @@ router.post('/frais/:id/delete', async (req, res) => {
 
 router.get('/pannes', async (req, res) => {
   try {
-    const [breakdowns, frozenKeys] = await Promise.all([
-      prisma.breakdown.findMany({
-        include: { employee: true },
-        orderBy: { createdAt: 'desc' },
-      }),
-      getFrozenWeekKeys(),
-    ]);
-    res.render('admin/pannes', { breakdowns, frozenKeys });
+    const result = await paginateForms(prisma.breakdown, req,
+      ['type', 'comment', 'truckPlate', 'tankerPlate', 'position']);
+    res.render('admin/pannes', { breakdowns: result.rows, ...result });
   } catch (err) {
     console.error('GET /pannes error:', err);
     res.status(500).send('Erreur serveur');
@@ -824,14 +998,9 @@ router.post('/pannes/:id/delete', async (req, res) => {
 
 router.get('/rapatriements', async (req, res) => {
   try {
-    const [repatriations, frozenKeys] = await Promise.all([
-      prisma.repatriation.findMany({
-        include: { employee: true },
-        orderBy: { createdAt: 'desc' },
-      }),
-      getFrozenWeekKeys(),
-    ]);
-    res.render('admin/rapatriements', { repatriations, frozenKeys });
+    const result = await paginateForms(prisma.repatriation, req,
+      ['comment', 'truckPlate', 'tankerPlate', 'departure']);
+    res.render('admin/rapatriements', { repatriations: result.rows, ...result });
   } catch (err) {
     console.error('GET /rapatriements error:', err);
     res.status(500).send('Erreur serveur');

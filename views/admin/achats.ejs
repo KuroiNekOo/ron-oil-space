@@ -46,27 +46,24 @@
             <div class="page-subtitle">Enregistrement et suivi des d&eacute;penses</div>
         </div>
 
-        <%
-            var totalCount = purchases.length;
-            var totalSpent = purchases.reduce(function(s, a) { return s + a.qty * a.unitPrice; }, 0);
-            var weekTotal = purchases.filter(function(a) { return a.week === currentWeek; }).reduce(function(s, a) { return s + a.qty * a.unitPrice; }, 0);
-        %>
-
         <div class="g4" style="margin-bottom:28px;">
-            <div class="card"><div class="card-label">Total achats</div><div class="card-value c-accent"><%= totalCount %></div></div>
-            <div class="card"><div class="card-label">Total d&eacute;pens&eacute;</div><div class="card-value c-gold"><%= totalSpent.toFixed(2) %>$</div></div>
+            <div class="card"><div class="card-label">Total achats</div><div class="card-value c-accent"><%= counters.total %></div></div>
+            <div class="card"><div class="card-label">Total d&eacute;pens&eacute;</div><div class="card-value c-gold"><%= counters.totalSpent.toFixed(2) %>$</div></div>
             <div class="card"><div class="card-label">Semaine actuelle</div><div class="card-value">S<%= currentWeek %></div></div>
-            <div class="card"><div class="card-label">D&eacute;penses S<%= currentWeek %></div><div class="card-value"><%= weekTotal.toFixed(2) %>$</div></div>
+            <div class="card"><div class="card-label">D&eacute;penses S<%= currentWeek %></div><div class="card-value"><%= counters.weekTotal.toFixed(2) %>$</div></div>
         </div>
 
-        <div class="admin-toolbar">
+        <form class="admin-toolbar" method="GET" action="/admin/achats">
             <div class="admin-toolbar-left">
-                <input type="text" class="admin-search" placeholder="Rechercher..." id="search-input" oninput="filterTable()">
+                <input type="text" class="admin-search" name="q" placeholder="Rechercher..." value="<%= query.q %>">
+                <% if (query.q) { %>
+                    <a href="/admin/achats" style="font-size:13px;color:var(--text-muted);text-decoration:none;">R&eacute;initialiser</a>
+                <% } %>
             </div>
-            <button class="btn-add" onclick="openModal('modal-add')">
+            <button type="button" class="btn-add" onclick="openModal('modal-add')">
                 <i class="fa-solid fa-plus"></i> Enregistrer un achat
             </button>
-        </div>
+        </form>
 
         <div class="card" style="padding:0;overflow:hidden;">
             <table class="admin-table">
@@ -85,9 +82,12 @@
                     </tr>
                 </thead>
                 <tbody id="achats-body">
+                    <% if (purchases.length === 0) { %>
+                        <tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted)">Aucun r&eacute;sultat</td></tr>
+                    <% } %>
                     <% purchases.forEach(function(a) { %>
                     <% const name = (a.employeeId || a.employeeFirstName) ? empName(a) : null; %>
-                    <tr class="achat-row" data-achat-id="<%= a.id %>" data-search="<%= ((a.type ? a.type.name : '') + ' ' + a.description + ' ' + (name || '')).toLowerCase() %>">
+                    <tr class="achat-row" data-achat-id="<%= a.id %>">
                         <td class="mono" style="color:var(--text-muted)"><%= a.id %></td>
                         <td><span style="font-family:var(--font-mono);font-size:13px;color:var(--accent)">S<%= a.week %></span></td>
                         <td class="mono" style="color:var(--text-secondary);font-size:11px"><%= new Date(a.date).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) %></td>
@@ -107,6 +107,7 @@
                     <% }); %>
                 </tbody>
             </table>
+            <%- include('../partials/pagination', { page, totalPages, total, query }) %>
         </div>
     </main>
 
@@ -231,8 +232,6 @@
         </div>
     </div>
 
-    <script type="application/json" id="rows-data"><%- JSON.stringify(purchases.map(function(p) { return { id: p.id, typeId: p.typeId, employeeId: p.employeeId, qty: p.qty, unitPrice: p.unitPrice, date: p.date, description: p.description }; })).replace(/</g, '\\u003c') %></script>
-
     <!-- Modal G&eacute;rer les types -->
     <div class="modal-overlay" id="modal-types">
         <div class="modal">
@@ -261,13 +260,6 @@
     <script src="/js/week.js"></script>
     <script src="/js/admin-ajax.js"></script>
     <script>
-        function filterTable() {
-            var q = document.getElementById('search-input').value.toLowerCase();
-            document.querySelectorAll('.achat-row').forEach(function(row) {
-                row.style.display = row.getAttribute('data-search').includes(q) ? '' : 'none';
-            });
-        }
-
         function deletePurchase(id) {
             if (!confirm('Supprimer cet achat ?')) return;
             AdminAjax.post('/admin/achats/' + id + '/delete')
@@ -324,26 +316,25 @@
         })();
 
         // ── Édition d'un achat ──
-        var rowsData = JSON.parse(document.getElementById('rows-data').textContent);
-        window.addEventListener('admin:reloaded', function() {
-            var el = document.getElementById('rows-data');
-            if (el) rowsData = JSON.parse(el.textContent);
-        });
-
+        // Pas d'injection JSON : on fetch le détail à la demande pour que ça
+        // reste viable même avec des dizaines de milliers d'achats.
         function editPurchase(id) {
-            var r = rowsData.find(function(x) { return x.id === id; });
-            if (!r) { showToast('Achat introuvable', 'error'); return; }
-            var form = document.getElementById('form-edit');
-            form.action = '/admin/achats/' + id + '/edit';
-            form.typeId.value = r.typeId != null ? String(r.typeId) : '';
-            form.employeeId.value = r.employeeId != null ? String(r.employeeId) : '';
-            form.qty.value = r.qty != null ? r.qty : '';
-            form.unitPrice.value = r.unitPrice != null ? r.unitPrice : '';
-            form.description.value = r.description || '';
-            // Date stockée en ISO (UTC) — on reformate en YYYY-MM-DDTHH:MM local pour l'input datetime-local.
-            form.date.value = toLocalDatetimeInput(new Date(r.date));
-            form.date.dispatchEvent(new Event('input'));
-            openModal('modal-edit');
+            fetch('/admin/achats/' + id, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+                .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                .then(function(r) {
+                    var form = document.getElementById('form-edit');
+                    form.action = '/admin/achats/' + id + '/edit';
+                    form.typeId.value = r.typeId != null ? String(r.typeId) : '';
+                    form.employeeId.value = r.employeeId != null ? String(r.employeeId) : '';
+                    form.qty.value = r.qty != null ? r.qty : '';
+                    form.unitPrice.value = r.unitPrice != null ? r.unitPrice : '';
+                    form.description.value = r.description || '';
+                    // Date stockée en ISO (UTC) — reformatée en YYYY-MM-DDTHH:MM local.
+                    form.date.value = toLocalDatetimeInput(new Date(r.date));
+                    form.date.dispatchEvent(new Event('input'));
+                    openModal('modal-edit');
+                })
+                .catch(function() { showToast('Achat introuvable', 'error'); });
         }
 
         document.getElementById('form-edit').addEventListener('submit', function(e) {
@@ -481,6 +472,7 @@
         // Load types on modal open
         loadTypes();
     </script>
+    <script src="/js/search-autosubmit.js"></script>
     <script src="/js/auto-refresh.js"></script>
 </body>
 </html>

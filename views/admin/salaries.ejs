@@ -13,41 +13,36 @@
             <div class="page-subtitle">Gestion des employ&eacute;s Ron Oil</div>
         </div>
 
-        <% const total = employees.length; %>
-        <% const cdi = employees.filter(e => e.contract === 'CDI').length; %>
-        <% const cdd = employees.filter(e => e.contract === 'CDD').length; %>
-        <% const inactive = employees.filter(e => e.status === 'inactive').length; %>
-
         <div class="g4" style="margin-bottom:28px;">
-            <div class="card"><div class="card-label">Total employ&eacute;s</div><div class="card-value c-accent"><%= total %></div></div>
-            <div class="card"><div class="card-label">CDI</div><div class="card-value"><%= cdi %></div></div>
-            <div class="card"><div class="card-label">CDD</div><div class="card-value c-gold"><%= cdd %></div></div>
-            <div class="card"><div class="card-label">Inactifs</div><div class="card-value"><%= inactive %></div></div>
+            <div class="card"><div class="card-label">Total employ&eacute;s</div><div class="card-value c-accent"><%= counters.total %></div></div>
+            <div class="card"><div class="card-label">CDI</div><div class="card-value"><%= counters.cdi %></div></div>
+            <div class="card"><div class="card-label">CDD</div><div class="card-value c-gold"><%= counters.cdd %></div></div>
+            <div class="card"><div class="card-label">Inactifs</div><div class="card-value"><%= counters.inactive %></div></div>
         </div>
 
-        <div class="admin-toolbar">
+        <form class="admin-toolbar" method="GET" action="/admin/salaries">
             <div class="admin-toolbar-left" style="flex-wrap:wrap;gap:10px;">
-                <input type="text" class="admin-search" placeholder="Rechercher un salari&eacute;..." id="search-input" oninput="applyFilters()">
-                <select class="f-select toolbar-select" id="duty-filter" onchange="applyFilters()" title="Filtrer par service">
-                    <option value="all">Tous les statuts</option>
-                    <option value="on">En service</option>
-                    <option value="off">Hors service</option>
+                <input type="text" class="admin-search" name="q" placeholder="Rechercher un salari&eacute;..." value="<%= query.q %>">
+                <select class="f-select toolbar-select" name="duty" title="Filtrer par service">
+                    <option value="all"<%= query.duty === 'all' ? ' selected' : '' %>>Tous les statuts</option>
+                    <option value="on"<%= query.duty === 'on' ? ' selected' : '' %>>En service</option>
+                    <option value="off"<%= query.duty === 'off' ? ' selected' : '' %>>Hors service</option>
                 </select>
-                <select class="f-select toolbar-select" id="sort-mode" onchange="sortTable()" title="Trier le tableau">
-                    <option value="default">Tri par d&eacute;faut</option>
-                    <option value="name-asc">Nom A &rarr; Z</option>
-                    <option value="name-desc">Nom Z &rarr; A</option>
-                    <option value="hire-desc">Embauche r&eacute;cente</option>
-                    <option value="hire-asc">Embauche ancienne</option>
+                <select class="f-select toolbar-select" name="sort" title="Trier le tableau">
+                    <option value="default"<%= query.sort === 'default' ? ' selected' : '' %>>Tri par d&eacute;faut</option>
+                    <option value="name-asc"<%= query.sort === 'name-asc' ? ' selected' : '' %>>Nom A &rarr; Z</option>
+                    <option value="name-desc"<%= query.sort === 'name-desc' ? ' selected' : '' %>>Nom Z &rarr; A</option>
+                    <option value="hire-desc"<%= query.sort === 'hire-desc' ? ' selected' : '' %>>Embauche r&eacute;cente</option>
+                    <option value="hire-asc"<%= query.sort === 'hire-asc' ? ' selected' : '' %>>Embauche ancienne</option>
                 </select>
-                <button type="button" class="btn-secondary toolbar-reset" onclick="resetFilters()" title="R&eacute;initialiser filtres et tri">
-                    <i class="fa-solid fa-rotate-left"></i> R&eacute;initialiser
-                </button>
+                <% if (query.q || query.duty !== 'all' || query.sort !== 'default') { %>
+                    <a href="/admin/salaries" class="toolbar-reset-link" title="R&eacute;initialiser"><i class="fa-solid fa-rotate-left"></i> R&eacute;initialiser</a>
+                <% } %>
             </div>
-            <button class="btn-add" onclick="openModal('modal-add')">
+            <button type="button" class="btn-add" onclick="openModal('modal-add')">
                 <i class="fa-solid fa-plus"></i> Ajouter un salari&eacute;
             </button>
-        </div>
+        </form>
 
         <div class="card" style="padding:0;overflow:hidden;">
             <table class="admin-table" id="salaries-table">
@@ -65,15 +60,12 @@
                     </tr>
                 </thead>
                 <tbody id="salaries-body">
+                    <% if (employees.length === 0) { %>
+                        <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted)">Aucun r&eacute;sultat</td></tr>
+                    <% } %>
                     <% employees.forEach(function(e, i) { %>
-                    <tr class="employee-row"
-                        data-employee-id="<%= e.id %>"
-                        data-search="<%= (e.firstName + ' ' + e.lastName + ' ' + e.role).toLowerCase() %>"
-                        data-duty="<%= (e.duty && e.duty.onDuty) ? 'on' : 'off' %>"
-                        data-name="<%= (e.lastName + ' ' + e.firstName).toLowerCase() %>"
-                        data-hire="<%= e.hireDate ? new Date(e.hireDate).getTime() : 0 %>"
-                        data-default="<%= i %>">
-                        <td class="mono" style="color:var(--text-muted)"><%= i + 1 %></td>
+                    <tr class="employee-row" data-employee-id="<%= e.id %>">
+                        <td class="mono" style="color:var(--text-muted)"><%= pageOffset + i + 1 %></td>
                         <td style="font-weight:500">
                             <% var dutyClass = (e.duty && e.duty.onDuty) ? 'on' : 'off'; %>
                             <% var dutyTitle = e.duty ? ((e.duty.onDuty ? 'En service' : 'Hors service') + ' depuis ' + new Date(e.duty.since).toLocaleString('fr-FR')) : 'Hors service (aucun log)'; %>
@@ -103,6 +95,7 @@
                     <% }); %>
                 </tbody>
             </table>
+            <%- include('../partials/pagination', { page, totalPages, total, query }) %>
         </div>
     </main>
 
@@ -278,7 +271,11 @@
 
     <style>
         .toolbar-select { width:auto; min-width:180px; padding:9px 34px 9px 13px; cursor:pointer; }
-        .toolbar-reset { padding:9px 14px; display:inline-flex; align-items:center; gap:6px; }
+        .toolbar-reset-link {
+            font-size:13px; color:var(--text-muted); text-decoration:none;
+            display:inline-flex; align-items:center; gap:6px; padding:0 6px;
+        }
+        .toolbar-reset-link:hover { color:var(--text-primary); }
         .employee-name-link { color:var(--text-primary); text-decoration:none; cursor:pointer; transition:color .15s; }
         .employee-name-link:hover { color:var(--accent); text-decoration:underline; }
         .recap-section-title { font-family:var(--font-display); font-size:13px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--text-secondary); margin:0 0 14px; }
@@ -302,7 +299,8 @@
         .recap-empty { padding:18px; color:var(--text-muted); text-align:center; font-size:13px; }
     </style>
 
-    <script type="application/json" id="employees-data"><%- JSON.stringify(employees).replace(/</g, '\\u003c') %></script>
+    <%# Cache complet pour les modals : doit pouvoir éditer un employé même hors page courante. %>
+    <script type="application/json" id="employees-data"><%- JSON.stringify(allEmployees).replace(/</g, '\\u003c') %></script>
 
     <div class="toast success" id="toast">
         <i class="fa-solid fa-circle-check"></i>
@@ -311,47 +309,14 @@
 
     <script src="/js/admin-ajax.js"></script>
     <script>
-        function applyFilters() {
-            var q = document.getElementById('search-input').value.toLowerCase();
-            var duty = document.getElementById('duty-filter').value;
-            document.querySelectorAll('.employee-row').forEach(function(row) {
-                var matchSearch = row.getAttribute('data-search').includes(q);
-                var matchDuty = duty === 'all' || row.getAttribute('data-duty') === duty;
-                row.style.display = (matchSearch && matchDuty) ? '' : 'none';
-            });
-        }
-
-        function sortTable() {
-            var mode = document.getElementById('sort-mode').value;
-            var tbody = document.getElementById('salaries-body');
-            var rows = Array.prototype.slice.call(tbody.querySelectorAll('.employee-row'));
-            var cmp;
-            if (mode === 'name-asc')       cmp = function(a, b) { return a.dataset.name.localeCompare(b.dataset.name, 'fr'); };
-            else if (mode === 'name-desc') cmp = function(a, b) { return b.dataset.name.localeCompare(a.dataset.name, 'fr'); };
-            else if (mode === 'hire-desc') cmp = function(a, b) { return Number(b.dataset.hire) - Number(a.dataset.hire); };
-            else if (mode === 'hire-asc')  cmp = function(a, b) { return Number(a.dataset.hire) - Number(b.dataset.hire); };
-            else                           cmp = function(a, b) { return Number(a.dataset.default) - Number(b.dataset.default); };
-            rows.sort(cmp).forEach(function(r) { tbody.appendChild(r); });
-        }
-
-        function resetFilters() {
-            document.getElementById('search-input').value = '';
-            document.getElementById('duty-filter').value = 'all';
-            document.getElementById('sort-mode').value = 'default';
-            applyFilters();
-            sortTable();
-        }
-
         var employeesData = JSON.parse(document.getElementById('employees-data').textContent);
 
-        // Re-parse le cache JSON après un soft-reload + ré-applique filtre/tri
-        // (sinon la bulle service met à jour son état mais la rangée reste cachée
-        // ou affichée selon l'ancien filtre, et le tri custom est perdu).
+        // Re-parse le cache JSON après un soft-reload (toggle/edit/delete).
+        // Le filtre + tri + pagination sont gérés côté serveur, donc rien
+        // d'autre à faire ici.
         window.addEventListener('admin:reloaded', function() {
             var el = document.getElementById('employees-data');
             if (el) employeesData = JSON.parse(el.textContent);
-            applyFilters();
-            sortTable();
         });
 
         // Interception des submits add/edit en AJAX
@@ -574,6 +539,7 @@
             });
         });
     </script>
+    <script src="/js/search-autosubmit.js"></script>
     <script src="/js/auto-refresh.js"></script>
 </body>
 </html>

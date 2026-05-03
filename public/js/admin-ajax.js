@@ -117,7 +117,11 @@
   }
 
   function reloadMain() {
-    return fetch(window.location.pathname, { headers: { Accept: 'text/html' } })
+    // Préserve la query string : pagination / recherche / filtres / tri sont
+    // dans l'URL, on doit refetch la même page (sinon une action sur la page 2
+    // renverrait un patch de la page 1 sans filtre).
+    var url = window.location.pathname + window.location.search;
+    return fetch(url, { headers: { Accept: 'text/html' } })
       .then(function (r) { return r.text(); })
       .then(function (html) {
         var doc = new DOMParser().parseFromString(html, 'text/html');
