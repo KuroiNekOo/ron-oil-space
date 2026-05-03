@@ -60,7 +60,7 @@
                     <a href="/admin/achats" style="font-size:13px;color:var(--text-muted);text-decoration:none;">R&eacute;initialiser</a>
                 <% } %>
             </div>
-            <button type="button" class="btn-add" onclick="openModal('modal-add')">
+            <button type="button" class="btn-add" onclick="openAddPurchase()">
                 <i class="fa-solid fa-plus"></i> Enregistrer un achat
             </button>
         </form>
@@ -247,7 +247,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn-secondary" onclick="closeModal('modal-types');openModal('modal-add')"><i class="fa-solid fa-arrow-left"></i> Retour aux achats</button>
+                <button class="btn-secondary" onclick="closeModal('modal-types');openAddPurchase()"><i class="fa-solid fa-arrow-left"></i> Retour aux achats</button>
             </div>
         </div>
     </div>
@@ -307,13 +307,18 @@
         attachLiveWeek('add-purchase-date', 'add-purchase-week');
         attachLiveWeek('edit-purchase-date', 'edit-purchase-week');
 
-        // Date par défaut sur la modale de création = maintenant (semaine en cours)
-        (function() {
+        // Pré-remplit la date+heure de création à "maintenant" et ré-ouvre le modal.
+        // Appelé à chaque ouverture (bouton + lien depuis le modal "Gérer les types")
+        // → la date affichée reste toujours actuelle, et survit à form.reset() après
+        // une création réussie.
+        function openAddPurchase() {
             var input = document.getElementById('add-purchase-date');
-            if (!input) return;
-            input.value = toLocalDatetimeInput(new Date());
-            input.dispatchEvent(new Event('input'));
-        })();
+            if (input) {
+                input.value = toLocalDatetimeInput(new Date());
+                input.dispatchEvent(new Event('input'));
+            }
+            openModal('modal-add');
+        }
 
         // ── Édition d'un achat ──
         // Pas d'injection JSON : on fetch le détail à la demande pour que ça
