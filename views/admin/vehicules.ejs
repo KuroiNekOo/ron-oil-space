@@ -194,7 +194,7 @@
                     <div class="form-grid">
                         <div>
                             <label class="f-label f-required">Date</label>
-                            <input type="date" class="f-input" name="date" required>
+                            <input type="date" class="f-input" name="date" id="maint-date" required>
                         </div>
                         <div>
                             <label class="f-label f-required">Compteur (miles)</label>
@@ -262,10 +262,21 @@
             });
         })();
 
+        // Format YYYY-MM-DD en heure locale (compatible <input type="date">).
+        function toLocalDateInput(d) {
+            return d.getFullYear() + '-'
+                + String(d.getMonth() + 1).padStart(2, '0') + '-'
+                + String(d.getDate()).padStart(2, '0');
+        }
+
         function openMaintenance(id, plate) {
             currentMaintVehicleId = id;
             document.getElementById('maint-plate').textContent = plate;
             document.getElementById('maint-form').action = '/admin/vehicules/' + id + '/maintenance';
+            // Pré-remplit la date à aujourd'hui à chaque ouverture (et après un
+            // form.reset() suite à une création réussie).
+            var dateInput = document.getElementById('maint-date');
+            if (dateInput) dateInput.value = toLocalDateInput(new Date());
             loadMaintHistory(0);
             openModal('modal-maint');
         }
