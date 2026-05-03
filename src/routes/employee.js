@@ -169,8 +169,16 @@ async function computeWeekStats(week, year) {
     const b = bonusByEmp.get(s.employeeId);
     return enrichStat(s, tiers, shares, podiumPrizes, bonusMinDeliveries, rates[s.employee.role], b);
   });
+  // Points individuels contribués (gain entreprise de l'employé / pointsPerGain).
+  // À ne PAS confondre avec `s.points` qui reste le total collectif (même valeur
+  // pour tous, sert à déterminer le palier collectif de la semaine).
+  const ppg = pointsPerGain || 1;
+  enriched.forEach(s => {
+    s.contribPoints = Math.floor((s.gainEnterprise || 0) / ppg);
+  });
   enriched._collectivePoints = collectivePoints;
   enriched._totalGainEnterprise = totalGainEnterprise;
+  enriched._pointsPerGain = pointsPerGain;
   enriched._podiumPrizes = podiumPrizes;
   enriched._bonusMinDeliveries = bonusMinDeliveries;
   return enriched;
