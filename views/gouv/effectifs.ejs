@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL Gouvernement — Effectifs</title>
+    <link rel="stylesheet" href="/css/admin-shared.css">
+</head>
+<body>
+    <%- include('../partials/gouv-sidebar', { currentPage: 'effectifs' }) %>
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title">Effectifs</div>
+            <div class="page-subtitle">Employ&eacute;s actifs d&eacute;clar&eacute;s</div>
+        </div>
+
+        <div class="g4" style="margin-bottom:28px;">
+            <div class="card"><div class="card-label">Total employ&eacute;s</div><div class="card-value c-accent"><%= counters.total %></div></div>
+            <div class="card"><div class="card-label">CDI</div><div class="card-value"><%= counters.cdi %></div></div>
+            <div class="card"><div class="card-label">CDD</div><div class="card-value c-gold"><%= counters.cdd %></div></div>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Nom</th>
+                        <th>Contrat</th>
+                        <th>Poste</th>
+                        <th>Embauche</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (employees.length === 0) { %>
+                        <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--text-muted)">Aucun employ&eacute;</td></tr>
+                    <% } %>
+                    <% employees.forEach(function(e, i) { %>
+                    <tr>
+                        <td class="mono" style="color:var(--text-muted)"><%= i + 1 %></td>
+                        <td style="font-weight:500"><%= e.firstName %> <%= e.lastName %></td>
+                        <td><span class="contract-badge <%= e.contract.toLowerCase() %>"><%= e.contract %></span></td>
+                        <td><%= e.role %></td>
+                        <td class="mono" style="color:var(--text-secondary);font-size:12px"><%= new Date(e.hireDate).toLocaleDateString('fr-FR') %></td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+    </main>
+</body>
+</html>

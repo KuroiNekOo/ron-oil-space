@@ -1,0 +1,40 @@
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <div class="sidebar-brand">RON <span>OIL</span></div>
+        <div class="sidebar-brand-sub">Espace Gouvernement</div>
+        <div class="admin-tag"><i class="fa-solid fa-landmark"></i> Gouvernement</div>
+    </div>
+    <nav class="sidebar-nav">
+        <div class="nav-section" data-section="gouv-surveillance">
+            <button type="button" class="nav-section-label">Surveillance <i class="fa-solid fa-chevron-down nav-chevron"></i></button>
+            <div class="nav-section-items">
+                <a class="nav-item<%= currentPage === 'effectifs' ? ' active' : '' %>" id="nav-effectifs" href="/gouv/effectifs">
+                    <i class="fa-solid fa-users"></i> Effectifs
+                </a>
+                <a class="nav-item<%= currentPage === 'achats' ? ' active' : '' %>" id="nav-achats" href="/gouv/achats">
+                    <i class="fa-solid fa-bag-shopping"></i> Achats
+                </a>
+                <a class="nav-item<%= currentPage === 'statistiques' ? ' active' : '' %>" id="nav-statistiques" href="/gouv/statistiques">
+                    <i class="fa-solid fa-chart-line"></i> Statistiques
+                </a>
+            </div>
+        </div>
+    </nav>
+    <div class="sidebar-user">
+        <div class="user-avatar"><%= govAccount.isAdmin ? 'A' : 'G' %></div>
+        <div>
+            <div class="user-name"><%= govAccount.username %></div>
+            <div class="user-role"><%= govAccount.isAdmin ? 'Admin · Mode consultation' : 'Compte Gouvernement' %></div>
+        </div>
+        <% if (govAccount.isAdmin) { %>
+            <a class="btn-logout" href="/admin/salaries" title="Retour au panel admin">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+        <% } else { %>
+            <a class="btn-logout" href="/gouv/logout" title="D&eacute;connexion">
+                <i class="fa-solid fa-right-from-bracket"></i>
+            </a>
+        <% } %>
+    </div>
+</aside>
+<script src="/js/sidebar-collapse.js"></script>

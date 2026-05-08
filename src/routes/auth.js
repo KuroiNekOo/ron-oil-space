@@ -40,6 +40,7 @@ router.post('/login', async (req, res) => {
     req.session.employeeId = user.employeeId;
     req.session.isAdmin = user.employee.isAdmin === true;
     req.session.employeeName = `${user.employee.firstName} ${user.employee.lastName}`;
+    req.session.govId = undefined;
 
     res.redirect('/dashboard');
   } catch (err) {
@@ -88,6 +89,7 @@ router.post('/admin/login', async (req, res) => {
     req.session.employeeName = user.employee
       ? `${user.employee.firstName} ${user.employee.lastName}`
       : 'Admin';
+    req.session.govId = undefined;
 
     res.redirect('/admin/salaries');
   } catch (err) {

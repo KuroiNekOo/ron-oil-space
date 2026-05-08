@@ -298,6 +298,20 @@ model FaqEntry {
   @@index([categoryId])
 }
 
+// ── Compte Gouvernement ──
+
+// Compte unique de surveillance externe (consultation lecture seule des effectifs,
+// achats et statistiques). Le mot de passe est stocké en clair : c'est un compte
+// de service partagé que l'admin doit pouvoir afficher et communiquer depuis
+// /admin/gouv. Singleton applicatif — toujours une seule ligne.
+model GovAccount {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // ── Logs importés Google Sheets ──
 
 model LogEntry {

@@ -97,11 +97,13 @@ const authRoutes = require('./routes/auth');
 const employeeRoutes = require('./routes/employee');
 const adminRoutes = require('./routes/admin');
 const apiRoutes = require('./routes/api');
+const gouvRoutes = require('./routes/gouv');
 
 app.use('/', authRoutes);
 app.use('/', employeeRoutes);
 app.use('/admin', adminRoutes);
 app.use('/api', apiRoutes);
+app.use('/gouv', gouvRoutes);
 
 // Root redirect
 app.get('/', (req, res) => {
@@ -109,6 +111,7 @@ app.get('/', (req, res) => {
     if (req.session.employeeId) return res.redirect('/dashboard');
     if (req.session.isAdmin) return res.redirect('/admin/salaries');
   }
+  if (req.session && req.session.govId) return res.redirect('/gouv/effectifs');
   res.redirect('/login');
 });
 

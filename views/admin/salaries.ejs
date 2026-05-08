@@ -424,7 +424,8 @@
                     '<div class="recap-empty">Aucune activité enregistrée pour cette semaine.</div>';
             } else {
                 var primes = (c.bonusSalary || 0) + (c.tierPrime || 0) + (c.podiumPrize || 0) + (c.specialBonus || 0);
-                var frais = (c.expenseRefund || 0) + (c.repatBonus || 0) + (c.impoundReimbursement || 0);
+                // Frais NET : remboursements reçus moins pénalité fourrière (perte employé).
+                var frais = (c.expenseRefund || 0) + (c.repatBonus || 0) + (c.impoundReimbursement || 0) - (c.impoundPenalty || 0);
                 var finaleColor = (c.primeFinale || 0) >= 0 ? 'c-success' : 'c-danger';
                 var finaleSign = (c.primeFinale || 0) >= 0 ? '+' : '-';
                 currentHtml =
@@ -480,7 +481,7 @@
             if (node) node.classList.add('active');
 
             var primes = (h.bonusSalary || 0) + (h.tierPrime || 0) + (h.podiumPrize || 0) + (h.specialBonus || 0);
-            var frais = (h.expenseRefund || 0) + (h.repatBonus || 0) + (h.impoundReimbursement || 0);
+            var frais = (h.expenseRefund || 0) + (h.repatBonus || 0) + (h.impoundReimbursement || 0) - (h.impoundPenalty || 0);
             var finaleColor = (h.primeFinale || 0) >= 0 ? 'c-success' : 'c-danger';
             var finaleSign = (h.primeFinale || 0) >= 0 ? '+' : '-';
             document.getElementById('recap-detail').innerHTML =

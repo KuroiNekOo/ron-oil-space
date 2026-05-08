@@ -56,6 +56,41 @@ async function requireAdmin(req, res, next) {
   next();
 }
 
+// Panel Gouvernement : accessible à deux profils
+//   1. Compte Gouvernement (req.session.govId) — accès dédié, lecture seule
+//   2. Admin connecté (req.session.userId, primary ou Employee.isAdmin actif) —
+//      passerelle pratique pour qu'un admin consulte le panel sans logout
+// res.locals.govAccount.isAdmin permet à la sidebar d'adapter l'affichage
+// (libellé + bouton "Retour admin" au lieu de déconnexion).
+async function requireGov(req, res, next) {
+  // 1) Session compte gouvernement
+  if (req.session && req.session.govId) {
+    const { getGovAccount } = require('../services/govAccount');
+    const account = await getGovAccount();
+    if (account && account.id === req.session.govId) {
+      res.locals.govAccount = { username: account.username, isAdmin: false };
+      return next();
+    }
+  }
+  // 2) Session admin (primaire ou Employee.isAdmin actif)
+  if (req.session && req.session.userId) {
+    const user = await loadSessionUser(req);
+    if (user) {
+      const isPrimary = user.employeeId === null;
+      const isActiveEmployeeAdmin =
+        user.employee && user.employee.isAdmin === true && user.employee.status === 'active';
+      if (isPrimary || isActiveEmployeeAdmin) {
+        const displayName = user.employee
+          ? (user.employee.firstName + ' ' + user.employee.lastName).trim()
+          : user.username;
+        res.locals.govAccount = { username: displayName, isAdmin: true };
+        return next();
+      }
+    }
+  }
+  return res.redirect('/gouv/login');
+}
+
 // Employé : doit avoir un Employee rattaché et son status doit être 'active'.
 // Un employé désactivé voit sa session invalidée au premier hit.
 // Expose req.employee pour éviter une requête supplémentaire côté handler
@@ -72,4 +107,4 @@ async function requireEmployee(req, res, next) {
   next();
 }
 
-module.exports = { requireAuth, requireAdmin, requireEmployee };
+module.exports = { requireAuth, requireAdmin, requireEmployee, requireGov };

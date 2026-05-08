@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL Admin — Gouvernement</title>
+    <link rel="stylesheet" href="/css/admin-shared.css">
+    <style>
+        .gouv-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 28px;
+            max-width: 720px;
+        }
+        .gouv-section { margin-bottom: 28px; }
+        .gouv-section:last-child { margin-bottom: 0; }
+        .gouv-section-title {
+            font-family: var(--font-display);
+            font-size: 13px;
+            letter-spacing: .14em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 14px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .field-row {
+            display: flex;
+            align-items: stretch;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .field-row .f-input {
+            flex: 1;
+            font-family: var(--font-mono);
+        }
+        .icon-btn {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0 14px;
+            font-size: 14px;
+            transition: all .15s;
+            display: flex; align-items: center; justify-content: center;
+            min-width: 44px;
+        }
+        .icon-btn:hover { border-color: var(--border-accent); color: var(--accent); }
+        .icon-btn.copied { color: #4ade80; border-color: rgba(74, 222, 128, .35); }
+        .field-label {
+            display: block;
+            font-size: 10px;
+            letter-spacing: .18em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        .gouv-info {
+            background: rgba(255,84,34,.06);
+            border: 1px solid var(--border-accent);
+            padding: 14px 18px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+        .gouv-info strong { color: var(--accent); font-weight: 600; }
+        .flash {
+            background: rgba(74, 222, 128, .10);
+            border: 1px solid rgba(74, 222, 128, .35);
+            color: #4ade80;
+            padding: 10px 14px;
+            margin-bottom: 18px;
+            font-size: 13px;
+        }
+        .flash.error {
+            background: rgba(255, 77, 77, .10);
+            border-color: rgba(255, 77, 77, .35);
+            color: #ff7777;
+        }
+        .actions-row {
+            display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+    <%- include('../partials/admin-sidebar', { currentPage: 'gouv' }) %>
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title">Compte Gouvernement</div>
+            <div class="page-subtitle">Acc&egrave;s unique de surveillance externe (lecture seule)</div>
+        </div>
+
+        <% if (flash) { %><div class="flash"><i class="fa-solid fa-circle-check"></i> <%= flash %></div><% } %>
+        <% if (error) { %><div class="flash error"><i class="fa-solid fa-circle-exclamation"></i> <%= error %></div><% } %>
+
+        <div class="gouv-info">
+            <strong><i class="fa-solid fa-landmark"></i> Compte unique.</strong>
+            Ce compte permet une connexion sur <strong>/gouv/login</strong> uniquement. Il donne acc&egrave;s &agrave;
+            la liste des effectifs, des achats et aux statistiques (lecture seule). Le mot de passe est stock&eacute;
+            en clair pour pouvoir &ecirc;tre communiqu&eacute; depuis ce panneau.
+        </div>
+
+        <div class="gouv-card">
+            <form method="POST" action="/admin/gouv">
+                <div class="gouv-section">
+                    <div class="gouv-section-title">Identifiants</div>
+
+                    <label class="field-label" for="username">Nom d'utilisateur</label>
+                    <div class="field-row">
+                        <input type="text" id="username" name="username" class="f-input" value="<%= account.username %>" required autocomplete="off">
+                        <button type="button" class="icon-btn" data-copy-target="username" title="Copier"><i class="fa-solid fa-copy"></i></button>
+                    </div>
+
+                    <label class="field-label" for="password">Mot de passe</label>
+                    <div class="field-row">
+                        <input type="password" id="password" name="password" class="f-input" value="<%= account.password %>" required autocomplete="off">
+                        <button type="button" class="icon-btn" id="toggle-pwd" title="Afficher / masquer"><i class="fa-solid fa-eye"></i></button>
+                        <button type="button" class="icon-btn" data-copy-target="password" title="Copier"><i class="fa-solid fa-copy"></i></button>
+                    </div>
+
+                    <div class="actions-row" style="margin-top:18px;">
+                        <button type="submit" class="btn-add" style="background:var(--accent);">
+                            <i class="fa-solid fa-floppy-disk"></i> Enregistrer
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <div class="gouv-section">
+                <div class="gouv-section-title">Actions rapides</div>
+                <form method="POST" action="/admin/gouv/regenerate" onsubmit="return confirm('R&eacute;g&eacute;n&eacute;rer un nouveau mot de passe al&eacute;atoire ? L\'ancien sera invalid&eacute; imm&eacute;diatement.');">
+                    <button type="submit" class="icon-btn" style="padding:10px 16px;min-width:0;">
+                        <i class="fa-solid fa-rotate"></i>&nbsp; R&eacute;g&eacute;n&eacute;rer un mot de passe al&eacute;atoire
+                    </button>
+                </form>
+            </div>
+
+            <div class="gouv-section">
+                <div class="gouv-section-title">Acc&egrave;s</div>
+                <div style="font-size:13px;color:var(--text-secondary);line-height:1.7;">
+                    URL de connexion :
+                    <a href="/gouv/login" target="_blank" style="font-family:var(--font-mono);color:var(--accent);text-decoration:none;">/gouv/login</a>
+                    <br>
+                    Acc&egrave;s direct (admin) :
+                    <a href="/gouv/effectifs" target="_blank" style="font-family:var(--font-mono);color:var(--accent);text-decoration:none;">/gouv/effectifs</a>
+                    <br>
+                    Derni&egrave;re mise &agrave; jour : <span class="mono" style="color:var(--text-muted);"><%= new Date(account.updatedAt).toLocaleString('fr-FR') %></span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.getElementById('toggle-pwd').addEventListener('click', function() {
+            var input = document.getElementById('password');
+            var icon = this.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-solid fa-eye';
+            }
+        });
+
+        document.querySelectorAll('[data-copy-target]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var target = document.getElementById(btn.getAttribute('data-copy-target'));
+                if (!target) return;
+                var prevType = target.type;
+                target.type = 'text';
+                target.select();
+                try {
+                    navigator.clipboard.writeText(target.value);
+                    btn.classList.add('copied');
+                    var icon = btn.querySelector('i');
+                    var prev = icon.className;
+                    icon.className = 'fa-solid fa-check';
+                    setTimeout(function() {
+                        btn.classList.remove('copied');
+                        icon.className = prev;
+                    }, 1200);
+                } catch (e) {
+                    document.execCommand('copy');
+                }
+                target.type = prevType;
+                window.getSelection().removeAllRanges();
+            });
+        });
+    </script>
+</body>
+</html>

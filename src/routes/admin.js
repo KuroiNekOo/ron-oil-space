@@ -26,6 +26,9 @@ const {
   getExpenseTypes, createExpenseType, updateExpenseType, deleteExpenseType,
 } = require('../services/expenseTypes');
 const { getRoles, setRoles, getRoleNames } = require('../services/roles');
+const {
+  getOrCreateGovAccount, updateGovAccount, regeneratePassword: regenerateGovPassword,
+} = require('../services/govAccount');
 
 // ── Helpers : génération d'identifiants ──
 
@@ -1519,6 +1522,7 @@ router.get('/statistiques', async (req, res) => {
         expenseRefund: r.expenseRefund,
         repatBonus: r.repatBonus,
         impoundReimbursement: r.impoundReimbursement,
+        impoundPenalty: r.impoundPenalty,
         primeFinale: r.primeFinale,
         rank: r.rank,
       })),
@@ -1795,6 +1799,45 @@ router.post('/faq/entries/:id/move', async (req, res) => {
   } catch (err) {
     console.error('POST /admin/faq/entries/:id/move error:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ══════════════════════════════════════
+//  GOUVERNEMENT (compte unique)
+// ══════════════════════════════════════
+
+router.get('/gouv', async (req, res) => {
+  try {
+    const account = await getOrCreateGovAccount();
+    res.render('admin/gouv', {
+      account,
+      flash: req.query.ok ? 'Modifications enregistrées.' : null,
+      error: req.query.error || null,
+    });
+  } catch (err) {
+    console.error('GET /admin/gouv error:', err);
+    res.status(500).send('Erreur serveur');
+  }
+});
+
+router.post('/gouv', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    await updateGovAccount({ username, password });
+    res.redirect('/admin/gouv?ok=1');
+  } catch (err) {
+    console.error('POST /admin/gouv error:', err);
+    res.redirect('/admin/gouv?error=' + encodeURIComponent(err.message));
+  }
+});
+
+router.post('/gouv/regenerate', async (req, res) => {
+  try {
+    await regenerateGovPassword();
+    res.redirect('/admin/gouv?ok=1');
+  } catch (err) {
+    console.error('POST /admin/gouv/regenerate error:', err);
+    res.redirect('/admin/gouv?error=' + encodeURIComponent(err.message));
   }
 });
 
