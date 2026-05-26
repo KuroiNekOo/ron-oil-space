@@ -35,7 +35,7 @@ async function computeFrozenWeek(week, year) {
     bonusMinDeliveries, weeklyDeliveryQuota,
     expenseTypes, repatCostPerEvent, repatReimbursementPct,
     impoundCostPerEvent, impoundReimbursementPct,
-    expenses, repatAgg, breakdownAgg,
+    expenses, repatTruckAgg, repatTankerAgg, breakdownTruckAgg, breakdownTankerAgg,
   ] = await Promise.all([
     prisma.logEntry.findMany({
       where: { type: 'delivery', ...whereWeek },
@@ -56,8 +56,12 @@ async function computeFrozenWeek(week, year) {
     getImpoundCostPerEvent(),
     getImpoundReimbursementPercent(),
     prisma.expense.findMany({ where: whereWeek }),
-    prisma.repatriation.groupBy({ by: ['employeeId'], where: whereWeek, _count: { _all: true } }),
-    prisma.breakdown.groupBy({ by: ['employeeId'], where: whereWeek, _count: { _all: true } }),
+    // Une unité = une plaque renseignée. Un formulaire avec camion+citerne
+    // compte donc pour 2 ; un formulaire sans plaque pour 0.
+    prisma.repatriation.groupBy({ by: ['employeeId'], where: { ...whereWeek, truckPlate: { not: null } }, _count: { _all: true } }),
+    prisma.repatriation.groupBy({ by: ['employeeId'], where: { ...whereWeek, tankerPlate: { not: null } }, _count: { _all: true } }),
+    prisma.breakdown.groupBy({ by: ['employeeId'], where: { ...whereWeek, truckPlate: { not: null } }, _count: { _all: true } }),
+    prisma.breakdown.groupBy({ by: ['employeeId'], where: { ...whereWeek, tankerPlate: { not: null } }, _count: { _all: true } }),
   ]);
 
   const empByKey = new Map();
@@ -90,8 +94,17 @@ async function computeFrozenWeek(week, year) {
     const refund = computeExpenseRefund(ex.type, ex.amount, expenseTypes);
     expenseRefundMap.set(ex.employeeId, (expenseRefundMap.get(ex.employeeId) || 0) + refund);
   }
-  const repatMap = new Map(repatAgg.map(r => [r.employeeId, r._count._all]));
-  const breakdownMap = new Map(breakdownAgg.map(r => [r.employeeId, r._count._all]));
+  const sumByEmployee = (...aggs) => {
+    const map = new Map();
+    for (const agg of aggs) {
+      for (const r of agg) {
+        map.set(r.employeeId, (map.get(r.employeeId) || 0) + r._count._all);
+      }
+    }
+    return map;
+  };
+  const repatMap = sumByEmployee(repatTruckAgg, repatTankerAgg);
+  const breakdownMap = sumByEmployee(breakdownTruckAgg, breakdownTankerAgg);
   const sbByEmp = new Map(specialBonuses.map(b => [b.employeeId, b]));
 
   // Employés avec livraisons

@@ -194,7 +194,9 @@ router.get('/dashboard', requireEmployee, async (req, res) => {
     const [
       leaderboard, records, tiers, shares, podiumPrizes, weeklyDeliveryQuota,
       expenseTypes, repatCost, repatPct, impoundCost, impoundPct,
-      myExpenses, myRepatCount, myImpoundCount,
+      myExpenses,
+      myRepatTruckCount, myRepatTankerCount,
+      myImpoundTruckCount, myImpoundTankerCount,
     ] = await Promise.all([
       computeWeekStats(currentWeek, currentYear),
       getStoredRecords(),
@@ -210,13 +212,23 @@ router.get('/dashboard', requireEmployee, async (req, res) => {
       prisma.expense.findMany({
         where: { employeeId: employee.id, week: currentWeek, year: currentYear },
       }),
+      // Une unité = une plaque renseignée (camion+citerne sur un même
+      // formulaire = 2 ; aucune plaque = 0). Aligné avec rollover.js.
       prisma.repatriation.count({
-        where: { employeeId: employee.id, week: currentWeek, year: currentYear },
+        where: { employeeId: employee.id, week: currentWeek, year: currentYear, truckPlate: { not: null } },
+      }),
+      prisma.repatriation.count({
+        where: { employeeId: employee.id, week: currentWeek, year: currentYear, tankerPlate: { not: null } },
       }),
       prisma.breakdown.count({
-        where: { employeeId: employee.id, week: currentWeek, year: currentYear },
+        where: { employeeId: employee.id, week: currentWeek, year: currentYear, truckPlate: { not: null } },
+      }),
+      prisma.breakdown.count({
+        where: { employeeId: employee.id, week: currentWeek, year: currentYear, tankerPlate: { not: null } },
       }),
     ]);
+    const myRepatCount = myRepatTruckCount + myRepatTankerCount;
+    const myImpoundCount = myImpoundTruckCount + myImpoundTankerCount;
 
     const collectivePoints = leaderboard._collectivePoints || 0;
     const bonusMinDeliveries = leaderboard._bonusMinDeliveries || 0;
