@@ -329,16 +329,17 @@ model GovAccount {
 // au moment de la génération d'un Contract. Un seul template peut être marqué
 // `isActive` à la fois — c'est lui qui sert pour toutes les nouvelles générations.
 model ContractTemplate {
-  id        Int      @id @default(autoincrement())
+  id        Int        @id @default(autoincrement())
   name      String
-  content   String   // HTML
+  content   String     // HTML
   // Type de contrat ciblé : "CDI" | "CDD" | null (générique, fallback).
   // À la génération, on cherche d'abord le template actif du même kind que
   // l'employé, puis on retombe sur un template générique si absent.
   kind      String?
-  isActive  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive  Boolean    @default(false)
+  contracts Contract[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }
 
 // Instance de contrat liée à un employé. Le HTML rendu (avec valeurs substituées)
