@@ -7,6 +7,7 @@ const prisma = require('../db');
 const { rolloverWeek } = require('./rollover');
 const { notifyWeeklyStats, notifyContractAlert } = require('./bot');
 const { refreshRecords } = require('./records');
+const { runAbsenceDeactivationCheck } = require('./absences');
 
 const PERIOD_START_HOUR = parseInt(process.env.PERIOD_START_HOUR) || 18;
 const CONTRACT_ALERT_HOURS = parseInt(process.env.CONTRACT_ALERT_HOURS) || 48;
@@ -14,6 +15,11 @@ const CONTRACT_ALERT_HOURS = parseInt(process.env.CONTRACT_ALERT_HOURS) || 48;
 const CONTRACT_CHECK_INTERVAL_MIN = parseInt(process.env.CONTRACT_CHECK_INTERVAL_MINUTES) || 1440;
 // Fréquence de rafraîchissement des records (minutes). Défaut : 60 = 1 check / heure.
 const RECORDS_REFRESH_INTERVAL_MIN = parseInt(process.env.RECORDS_REFRESH_INTERVAL_MINUTES) || 60;
+// Fréquence du check de désactivation auto sur absences (minutes). Défaut : 60min
+// = un filet horaire. La désactivation immédiate au POST /absences couvre déjà
+// les cas où l'absence débute aujourd'hui — ce tick rattrape uniquement les
+// absences créées en avance (employé pas encore actif au moment du POST).
+const ABSENCE_CHECK_INTERVAL_MIN = parseInt(process.env.ABSENCE_CHECK_INTERVAL_MINUTES) || 60;
 const ALERT_LOG_KEY = 'contractAlertLog';
 const WEEKLY_ROLLOVER_KEY = 'lastWeeklyRolloverKey';
 
@@ -185,7 +191,11 @@ function startSchedulers() {
   // Records : refresh au boot + intervalle configurable (défaut 60min).
   setTimeout(() => runRecordsRefresh(), 5000);
   setInterval(() => runRecordsRefresh(), RECORDS_REFRESH_INTERVAL_MIN * 60 * 1000);
-  console.log('[alerts] schedulers démarrés (rollover dim. ' + PERIOD_START_HOUR + 'h00, contrats toutes les ' + CONTRACT_CHECK_INTERVAL_MIN + 'min, records toutes les ' + RECORDS_REFRESH_INTERVAL_MIN + 'min)');
+  // Absences : check au boot + intervalle configurable (défaut 60min). Rattrape
+  // les absences créées en avance qui doivent désactiver au passage de la date.
+  setTimeout(() => runAbsenceDeactivationCheck().catch(e => console.error('[alerts] absences:', e)), 5000);
+  setInterval(() => runAbsenceDeactivationCheck().catch(e => console.error('[alerts] absences:', e)), ABSENCE_CHECK_INTERVAL_MIN * 60 * 1000);
+  console.log('[alerts] schedulers démarrés (rollover dim. ' + PERIOD_START_HOUR + 'h00, contrats toutes les ' + CONTRACT_CHECK_INTERVAL_MIN + 'min, records toutes les ' + RECORDS_REFRESH_INTERVAL_MIN + 'min, absences toutes les ' + ABSENCE_CHECK_INTERVAL_MIN + 'min)');
 }
 
 module.exports = {

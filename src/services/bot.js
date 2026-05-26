@@ -44,8 +44,12 @@ async function notifyContractAlert(payload) {
   return call('/notify/contract-alert', payload);
 }
 
+async function notifyAbsence(payload) {
+  return call('/notify/absence', payload);
+}
+
 module.exports = {
   createCasier, archiveCasier,
   deactivateCasier, reactivateCasier,
-  notifyWeeklyStats, notifyContractAlert,
+  notifyWeeklyStats, notifyContractAlert, notifyAbsence,
 };

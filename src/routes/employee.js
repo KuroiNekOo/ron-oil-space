@@ -17,6 +17,8 @@ const {
   computeCollectivePoints,
 } = require('../services/tiers');
 const { getStoredRecords } = require('../services/records');
+const { notifyAbsence } = require('../services/bot');
+const { isAutoDeactivateEnabled, deactivateForAbsence } = require('../services/absences');
 
 function fmt(n) {
   return new Intl.NumberFormat('fr-FR').format(Math.round(n)) + '$';
@@ -413,6 +415,27 @@ router.post('/absences', requireEmployee, async (req, res) => {
         comment: comment || null,
       },
     });
+
+    // Notif Discord dans le salon sécurité (même canal que les fins de contrat).
+    // Best-effort : on ne plante pas la création si le bot est down.
+    notifyAbsence({
+      name: req.employee.firstName + ' ' + req.employee.lastName,
+      type,
+      dateStart: start.toISOString(),
+      dateEnd: end.toISOString(),
+      justificatif: justificatif || null,
+      comment: comment || null,
+    }).catch(err => console.warn('[absence] notifyAbsence:', err.message));
+
+    // Désactivation immédiate si l'absence a déjà débuté et que le flag est ON.
+    // deactivateForAbsence est no-op si l'employé est déjà inactif (désactivation
+    // manuelle préalable), donc safe à appeler sans précondition.
+    const now = new Date();
+    if (start <= now && (await isAutoDeactivateEnabled())) {
+      deactivateForAbsence(req.session.employeeId)
+        .catch(err => console.error('[absence] deactivateForAbsence:', err.message));
+    }
+
     res.json({ ok: true, message: 'Absence enregistrée' });
   } catch (err) {
     console.error('Absence error:', err);

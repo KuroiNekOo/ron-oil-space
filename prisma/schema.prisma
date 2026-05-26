@@ -38,6 +38,15 @@ model Employee {
   showInTeam       Boolean   @default(true) // visible sur la page publique /equipe
   notes            String?
 
+  // Remplacement : pointe l'employé absent que ce salarié remplace (typique-
+  // ment un CDD couvrant une absence). Self-relation + snapshot du nom pour
+  // conserver l'information même si l'employé absent est supprimé plus tard.
+  replacesId        Int?
+  replaces          Employee?  @relation("EmployeeReplacement", fields: [replacesId], references: [id], onDelete: SetNull)
+  replacedBy        Employee[] @relation("EmployeeReplacement")
+  replacesFirstName String?
+  replacesLastName  String?
+
   user             User?
   absences         Absence[]
   expenses         Expense[]

@@ -29,6 +29,9 @@ const { getRoles, setRoles, getRoleNames } = require('../services/roles');
 const {
   getOrCreateGovAccount, updateGovAccount, regeneratePassword: regenerateGovPassword,
 } = require('../services/govAccount');
+const {
+  isAutoDeactivateEnabled, setAutoDeactivateEnabled,
+} = require('../services/absences');
 
 // ── Helpers : génération d'identifiants ──
 
@@ -95,7 +98,7 @@ router.get('/salaries', async (req, res) => {
     const sort = req.query.sort || 'default';
     const page = Math.max(1, parseInt(req.query.page) || 1);
 
-    const [employees, dutyLogs, roles] = await Promise.all([
+    const [employees, dutyLogs, roles, futureAbsences, autoDeactivate] = await Promise.all([
       prisma.employee.findMany({ orderBy: { id: 'asc' } }),
       prisma.logEntry.findMany({
         where: { type: 'duty' },
@@ -103,6 +106,14 @@ router.get('/salaries', async (req, res) => {
         select: { data: true, timestamp: true },
       }),
       getRoles(),
+      // Absences en cours OU à venir (pas passées) avec l'employé absent.
+      // SetNull à la suppression → on filtre les orphelines côté JS.
+      prisma.absence.findMany({
+        where: { dateEnd: { gte: new Date() }, employeeId: { not: null } },
+        orderBy: { dateStart: 'asc' },
+        include: { employee: { select: { id: true, firstName: true, lastName: true, status: true } } },
+      }),
+      isAutoDeactivateEnabled(),
     ]);
 
     // Dernier log de service par nom normalisé (first-wins car trié desc).
@@ -156,6 +167,42 @@ router.get('/salaries', async (req, res) => {
     const pageOffset = (safePage - 1) * LIST_PAGE_SIZE;
     const pageEmployees = filtered.slice(pageOffset, pageOffset + LIST_PAGE_SIZE);
 
+    // Tri des absences en 3 buckets pour la bande "places à remplacer" en haut
+    // de la page. now est figé pour éviter qu'une absence change de bucket entre
+    // les comparaisons. "ending-soon" est un sous-ensemble de "ongoing" mis en
+    // avant (≤3 jours restants) — on l'extrait avant de filtrer les ongoing.
+    const now = new Date();
+    const endingSoonThreshold = new Date(now.getTime() + 3 * 86400000);
+    const absenceCards = { ongoing: [], upcoming: [], endingSoon: [] };
+    for (const a of futureAbsences) {
+      if (!a.employee) continue; // orpheline (employé supprimé)
+      const card = {
+        id: a.id,
+        type: a.type,
+        dateStart: a.dateStart,
+        dateEnd: a.dateEnd,
+        employeeId: a.employeeId,
+        employeeName: a.employee.firstName + ' ' + a.employee.lastName,
+        employeeStatus: a.employee.status,
+      };
+      const start = new Date(a.dateStart);
+      const end = new Date(a.dateEnd);
+      if (start > now) {
+        absenceCards.upcoming.push(card);
+      } else if (end <= endingSoonThreshold) {
+        absenceCards.endingSoon.push(card);
+      } else {
+        absenceCards.ongoing.push(card);
+      }
+    }
+
+    // Pour le sélecteur "remplace" : tous les employés actifs + inactifs (pas
+    // les supprimés, ils ne sont plus en BDD). On reprend la liste de base.
+    const replaceCandidates = employees
+      .filter(e => e.status === 'active' || e.status === 'inactive')
+      .map(e => ({ id: e.id, firstName: e.firstName, lastName: e.lastName, status: e.status }))
+      .sort((a, b) => (a.lastName + a.firstName).localeCompare(b.lastName + b.firstName, 'fr'));
+
     // `allEmployees` est utilisé côté client pour les modals d'édition (qui doivent
     // pouvoir éditer un employé même hors page courante) — donc on injecte la liste
     // complète enrichie en JSON.
@@ -166,6 +213,9 @@ router.get('/salaries', async (req, res) => {
       counters,
       page: safePage, totalPages, total, pageOffset,
       query: { q, duty, sort },
+      absenceCards,
+      replaceCandidates,
+      autoDeactivate,
     });
   } catch (err) {
     console.error('GET /salaries error:', err);
@@ -177,7 +227,7 @@ router.post('/salaries', async (req, res) => {
   try {
     const {
       firstName, lastName, contract, role, phone,
-      hireDate, endDate, iban, discordId, notes, showInTeam,
+      hireDate, endDate, iban, discordId, notes, showInTeam, replacesId,
     } = req.body;
 
     if (!discordId) {
@@ -188,6 +238,24 @@ router.post('/salaries', async (req, res) => {
     }
     if (!endDate) {
       return res.status(400).json({ error: 'Date de fin de contrat requise' });
+    }
+
+    // Résolution du remplacé : si renseigné, on charge l'employé pour
+    // snapshoter son nom (l'historique survit même si l'absent est supprimé).
+    let replacesData = { replacesId: null, replacesFirstName: null, replacesLastName: null };
+    const replacesIdNum = parseInt(replacesId);
+    if (replacesId && isFinite(replacesIdNum)) {
+      const target = await prisma.employee.findUnique({
+        where: { id: replacesIdNum },
+        select: { id: true, firstName: true, lastName: true },
+      });
+      if (target) {
+        replacesData = {
+          replacesId: target.id,
+          replacesFirstName: target.firstName,
+          replacesLastName: target.lastName,
+        };
+      }
     }
 
     const username = await generateUniqueUsername(firstName, lastName);
@@ -209,6 +277,7 @@ router.post('/salaries', async (req, res) => {
           discordId,
           showInTeam: showInTeam === 'on',
           notes: notes || null,
+          ...replacesData,
         },
       });
       await tx.user.create({
@@ -316,11 +385,29 @@ router.post('/salaries/:id/edit', async (req, res) => {
     const id = parseInt(req.params.id);
     const {
       firstName, lastName, contract, role, phone,
-      hireDate, endDate, iban, discordId, casierId, notes, showInTeam,
+      hireDate, endDate, iban, discordId, casierId, notes, showInTeam, replacesId,
     } = req.body;
 
     // ID casier manuel : on synchronise channelId et casierId (le bot lit channelId)
     const casier = casierId && casierId.trim() ? casierId.trim() : null;
+
+    // Résolution de "remplace" : champ vide ⇒ on efface (employé ne remplace plus
+    // personne). On interdit l'auto-référence (un employé ne peut se remplacer lui-même).
+    let replacesData = { replacesId: null, replacesFirstName: null, replacesLastName: null };
+    const replacesIdNum = parseInt(replacesId);
+    if (replacesId && isFinite(replacesIdNum) && replacesIdNum !== id) {
+      const target = await prisma.employee.findUnique({
+        where: { id: replacesIdNum },
+        select: { id: true, firstName: true, lastName: true },
+      });
+      if (target) {
+        replacesData = {
+          replacesId: target.id,
+          replacesFirstName: target.firstName,
+          replacesLastName: target.lastName,
+        };
+      }
+    }
 
     await prisma.employee.update({
       where: { id },
@@ -338,6 +425,7 @@ router.post('/salaries/:id/edit', async (req, res) => {
         channelId: casier,
         showInTeam: showInTeam === 'on',
         notes: notes || null,
+        ...replacesData,
       },
     });
     res.json({ ok: true, id });
@@ -396,6 +484,19 @@ router.post('/salaries/:id/toggle-admin', async (req, res) => {
     res.json({ id: updated.id, isAdmin: updated.isAdmin });
   } catch (err) {
     console.error('POST /salaries/:id/toggle-admin error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Toggle global : auto-désactivation à la date de début d'une absence.
+// Persiste dans Config.autoDeactivateOnAbsence. Pas de prise d'effet rétroactive :
+// si on rallume, les absences en cours seront ré-évaluées au prochain tick (60min).
+router.post('/salaries/config/auto-deactivate', async (req, res) => {
+  try {
+    const enabled = await setAutoDeactivateEnabled(req.body && req.body.enabled);
+    res.json({ ok: true, enabled });
+  } catch (err) {
+    console.error('POST /salaries/config/auto-deactivate error:', err);
     res.status(500).json({ error: err.message });
   }
 });

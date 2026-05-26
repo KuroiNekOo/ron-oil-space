@@ -20,6 +20,89 @@
             <div class="card"><div class="card-label">Inactifs</div><div class="card-value"><%= counters.inactive %></div></div>
         </div>
 
+        <%
+            const _absTypes = { conge: 'Congé', maladie: 'Maladie', accident: 'Accident', perso: 'Personnel', autre: 'Autre' };
+            const _fmtFr = d => new Date(d).toLocaleDateString('fr-FR');
+            const _totalAbsCards = absenceCards.ongoing.length + absenceCards.upcoming.length + absenceCards.endingSoon.length;
+        %>
+        <% if (_totalAbsCards > 0 || autoDeactivate !== undefined) { %>
+        <section class="absence-strip">
+            <div class="absence-strip-header">
+                <div class="absence-strip-title">
+                    <i class="fa-solid fa-user-clock"></i>
+                    Places à remplacer
+                    <% if (_totalAbsCards > 0) { %>
+                        <span class="absence-strip-count"><%= _totalAbsCards %></span>
+                    <% } %>
+                </div>
+                <label class="absence-toggle" title="Désactiver automatiquement le compte de l'employé à la date de début de son absence">
+                    <input type="checkbox" id="toggle-auto-deactivate"<%= autoDeactivate ? ' checked' : '' %>>
+                    <span class="absence-toggle-slider"></span>
+                    <span class="absence-toggle-label">Désactivation auto à l'absence</span>
+                </label>
+            </div>
+            <% if (_totalAbsCards === 0) { %>
+                <div class="absence-strip-empty">Aucune absence en cours ou à venir.</div>
+            <% } else { %>
+            <div class="absence-cards">
+                <% absenceCards.ongoing.forEach(function(a) { %>
+                    <div class="abs-card abs-ongoing" data-bucket="ongoing"
+                         data-absence-id="<%= a.id %>"
+                         data-employee-id="<%= a.employeeId %>"
+                         data-employee-name="<%= a.employeeName %>"
+                         data-date-start="<%= a.dateStart.toISOString() %>"
+                         data-date-end="<%= a.dateEnd.toISOString() %>">
+                        <div class="abs-card-badge">EN COURS</div>
+                        <div class="abs-card-name"><%= a.employeeName %></div>
+                        <div class="abs-card-type"><%= _absTypes[a.type] || a.type %></div>
+                        <div class="abs-card-dates"><%= _fmtFr(a.dateStart) %> → <%= _fmtFr(a.dateEnd) %></div>
+                        <button type="button" class="abs-card-btn" onclick="openReplaceModalFromCard(this)">
+                            <i class="fa-solid fa-user-plus"></i> Cr&eacute;er rempla&ccedil;ant
+                        </button>
+                    </div>
+                <% }); %>
+                <% absenceCards.upcoming.forEach(function(a) { %>
+                    <div class="abs-card abs-upcoming" data-bucket="upcoming"
+                         data-absence-id="<%= a.id %>"
+                         data-employee-id="<%= a.employeeId %>"
+                         data-employee-name="<%= a.employeeName %>"
+                         data-date-start="<%= a.dateStart.toISOString() %>"
+                         data-date-end="<%= a.dateEnd.toISOString() %>">
+                        <div class="abs-card-badge">À VENIR</div>
+                        <div class="abs-card-name"><%= a.employeeName %></div>
+                        <div class="abs-card-type"><%= _absTypes[a.type] || a.type %></div>
+                        <div class="abs-card-dates"><%= _fmtFr(a.dateStart) %> → <%= _fmtFr(a.dateEnd) %></div>
+                        <button type="button" class="abs-card-btn" onclick="openReplaceModalFromCard(this)">
+                            <i class="fa-solid fa-user-plus"></i> Cr&eacute;er rempla&ccedil;ant
+                        </button>
+                    </div>
+                <% }); %>
+                <% absenceCards.endingSoon.forEach(function(a) { %>
+                    <div class="abs-card abs-ending-soon" data-bucket="endingSoon"
+                         data-absence-id="<%= a.id %>"
+                         data-employee-id="<%= a.employeeId %>"
+                         data-employee-name="<%= a.employeeName %>"
+                         data-employee-status="<%= a.employeeStatus %>"
+                         data-date-start="<%= a.dateStart.toISOString() %>"
+                         data-date-end="<%= a.dateEnd.toISOString() %>">
+                        <div class="abs-card-badge">SE TERMINE BIENT&Ocirc;T</div>
+                        <div class="abs-card-name"><%= a.employeeName %></div>
+                        <div class="abs-card-type"><%= _absTypes[a.type] || a.type %></div>
+                        <div class="abs-card-dates">jusqu'au <%= _fmtFr(a.dateEnd) %></div>
+                        <% if (a.employeeStatus === 'inactive') { %>
+                            <button type="button" class="abs-card-btn abs-btn-reactivate" onclick="reactivateFromCard(this)">
+                                <i class="fa-solid fa-user-check"></i> R&eacute;activer le compte
+                            </button>
+                        <% } else { %>
+                            <div class="abs-card-note">Compte actif &mdash; rien à faire au retour.</div>
+                        <% } %>
+                    </div>
+                <% }); %>
+            </div>
+            <% } %>
+        </section>
+        <% } %>
+
         <form class="admin-toolbar" method="GET" action="/admin/salaries">
             <div class="admin-toolbar-left" style="flex-wrap:wrap;gap:10px;">
                 <input type="text" class="admin-search" name="q" placeholder="Rechercher un salari&eacute;..." value="<%= query.q %>">
@@ -71,6 +154,13 @@
                             <% var dutyTitle = e.duty ? ((e.duty.onDuty ? 'En service' : 'Hors service') + ' depuis ' + new Date(e.duty.since).toLocaleString('fr-FR')) : 'Hors service (aucun log)'; %>
                             <span class="duty-dot <%= dutyClass %>" title="<%= dutyTitle %>"></span>
                             <a href="#" class="employee-name-link" onclick="event.preventDefault(); openRecap(<%= e.id %>)" title="Voir le récap"><%= e.firstName %> <%= e.lastName %></a>
+                            <% if (e.replacesId || e.replacesLastName) {
+                                 const _repName = (e.replacesFirstName || '') + ' ' + (e.replacesLastName || '');
+                            %>
+                                <span class="replaces-badge" title="Remplace <%= _repName.trim() %>">
+                                    <i class="fa-solid fa-arrow-right-arrow-left"></i> <%= _repName.trim() %>
+                                </span>
+                            <% } %>
                         </td>
                         <td><span class="contract-badge <%= e.contract.toLowerCase() %>"><%= e.contract %></span></td>
                         <td><%= e.role %></td>
@@ -160,6 +250,15 @@
                             <input type="text" class="f-input" name="discordId" placeholder="ex. 123456789012345678" required>
                         </div>
                         <div class="form-group-full">
+                            <label class="f-label">Remplace (optionnel)</label>
+                            <select class="f-select" name="replacesId">
+                                <option value="">— Personne —</option>
+                                <% replaceCandidates.forEach(function(c) { %>
+                                    <option value="<%= c.id %>"><%= c.lastName %> <%= c.firstName %><%= c.status === 'inactive' ? ' (inactif)' : '' %></option>
+                                <% }); %>
+                            </select>
+                        </div>
+                        <div class="form-group-full">
                             <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;">
                                 <input type="checkbox" name="showInTeam" value="on" checked>
                                 <span style="font-size:13px;color:var(--text-secondary);">Afficher sur la page publique <strong>/equipe</strong></span>
@@ -237,6 +336,15 @@
                             <input type="text" class="f-input" name="casierId" placeholder="ex. 123456789012345678">
                         </div>
                         <div class="form-group-full">
+                            <label class="f-label">Remplace (optionnel)</label>
+                            <select class="f-select" name="replacesId" id="edit-replacesId">
+                                <option value="">— Personne —</option>
+                                <% replaceCandidates.forEach(function(c) { %>
+                                    <option value="<%= c.id %>"><%= c.lastName %> <%= c.firstName %><%= c.status === 'inactive' ? ' (inactif)' : '' %></option>
+                                <% }); %>
+                            </select>
+                        </div>
+                        <div class="form-group-full">
                             <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;">
                                 <input type="checkbox" name="showInTeam" value="on">
                                 <span style="font-size:13px;color:var(--text-secondary);">Afficher sur la page publique <strong>/equipe</strong></span>
@@ -297,6 +405,93 @@
         .recap-hi-info { font-size:11px; color:var(--text-muted); margin-top:2px; }
         .recap-hi-rank { font-family:var(--font-mono); font-size:13px; font-weight:600; }
         .recap-empty { padding:18px; color:var(--text-muted); text-align:center; font-size:13px; }
+
+        /* ── Bande "places à remplacer" ─────────────────────────────── */
+        .absence-strip { margin-bottom:28px; }
+        .absence-strip-header {
+            display:flex; align-items:center; justify-content:space-between;
+            margin-bottom:12px; gap:14px; flex-wrap:wrap;
+        }
+        .absence-strip-title {
+            font-family:var(--font-display); font-size:13px; font-weight:700;
+            letter-spacing:.16em; text-transform:uppercase; color:var(--text-secondary);
+            display:inline-flex; align-items:center; gap:10px;
+        }
+        .absence-strip-count {
+            background:var(--accent); color:#fff; font-size:11px; padding:2px 8px;
+            border-radius:10px; letter-spacing:0;
+        }
+        .absence-strip-empty {
+            padding:14px; background:var(--bg-card); border:1px dashed var(--border);
+            color:var(--text-muted); font-size:13px; text-align:center;
+        }
+        .absence-cards {
+            display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+            gap:12px;
+        }
+        .abs-card {
+            background:var(--bg-card); border:1px solid var(--border);
+            padding:14px; position:relative; display:flex; flex-direction:column;
+            gap:6px; transition:border-color .15s, background .15s;
+        }
+        .abs-card-badge {
+            font-family:var(--font-display); font-size:10px; font-weight:700;
+            letter-spacing:.14em; text-transform:uppercase; padding:3px 8px;
+            align-self:flex-start; border:1px solid currentColor;
+        }
+        .abs-card-name { font-weight:600; font-size:14px; }
+        .abs-card-type { font-size:12px; color:var(--text-secondary); }
+        .abs-card-dates { font-family:var(--font-mono); font-size:12px; color:var(--text-muted); margin-bottom:6px; }
+        .abs-card-btn {
+            display:inline-flex; align-items:center; justify-content:center; gap:6px;
+            padding:8px 12px; font-size:12px; font-weight:600; cursor:pointer;
+            border:1px solid currentColor; background:transparent; color:inherit;
+            transition:background .15s, color .15s;
+        }
+        .abs-card-btn:hover { background:currentColor; }
+        .abs-card-btn:hover > i, .abs-card-btn:hover { color:#0a0a0a; }
+        .abs-card-note { font-size:11px; color:var(--text-muted); font-style:italic; margin-top:4px; }
+
+        .abs-ongoing { color:#ff8a3d; }
+        .abs-ongoing:hover { border-color:#ff8a3d; }
+        .abs-upcoming { color:#3B82F6; }
+        .abs-upcoming:hover { border-color:#3B82F6; }
+        .abs-ending-soon { color:#ffb020; }
+        .abs-ending-soon:hover { border-color:#ffb020; }
+
+        .abs-card-name, .abs-card-type, .abs-card-dates { color:var(--text-primary); }
+        .abs-ongoing .abs-card-type, .abs-upcoming .abs-card-type, .abs-ending-soon .abs-card-type { color:var(--text-secondary); }
+        .abs-ongoing .abs-card-dates, .abs-upcoming .abs-card-dates, .abs-ending-soon .abs-card-dates { color:var(--text-muted); }
+
+        /* Toggle "Désactivation auto" — slider compact */
+        .absence-toggle {
+            display:inline-flex; align-items:center; gap:10px; cursor:pointer;
+            font-size:12px; color:var(--text-secondary); user-select:none;
+        }
+        .absence-toggle input { display:none; }
+        .absence-toggle-slider {
+            width:36px; height:20px; background:var(--bg-card); border:1px solid var(--border);
+            border-radius:10px; position:relative; transition:background .15s, border-color .15s;
+        }
+        .absence-toggle-slider::after {
+            content:''; position:absolute; left:2px; top:2px; width:14px; height:14px;
+            background:var(--text-muted); border-radius:50%; transition:left .15s, background .15s;
+        }
+        .absence-toggle input:checked + .absence-toggle-slider {
+            background:var(--accent-dim); border-color:var(--accent);
+        }
+        .absence-toggle input:checked + .absence-toggle-slider::after {
+            left:18px; background:var(--accent);
+        }
+
+        /* Badge "Remplace [Nom]" dans la liste salariés */
+        .replaces-badge {
+            display:inline-flex; align-items:center; gap:4px;
+            font-size:10.5px; padding:2px 7px; margin-left:6px;
+            background:var(--accent-dim); color:var(--accent);
+            border:1px solid var(--accent); border-radius:3px;
+            font-weight:600; letter-spacing:.04em;
+        }
     </style>
 
     <%# Cache complet pour les modals : doit pouvoir éditer un employé même hors page courante. %>
@@ -361,10 +556,93 @@
             form.iban.value      = emp.iban      || '';
             form.discordId.value = emp.discordId || '';
             form.casierId.value  = emp.casierId  || emp.channelId || '';
+            // Cache l'option auto-référence (un employé ne se remplace pas lui-même)
+            Array.from(form.replacesId.options).forEach(function(opt) {
+                opt.hidden = (opt.value && String(opt.value) === String(id));
+            });
+            form.replacesId.value = emp.replacesId != null ? String(emp.replacesId) : '';
             form.showInTeam.checked = emp.showInTeam !== false;
             form.notes.value     = emp.notes     || '';
             openModal('modal-edit');
         }
+
+        // Ouvre la modal "Ajouter un salarié" pré-remplie à partir d'une carte d'absence.
+        // Règle dates : hireDate = max(today, absence.start) (cohérence "on n'embauche
+        // pas dans le passé"), endDate = absence.end. Contrat forcé CDD.
+        function openReplaceModalFromCard(btn) {
+            var card = btn.closest('.abs-card');
+            if (!card) return;
+            var employeeId = card.dataset.employeeId;
+            var employeeName = card.dataset.employeeName || '';
+            var dateStart = card.dataset.dateStart ? new Date(card.dataset.dateStart) : null;
+            var dateEnd = card.dataset.dateEnd ? new Date(card.dataset.dateEnd) : null;
+            var today = new Date(); today.setHours(0,0,0,0);
+            var effectiveStart = (dateStart && dateStart > today) ? dateStart : today;
+
+            var form = document.querySelector('#modal-add form');
+            if (!form) return;
+            form.reset();
+            form.contract.value = 'CDD';
+            form.hireDate.value = toDateInput(effectiveStart);
+            form.endDate.value = dateEnd ? toDateInput(dateEnd) : '';
+            if (form.replacesId && employeeId) form.replacesId.value = String(employeeId);
+
+            // Petit bandeau d'info en haut de la modal pour rappeler qui on remplace.
+            var header = document.querySelector('#modal-add .modal-header .modal-title');
+            if (header && employeeName) {
+                header.innerHTML = 'Ajouter un salari&eacute; <span style="font-size:12px;color:var(--text-muted);font-weight:400;margin-left:8px;">remplace ' + employeeName + '</span>';
+            }
+            openModal('modal-add');
+        }
+
+        // Toggle du flag global "désactivation auto à l'absence"
+        var autoDeactivateToggle = document.getElementById('toggle-auto-deactivate');
+        if (autoDeactivateToggle) {
+            autoDeactivateToggle.addEventListener('change', function() {
+                var enabled = autoDeactivateToggle.checked;
+                fetch('/admin/salaries/config/auto-deactivate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ enabled: enabled }),
+                })
+                .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                .then(function() { showToast(enabled ? 'Désactivation auto activée' : 'Désactivation auto désactivée'); })
+                .catch(function(err) {
+                    autoDeactivateToggle.checked = !enabled; // rollback visuel
+                    showToast('Erreur : ' + err.message, 'error');
+                });
+            });
+        }
+
+        // Réactivation rapide depuis une carte "fin dans 3j" (compte resté inactif).
+        function reactivateFromCard(btn) {
+            var card = btn.closest('.abs-card');
+            if (!card) return;
+            var employeeId = card.dataset.employeeId;
+            if (!employeeId) return;
+            if (!confirm('Réactiver ' + (card.dataset.employeeName || 'cet employé') + ' ?')) return;
+            AdminAjax.post('/admin/salaries/' + employeeId + '/toggle')
+                .then(function() { showToast('Compte réactivé'); return AdminAjax.reloadMain(); })
+                .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+
+        // Reset du titre de la modal add quand on la ferme par les boutons standards
+        // (sinon le "remplace X" reste affiché à la prochaine ouverture vierge).
+        (function() {
+            var defaultTitle = 'Ajouter un salari&eacute;';
+            ['modal-add'].forEach(function(id) {
+                var overlay = document.getElementById(id);
+                if (!overlay) return;
+                var observer = new MutationObserver(function() {
+                    if (!overlay.classList.contains('open')) {
+                        var h = overlay.querySelector('.modal-title');
+                        if (h) h.innerHTML = defaultTitle;
+                    }
+                });
+                observer.observe(overlay, { attributes: true, attributeFilter: ['class'] });
+            });
+        })();
 
         function toggleStatus(id) {
             AdminAjax.post('/admin/salaries/' + id + '/toggle')
