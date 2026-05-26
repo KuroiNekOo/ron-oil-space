@@ -672,6 +672,7 @@
             form.replacesId.value = emp.replacesId != null ? String(emp.replacesId) : '';
             form.showInTeam.checked = emp.showInTeam !== false;
             form.notes.value     = emp.notes     || '';
+            syncEndDateRequired(document.getElementById('modal-edit'));
             openModal('modal-edit');
         }
 
@@ -701,6 +702,7 @@
             if (header && employeeName) {
                 header.innerHTML = 'Ajouter un salari&eacute; <span style="font-size:12px;color:var(--text-muted);font-weight:400;margin-left:8px;">remplace ' + employeeName + '</span>';
             }
+            syncEndDateRequired(document.getElementById('modal-add'));
             openModal('modal-add');
         }
 
@@ -753,17 +755,31 @@
             });
         })();
 
-        // Bascule contrat → CDI : on vide visuellement la date de fin dans la modal.
-        // Purement front : le backend reste seul juge de ce qui est persisté.
-        ['modal-add', 'modal-edit'].forEach(function(id) {
-            var overlay = document.getElementById(id);
+        // Bascule contrat → CDI : on vide la date de fin et on retire le caractère
+        // requis (label .f-required + attribut required). En CDD, on (re)met les
+        // deux. Purement front : le backend reste seul juge de ce qui est persisté.
+        function syncEndDateRequired(overlay) {
             if (!overlay) return;
             var contractSel = overlay.querySelector('select[name="contract"]');
             var endDateInput = overlay.querySelector('input[name="endDate"]');
             if (!contractSel || !endDateInput) return;
-            contractSel.addEventListener('change', function() {
-                if (contractSel.value === 'CDI') endDateInput.value = '';
-            });
+            var endDateLabel = endDateInput.parentNode.querySelector('.f-label');
+            if (contractSel.value === 'CDI') {
+                endDateInput.value = '';
+                endDateInput.removeAttribute('required');
+                if (endDateLabel) endDateLabel.classList.remove('f-required');
+            } else {
+                endDateInput.setAttribute('required', '');
+                if (endDateLabel) endDateLabel.classList.add('f-required');
+            }
+        }
+
+        ['modal-add', 'modal-edit'].forEach(function(id) {
+            var overlay = document.getElementById(id);
+            if (!overlay) return;
+            var contractSel = overlay.querySelector('select[name="contract"]');
+            if (!contractSel) return;
+            contractSel.addEventListener('change', function() { syncEndDateRequired(overlay); });
         });
 
         // ── Renouvellement de contrat (bouton coloré sur chaque ligne) ──────
