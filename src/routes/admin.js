@@ -2131,6 +2131,22 @@ router.post('/contracts/:id/cancel', async (req, res) => {
   }
 });
 
+// Corbeille : suppression totale d'un contrat depuis la liste admin. Aucune
+// logique de blanchiment, la ligne disparaît purement et simplement de la BDD
+// (snapshot du nom inclus) — à réserver aux contrats vraiment erronés. Pour
+// archiver proprement, utiliser /cancel.
+router.post('/contracts/:id/delete', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (Number.isNaN(id)) return res.status(400).json({ error: 'ID invalide' });
+    await prisma.contract.delete({ where: { id } });
+    res.json({ ok: true, id });
+  } catch (err) {
+    console.error('POST /contracts/:id/delete error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Génération manuelle pour un employé existant qui n'a pas (encore) de contrat.
 // Utilisé via le bouton 'Générer un contrat' dans la liste salariés (employés
 // pré-existants avant l'introduction du système contrats).
