@@ -46,8 +46,10 @@
                 <div class="absence-strip-empty">Aucune absence en cours ou à venir.</div>
             <% } else { %>
             <div class="absence-cards">
-                <% absenceCards.ongoing.forEach(function(a) { %>
-                    <div class="abs-card abs-ongoing" data-bucket="ongoing"
+                <% absenceCards.ongoing.forEach(function(a) {
+                     const _isReplaced = a.replacers && a.replacers.length > 0;
+                %>
+                    <div class="abs-card abs-ongoing<%= _isReplaced ? ' is-replaced' : '' %>" data-bucket="ongoing"
                          data-absence-id="<%= a.id %>"
                          data-employee-id="<%= a.employeeId %>"
                          data-employee-name="<%= a.employeeName %>"
@@ -57,13 +59,21 @@
                         <div class="abs-card-name"><%= a.employeeName %></div>
                         <div class="abs-card-type"><%= _absTypes[a.type] || a.type %></div>
                         <div class="abs-card-dates"><%= _fmtFr(a.dateStart) %> → <%= _fmtFr(a.dateEnd) %></div>
-                        <button type="button" class="abs-card-btn" onclick="openReplaceModalFromCard(this)">
-                            <i class="fa-solid fa-user-plus"></i> Cr&eacute;er rempla&ccedil;ant
-                        </button>
+                        <% if (_isReplaced) { %>
+                            <button type="button" class="abs-card-btn" disabled title="Place d&eacute;j&agrave; couverte par <%= a.replacers.join(', ') %>">
+                                <i class="fa-solid fa-user-check"></i> Remplac&eacute; par <%= a.replacers.join(', ') %>
+                            </button>
+                        <% } else { %>
+                            <button type="button" class="abs-card-btn" onclick="openReplaceModalFromCard(this)">
+                                <i class="fa-solid fa-user-plus"></i> Cr&eacute;er rempla&ccedil;ant
+                            </button>
+                        <% } %>
                     </div>
                 <% }); %>
-                <% absenceCards.upcoming.forEach(function(a) { %>
-                    <div class="abs-card abs-upcoming" data-bucket="upcoming"
+                <% absenceCards.upcoming.forEach(function(a) {
+                     const _isReplaced = a.replacers && a.replacers.length > 0;
+                %>
+                    <div class="abs-card abs-upcoming<%= _isReplaced ? ' is-replaced' : '' %>" data-bucket="upcoming"
                          data-absence-id="<%= a.id %>"
                          data-employee-id="<%= a.employeeId %>"
                          data-employee-name="<%= a.employeeName %>"
@@ -73,9 +83,15 @@
                         <div class="abs-card-name"><%= a.employeeName %></div>
                         <div class="abs-card-type"><%= _absTypes[a.type] || a.type %></div>
                         <div class="abs-card-dates"><%= _fmtFr(a.dateStart) %> → <%= _fmtFr(a.dateEnd) %></div>
-                        <button type="button" class="abs-card-btn" onclick="openReplaceModalFromCard(this)">
-                            <i class="fa-solid fa-user-plus"></i> Cr&eacute;er rempla&ccedil;ant
-                        </button>
+                        <% if (_isReplaced) { %>
+                            <button type="button" class="abs-card-btn" disabled title="Place d&eacute;j&agrave; couverte par <%= a.replacers.join(', ') %>">
+                                <i class="fa-solid fa-user-check"></i> Remplac&eacute; par <%= a.replacers.join(', ') %>
+                            </button>
+                        <% } else { %>
+                            <button type="button" class="abs-card-btn" onclick="openReplaceModalFromCard(this)">
+                                <i class="fa-solid fa-user-plus"></i> Cr&eacute;er rempla&ccedil;ant
+                            </button>
+                        <% } %>
                     </div>
                 <% }); %>
                 <% absenceCards.endingSoon.forEach(function(a) { %>
@@ -527,6 +543,14 @@
         .abs-card-name, .abs-card-type, .abs-card-dates { color:var(--text-primary); }
         .abs-ongoing .abs-card-type, .abs-upcoming .abs-card-type, .abs-ending-soon .abs-card-type { color:var(--text-secondary); }
         .abs-ongoing .abs-card-dates, .abs-upcoming .abs-card-dates, .abs-ending-soon .abs-card-dates { color:var(--text-muted); }
+
+        /* Carte grisée : la place est déjà couverte par un employé actif.
+           On désature l'accent coloré, on baisse l'opacité et on neutralise le
+           hover — visuellement la carte recule mais reste lisible. */
+        .abs-card.is-replaced { opacity:.55; filter:grayscale(.6); color:var(--text-muted); }
+        .abs-card.is-replaced:hover { border-color:var(--border); }
+        .abs-card.is-replaced .abs-card-btn { cursor:default; opacity:.8; }
+        .abs-card.is-replaced .abs-card-btn:hover { background:transparent; }
 
         /* Toggle "Désactivation auto" — slider compact */
         .absence-toggle {

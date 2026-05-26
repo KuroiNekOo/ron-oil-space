@@ -202,9 +202,22 @@ router.get('/salaries', async (req, res) => {
     // avant (≤3 jours restants) — on l'extrait avant de filtrer les ongoing.
     const now = new Date();
     const endingSoonThreshold = new Date(now.getTime() + 3 * 86400000);
+
+    // Index des remplaçants actifs par employé absent (replacesId → liste de
+    // noms). Sert à griser la carte d'absence quand quelqu'un couvre déjà la
+    // place — un employé inactif ne compte pas (il ne couvre plus rien).
+    const replacersByAbsentId = new Map();
+    for (const e of employees) {
+      if (e.status !== 'active' || e.replacesId == null) continue;
+      const list = replacersByAbsentId.get(e.replacesId) || [];
+      list.push((e.firstName + ' ' + e.lastName).trim());
+      replacersByAbsentId.set(e.replacesId, list);
+    }
+
     const absenceCards = { ongoing: [], upcoming: [], endingSoon: [] };
     for (const a of futureAbsences) {
       if (!a.employee) continue; // orpheline (employé supprimé)
+      const replacers = replacersByAbsentId.get(a.employeeId) || [];
       const card = {
         id: a.id,
         type: a.type,
@@ -213,6 +226,7 @@ router.get('/salaries', async (req, res) => {
         employeeId: a.employeeId,
         employeeName: a.employee.firstName + ' ' + a.employee.lastName,
         employeeStatus: a.employee.status,
+        replacers,
       };
       const start = new Date(a.dateStart);
       const end = new Date(a.dateEnd);
