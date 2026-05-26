@@ -210,7 +210,10 @@
         document.getElementById('btn-save').addEventListener('click', function() {
             var name = document.getElementById('tpl-name').value.trim();
             var kind = document.getElementById('tpl-kind').value;
-            var content = quill.getSemanticHTML().trim();
+            // root.innerHTML plutôt que getSemanticHTML() : ce dernier élague
+            // les <p><br></p> vides → on perd les sauts de ligne intentionnels
+            // que l'admin a posés entre les paragraphes du template.
+            var content = quill.root.innerHTML.trim();
             var text = quill.getText().trim();
             if (!name) { showToast('Nom du template requis', 'error'); return; }
             if (!text) { showToast('Contenu vide', 'error'); return; }

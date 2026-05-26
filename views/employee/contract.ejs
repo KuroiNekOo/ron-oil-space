@@ -34,6 +34,14 @@
         }
         .contract-paper p, .contract-paper li { color:#222; }
         .contract-paper strong { color:#000; }
+        /* Le reset global * {margin:0;padding:0} de shared.css écrase le défaut
+           navigateur → on restaure listes + paragraphes côté contrat. */
+        .contract-paper p { margin:0 0 .9em; }
+        .contract-paper p:last-child { margin-bottom:0; }
+        .contract-paper ul, .contract-paper ol { padding-left:1.6em; margin:0 0 .9em; }
+        .contract-paper ul { list-style:disc; }
+        .contract-paper ol { list-style:decimal; }
+        .contract-paper li { margin-bottom:.25em; }
         /* Classes générées par Quill : alignement + indentation. Quill.snow.css
            n'est pas chargée ici (page publique), donc on duplique localement. */
         .contract-paper .ql-align-center  { text-align:center; }
