@@ -103,6 +103,13 @@ async function requireEmployee(req, res, next) {
   if (user.employee.status !== 'active') {
     return killSession(req, res, '/login');
   }
+  // Resynchronise le flag admin avec la BDD : si un admin promeut (ou rétrograde)
+  // un employé pendant qu'il est connecté, sa sidebar reflète le changement au
+  // prochain refresh sans avoir à se reconnecter.
+  const currentIsAdmin = user.employee.isAdmin === true;
+  if (req.session.isAdmin !== currentIsAdmin) {
+    req.session.isAdmin = currentIsAdmin;
+  }
   req.employee = user.employee;
   next();
 }
