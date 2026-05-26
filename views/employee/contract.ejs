@@ -27,12 +27,26 @@
             font-family:Georgia, 'Times New Roman', serif;
             font-size:14px; line-height:1.7;
             margin-bottom:24px;
+            max-height:70vh; overflow-y:auto;
         }
         .contract-paper h1, .contract-paper h2, .contract-paper h3 {
             font-family:Georgia, serif; color:#000; line-height:1.3;
         }
         .contract-paper p, .contract-paper li { color:#222; }
         .contract-paper strong { color:#000; }
+        /* Classes générées par Quill : alignement + indentation. Quill.snow.css
+           n'est pas chargée ici (page publique), donc on duplique localement. */
+        .contract-paper .ql-align-center  { text-align:center; }
+        .contract-paper .ql-align-right   { text-align:right; }
+        .contract-paper .ql-align-justify { text-align:justify; }
+        .contract-paper .ql-indent-1  { padding-left:3em; }
+        .contract-paper .ql-indent-2  { padding-left:6em; }
+        .contract-paper .ql-indent-3  { padding-left:9em; }
+        .contract-paper .ql-indent-4  { padding-left:12em; }
+        .contract-paper .ql-indent-5  { padding-left:15em; }
+        .contract-paper .ql-indent-6  { padding-left:18em; }
+        .contract-paper .ql-indent-7  { padding-left:21em; }
+        .contract-paper .ql-indent-8  { padding-left:24em; }
 
         .sign-block {
             background:var(--bg-card); border:1px solid var(--border);
@@ -51,9 +65,14 @@
         .sign-name {
             display:block; width:100%; padding:11px 14px; font-size:14px;
             background:var(--bg-card-deeper, var(--bg)); color:var(--text-primary);
-            border:1px solid var(--border); margin-bottom:14px;
+            border:1px solid var(--border); margin-bottom:6px;
         }
         .sign-name:focus { outline:none; border-color:var(--accent); }
+        .sign-name.invalid { border-color:#ef4444; }
+        .sign-name-err {
+            display:none; font-size:12px; color:#f87171; margin-bottom:14px;
+        }
+        .sign-name-err.show { display:block; }
         .sign-actions { display:flex; gap:10px; justify-content:flex-end; }
         .btn-sign {
             display:inline-flex; align-items:center; gap:8px;
@@ -96,7 +115,7 @@
     </style>
 </head>
 <body>
-    <%- include('../partials/employee-sidebar', { currentPage: 'contract', employee: employee, currentWeek: 0 }) %>
+    <%- include('../partials/employee-sidebar', { currentPage: 'contract', employee: employee, currentWeek: currentWeek }) %>
 
     <main class="main-content">
         <div class="page-header">
@@ -140,7 +159,10 @@
                         </label>
                         <label class="f-label" for="sign-name">Tape ton nom complet pour signer</label>
                         <input type="text" id="sign-name" name="name" class="sign-name"
-                               placeholder="<%= employee.firstName %> <%= employee.lastName %>" autocomplete="off" required>
+                               placeholder="<%= employee.firstName %> <%= employee.lastName %>"
+                               data-expected="<%= employee.firstName %> <%= employee.lastName %>"
+                               autocomplete="off" required>
+                        <div class="sign-name-err" id="sign-name-err">Le nom saisi doit correspondre exactement à <strong><%= employee.firstName %> <%= employee.lastName %></strong>.</div>
                         <div class="sign-actions">
                             <button type="submit" class="btn-sign" id="btn-sign" disabled>
                                 <i class="fa-solid fa-signature"></i> Signer le contrat
@@ -191,9 +213,36 @@
         var btn = document.getElementById('btn-sign');
         var accepted = document.getElementById('sign-accepted');
         var nameInput = document.getElementById('sign-name');
+        var nameErr = document.getElementById('sign-name-err');
+
+        // Normalisation : accents → ASCII, lowercase, espaces collapsés.
+        // Doit rester identique à celle du serveur (services/contracts.js).
+        function normalizeName(s) {
+            return String(s || '')
+                .normalize('NFD').replace(/[̀-ͯ]/g, '')
+                .toLowerCase()
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+        var expected = normalizeName(nameInput.getAttribute('data-expected') || '');
+
+        function nameMatches() {
+            return normalizeName(nameInput.value) === expected;
+        }
 
         function updateBtn() {
-            btn.disabled = !accepted.checked || !nameInput.value.trim();
+            var typed = nameInput.value.trim();
+            var match = nameMatches();
+            // Le bandeau d'erreur ne s'affiche qu'après que l'utilisateur ait
+            // commencé à taper — pas dès le focus, pour ne pas crier dans le vide.
+            if (typed && !match) {
+                nameInput.classList.add('invalid');
+                nameErr.classList.add('show');
+            } else {
+                nameInput.classList.remove('invalid');
+                nameErr.classList.remove('show');
+            }
+            btn.disabled = !accepted.checked || !match;
         }
         accepted.addEventListener('change', updateBtn);
         nameInput.addEventListener('input', updateBtn);

@@ -279,11 +279,32 @@ async function generateForEmployee(employeeId, opts = {}) {
   return contract;
 }
 
+// Normalisation pour comparer le nom signé au nom de l'employé : NFD pour
+// retirer les accents, lowercase, espaces collapsés. Doit rester strictement
+// identique à la version JS côté contract.ejs.
+function normalizeFullName(s) {
+  return String(s || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 async function signByEmployee(token, { name, ip, userAgent }) {
   const contract = await prisma.contract.findUnique({ where: { signToken: token } });
   if (!contract) throw new Error('Contrat introuvable');
   if (contract.status !== 'pending') throw new Error('Ce contrat n\'est plus en attente de signature');
   if (!name || !String(name).trim()) throw new Error('Le nom est requis');
+
+  // Vérification autoritaire : le nom doit correspondre au nom snapshot
+  // posé à la création du contrat (pas l'employé courant, au cas où il aurait
+  // été renommé entre-temps — on signe le contrat tel qu'émis).
+  const expected = normalizeFullName(
+    (contract.employeeFirstName || '') + ' ' + (contract.employeeLastName || '')
+  );
+  if (normalizeFullName(name) !== expected) {
+    throw new Error('Le nom saisi ne correspond pas au nom du salarié sur le contrat');
+  }
 
   const autoCompany = await isAutoCompanySignatureEnabled();
   const data = {

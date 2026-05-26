@@ -29,7 +29,11 @@
             text-transform:uppercase; color:var(--text-secondary); margin:0 0 12px;
         }
         .config-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; font-size:13px; }
-        .config-row input[type=number] { width:70px; padding:6px 8px; }
+        .config-row .f-input { width:80px; padding:7px 10px; font-size:13px; text-align:right; }
+        /* Cache les spinners natifs pour rester cohérent avec les autres champs nombre du site */
+        .config-row .f-input::-webkit-outer-spin-button,
+        .config-row .f-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+        .config-row .f-input { -moz-appearance:textfield; }
         .config-row label { color:var(--text-secondary); flex:1; }
         .config-card-help { font-size:11.5px; color:var(--text-muted); margin-top:6px; }
 
@@ -145,15 +149,15 @@
                 <h3><i class="fa-solid fa-traffic-light"></i> Seuils renouvellement</h3>
                 <div class="config-row">
                     <label>🟢 Vert (anticiper) si &leq;</label>
-                    <input type="number" id="th-green" value="<%= thresholds.greenDays %>" min="1"> jours
+                    <input type="number" class="f-input" id="th-green" value="<%= thresholds.greenDays %>" min="1"> jours
                 </div>
                 <div class="config-row">
                     <label>🟠 Orange si &leq;</label>
-                    <input type="number" id="th-orange" value="<%= thresholds.orangeDays %>" min="1"> jours
+                    <input type="number" class="f-input" id="th-orange" value="<%= thresholds.orangeDays %>" min="1"> jours
                 </div>
                 <div class="config-row">
                     <label>🔴 Rouge si &leq;</label>
-                    <input type="number" id="th-red" value="<%= thresholds.redDays %>" min="1"> jours
+                    <input type="number" class="f-input" id="th-red" value="<%= thresholds.redDays %>" min="1"> jours
                 </div>
                 <button class="btn-secondary" id="btn-save-thresholds" style="font-size:11px;padding:6px 12px;">Enregistrer</button>
             </div>

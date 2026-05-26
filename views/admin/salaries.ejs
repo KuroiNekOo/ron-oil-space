@@ -504,10 +504,11 @@
             display:inline-flex; align-items:center; justify-content:center; gap:6px;
             padding:8px 12px; font-size:12px; font-weight:600; cursor:pointer;
             border:1px solid currentColor; background:transparent; color:inherit;
-            transition:background .15s, color .15s;
+            transition:background .15s;
         }
-        .abs-card-btn:hover { background:currentColor; }
-        .abs-card-btn:hover > i, .abs-card-btn:hover { color:#0a0a0a; }
+        .abs-ongoing     .abs-card-btn:hover { background:rgba(255,138,61,.18); }
+        .abs-upcoming    .abs-card-btn:hover { background:rgba(59,130,246,.18); }
+        .abs-ending-soon .abs-card-btn:hover { background:rgba(255,176,32,.18); }
         .abs-card-note { font-size:11px; color:var(--text-muted); font-style:italic; margin-top:4px; }
 
         .abs-ongoing { color:#ff8a3d; }
@@ -558,11 +559,14 @@
             width:30px; height:30px; cursor:pointer; border-radius:3px;
             border:1px solid currentColor; background:transparent;
         }
-        .btn-renew:hover { background:currentColor; color:#0a0a0a !important; }
         .btn-renew-green  { color:#22c55e; }
         .btn-renew-orange { color:#f59e0b; }
         .btn-renew-red    { color:#ef4444; animation:pulseRenew 1.6s ease-in-out infinite; }
         .btn-renew-none   { color:var(--text-muted); }
+        .btn-renew-green:hover  { background:rgba(34,197,94,.18); }
+        .btn-renew-orange:hover { background:rgba(245,158,11,.18); }
+        .btn-renew-red:hover    { background:rgba(239,68,68,.18); }
+        .btn-renew-none:hover   { background:rgba(255,255,255,.06); border-color:var(--text-secondary); color:var(--text-secondary); }
         @keyframes pulseRenew {
             0%,100% { box-shadow:0 0 0 0 rgba(239,68,68,.35); }
             50%     { box-shadow:0 0 0 4px rgba(239,68,68,0); }
@@ -635,6 +639,14 @@
 
         function toDateInput(value) {
             if (!value) return '';
+            // Date object → composer YYYY-MM-DD en local (toISOString() décalerait
+            // d'un jour pour les dates de minuit côté Europe/Paris).
+            if (value instanceof Date) {
+                var y = value.getFullYear();
+                var m = String(value.getMonth() + 1).padStart(2, '0');
+                var d = String(value.getDate()).padStart(2, '0');
+                return y + '-' + m + '-' + d;
+            }
             return String(value).split('T')[0];
         }
 

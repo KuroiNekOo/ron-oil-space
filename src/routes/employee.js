@@ -643,7 +643,8 @@ router.get('/contract/:token', requireEmployee, async (req, res) => {
       // s'il a réussi à se procurer le token.
       return res.status(403).send('Ce contrat ne vous est pas adressé');
     }
-    res.render('employee/contract', { employee: req.employee, contract });
+    const { week: currentWeek } = getCurrentWeekAndYear();
+    res.render('employee/contract', { employee: req.employee, contract, currentWeek });
   } catch (err) {
     console.error('GET /contract/:token error:', err);
     res.status(500).send('Erreur serveur');
