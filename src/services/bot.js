@@ -48,8 +48,12 @@ async function notifyAbsence(payload) {
   return call('/notify/absence', payload);
 }
 
+async function notifyContractSignLink(payload) {
+  return call('/notify/contract-sign-link', payload);
+}
+
 module.exports = {
   createCasier, archiveCasier,
   deactivateCasier, reactivateCasier,
-  notifyWeeklyStats, notifyContractAlert, notifyAbsence,
+  notifyWeeklyStats, notifyContractAlert, notifyAbsence, notifyContractSignLink,
 };

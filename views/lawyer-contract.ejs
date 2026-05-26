@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('partials/head') %>
+    <title>RON OIL — Signature avocat</title>
+    <link rel="stylesheet" href="/css/shared.css">
+    <style>
+        body { background:var(--bg, #111); }
+        .lawyer-wrap { max-width:900px; margin:48px auto; padding:0 20px; }
+        .lawyer-header {
+            text-align:center; margin-bottom:32px;
+        }
+        .lawyer-header h1 {
+            font-family:var(--font-display); font-size:22px; letter-spacing:.04em;
+            margin:0 0 6px; color:var(--text-primary);
+        }
+        .lawyer-header p { color:var(--text-muted); font-size:13px; margin:0; }
+        .lawyer-status-bar {
+            padding:14px 20px; margin-bottom:24px;
+            background:var(--bg-card); border:1px solid var(--border);
+            border-left:4px solid #f59e0b; font-size:13px;
+        }
+        .lawyer-status-bar.signed { border-left-color:#22c55e; }
+        .lawyer-status-bar.notready { border-left-color:#ef4444; }
+
+        .contract-paper {
+            background:#fff; color:#111; padding:48px 56px;
+            border:1px solid var(--border);
+            box-shadow:0 4px 24px rgba(0,0,0,.4);
+            font-family:Georgia, 'Times New Roman', serif;
+            font-size:14px; line-height:1.7; margin-bottom:24px;
+        }
+        .contract-paper h1, .contract-paper h2, .contract-paper h3 { font-family:Georgia, serif; color:#000; line-height:1.3; }
+        .contract-paper p, .contract-paper li { color:#222; }
+        .contract-paper strong { color:#000; }
+
+        .sign-block {
+            background:var(--bg-card); border:1px solid var(--border);
+            padding:24px; margin-bottom:24px;
+        }
+        .sign-block h2 {
+            font-family:var(--font-display); font-size:13px; letter-spacing:.16em;
+            text-transform:uppercase; color:var(--text-secondary); margin:0 0 16px;
+        }
+        .sign-row { display:flex; align-items:center; gap:10px; margin-bottom:12px; font-size:13px; }
+        .sign-row input[type=checkbox] { width:18px; height:18px; cursor:pointer; }
+        .sign-input {
+            display:block; width:100%; padding:11px 14px; font-size:14px;
+            background:var(--bg, #1a1a1a); color:var(--text-primary);
+            border:1px solid var(--border); margin-bottom:14px;
+        }
+        .sign-input:focus { outline:none; border-color:var(--accent); }
+        .sign-actions { display:flex; gap:10px; justify-content:flex-end; }
+        .btn-sign {
+            display:inline-flex; align-items:center; gap:8px;
+            padding:11px 22px; font-weight:600; font-size:13px;
+            background:#22c55e; color:#fff; border:none; cursor:pointer;
+            text-transform:uppercase; letter-spacing:.06em;
+        }
+        .btn-sign:disabled { background:#3a3a3a; cursor:not-allowed; }
+        .btn-sign:not(:disabled):hover { background:#16a34a; }
+        .err-msg { color:#ef4444; font-size:13px; margin-bottom:14px; display:none; }
+        .err-msg.show { display:block; }
+
+        .sig-already {
+            display:grid; grid-template-columns:repeat(3,1fr); gap:14px;
+        }
+        .sig-card {
+            padding:12px 14px; background:var(--bg, #1a1a1a);
+            border:1px solid var(--border); font-size:12px;
+        }
+        .sig-card-label { font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px; }
+        .sig-card-val { color:var(--text-primary); font-weight:600; }
+        .sig-card-sub { color:var(--text-muted); font-size:11px; margin-top:2px; }
+        .sig-card.done { border-left:3px solid #22c55e; }
+    </style>
+</head>
+<body>
+    <div class="lawyer-wrap">
+        <div class="lawyer-header">
+            <h1>RON OIL &mdash; Espace avocat</h1>
+            <p>Signature d'un contrat de travail.</p>
+            <% if (typeof lawyerLogged !== 'undefined' && lawyerLogged) { %>
+                <p style="margin-top:10px;">
+                    <a href="/lawyer/" style="color:var(--accent);text-decoration:none;font-size:13px;">
+                        <i class="fa-solid fa-arrow-left"></i> Retour à la liste des contrats
+                    </a>
+                </p>
+            <% } %>
+        </div>
+
+        <%
+            const empName = ((contract.employeeFirstName || '') + ' ' + (contract.employeeLastName || '')).trim();
+            let banner = null, bannerClass = '';
+            if (contract.status === 'signed') {
+                banner = 'Ce contrat est déjà finalisé (toutes les parties ont signé).';
+                bannerClass = 'signed';
+            } else if (contract.status === 'cancelled' || contract.status === 'superseded') {
+                banner = 'Ce contrat n\'est plus actif. Aucune signature n\'est attendue.';
+                bannerClass = 'notready';
+            } else if (contract.status !== 'company-signed') {
+                banner = 'Ce contrat n\'est pas encore prêt pour la signature avocat (les signatures employé et entreprise sont requises au préalable).';
+                bannerClass = 'notready';
+            }
+        %>
+        <% if (banner) { %>
+            <div class="lawyer-status-bar <%= bannerClass %>"><strong><%= banner %></strong></div>
+        <% } else { %>
+            <div class="lawyer-status-bar">
+                <strong>Contrat de <%= empName %> &mdash; en attente de votre signature.</strong>
+            </div>
+        <% } %>
+
+        <div class="contract-paper">
+            <%- contract.htmlSnapshot %>
+        </div>
+
+        <div class="sign-block">
+            <h2><i class="fa-solid fa-circle-check"></i> Signatures déjà apposées</h2>
+            <div class="sig-already">
+                <div class="sig-card<%= contract.signedAt ? ' done' : '' %>">
+                    <div class="sig-card-label">Employé</div>
+                    <% if (contract.signedAt) { %>
+                        <div class="sig-card-val"><%= contract.signedName %></div>
+                        <div class="sig-card-sub"><%= new Date(contract.signedAt).toLocaleString('fr-FR') %></div>
+                    <% } else { %>
+                        <div class="sig-card-val" style="font-style:italic;color:var(--text-muted);font-weight:400">En attente</div>
+                    <% } %>
+                </div>
+                <div class="sig-card<%= contract.companySignedAt ? ' done' : '' %>">
+                    <div class="sig-card-label">Direction</div>
+                    <% if (contract.companySignedAt) { %>
+                        <div class="sig-card-val"><%= contract.companySignedBy %></div>
+                        <div class="sig-card-sub"><%= new Date(contract.companySignedAt).toLocaleString('fr-FR') %><%= contract.companySignedAuto ? ' (auto)' : '' %></div>
+                    <% } else { %>
+                        <div class="sig-card-val" style="font-style:italic;color:var(--text-muted);font-weight:400">En attente</div>
+                    <% } %>
+                </div>
+                <div class="sig-card<%= contract.lawyerSignedAt ? ' done' : '' %>">
+                    <div class="sig-card-label">Avocat</div>
+                    <% if (contract.lawyerSignedAt) { %>
+                        <div class="sig-card-val"><%= contract.lawyerSignedName %></div>
+                        <div class="sig-card-sub"><%= new Date(contract.lawyerSignedAt).toLocaleString('fr-FR') %></div>
+                    <% } else { %>
+                        <div class="sig-card-val" style="font-style:italic;color:var(--text-muted);font-weight:400">À signer ci-dessous</div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+
+        <% if (contract.status === 'company-signed') { %>
+        <div class="sign-block">
+            <h2><i class="fa-solid fa-pen-nib"></i> Votre signature</h2>
+            <form id="sign-form">
+                <label class="f-label" for="lawyer-name">Nom complet</label>
+                <input type="text" id="lawyer-name" name="name" class="sign-input" placeholder="Maître Dupont" autocomplete="off" required>
+
+                <label class="f-label" for="lawyer-password">Mot de passe avocat</label>
+                <input type="password" id="lawyer-password" name="password" class="sign-input" placeholder="••••••••" autocomplete="off" required>
+
+                <label class="sign-row" for="lawyer-accepted">
+                    <input type="checkbox" id="lawyer-accepted" name="accepted" value="on">
+                    <span>Je confirme apposer ma signature sur ce contrat.</span>
+                </label>
+
+                <div class="err-msg" id="err-msg"></div>
+
+                <div class="sign-actions">
+                    <button type="submit" class="btn-sign" id="btn-sign" disabled>
+                        <i class="fa-solid fa-signature"></i> Signer le contrat
+                    </button>
+                </div>
+            </form>
+        </div>
+        <% } %>
+    </div>
+
+    <% if (contract.status === 'company-signed') { %>
+    <script>
+        var form = document.getElementById('sign-form');
+        var btn = document.getElementById('btn-sign');
+        var accepted = document.getElementById('lawyer-accepted');
+        var name = document.getElementById('lawyer-name');
+        var password = document.getElementById('lawyer-password');
+        var err = document.getElementById('err-msg');
+
+        function updateBtn() {
+            btn.disabled = !accepted.checked || !name.value.trim() || !password.value;
+        }
+        [accepted, name, password].forEach(function(el) {
+            el.addEventListener('input', updateBtn);
+            el.addEventListener('change', updateBtn);
+        });
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            err.classList.remove('show'); err.textContent = '';
+            btn.disabled = true;
+            fetch(window.location.pathname + '/sign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: name.value.trim(),
+                    password: password.value,
+                    accepted: accepted.checked,
+                }),
+            })
+            .then(function(r) { return r.json().then(function(d) { return { ok:r.ok, data:d }; }); })
+            .then(function(r) {
+                if (!r.ok) throw new Error((r.data && r.data.error) || 'Erreur de signature');
+                window.location.reload();
+            })
+            .catch(function(e2) {
+                err.textContent = e2.message;
+                err.classList.add('show');
+                updateBtn();
+            });
+        });
+    </script>
+    <% } %>
+</body>
+</html>

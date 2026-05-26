@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL Admin — Contrats</title>
+    <link rel="stylesheet" href="/css/admin-shared.css">
+    <style>
+        .contracts-table .status-badge {
+            font-size:10.5px; padding:3px 8px; letter-spacing:.04em; font-weight:600;
+            border-radius:3px; text-transform:uppercase;
+        }
+        .status-pending          { background:rgba(59,130,246,.18); color:#60a5fa; border:1px solid #3b82f6; }
+        .status-employee-signed  { background:rgba(245,158,11,.15); color:#fbbf24; border:1px solid #f59e0b; }
+        .status-company-signed   { background:rgba(245,158,11,.15); color:#fbbf24; border:1px solid #f59e0b; }
+        .status-signed           { background:rgba(34,197,94,.15);  color:#4ade80; border:1px solid #22c55e; }
+        .status-cancelled        { background:rgba(239,68,68,.15);  color:#f87171; border:1px solid #ef4444; }
+        .status-superseded       { background:rgba(120,120,120,.15);color:#aaa;    border:1px solid #666; }
+        .expired-badge {
+            background:rgba(239,68,68,.15); color:#f87171; border:1px solid #ef4444;
+            font-size:10px; padding:2px 6px; margin-left:6px; border-radius:3px;
+        }
+
+        .config-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:28px; }
+        .config-card {
+            background:var(--bg-card); border:1px solid var(--border); padding:18px;
+        }
+        .config-card h3 {
+            font-family:var(--font-display); font-size:12px; letter-spacing:.16em;
+            text-transform:uppercase; color:var(--text-secondary); margin:0 0 12px;
+        }
+        .config-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; font-size:13px; }
+        .config-row input[type=number] { width:70px; padding:6px 8px; }
+        .config-row label { color:var(--text-secondary); flex:1; }
+        .config-card-help { font-size:11.5px; color:var(--text-muted); margin-top:6px; }
+
+        /* Réutilise le slider d'absence-toggle */
+        .absence-toggle { display:inline-flex; align-items:center; gap:10px; cursor:pointer; font-size:12px; color:var(--text-secondary); user-select:none; }
+        .absence-toggle input { display:none; }
+        .absence-toggle-slider { width:36px; height:20px; background:var(--bg-card); border:1px solid var(--border); border-radius:10px; position:relative; transition:background .15s, border-color .15s; }
+        .absence-toggle-slider::after { content:''; position:absolute; left:2px; top:2px; width:14px; height:14px; background:var(--text-muted); border-radius:50%; transition:left .15s, background .15s; }
+        .absence-toggle input:checked + .absence-toggle-slider { background:var(--accent-dim); border-color:var(--accent); }
+        .absence-toggle input:checked + .absence-toggle-slider::after { left:18px; background:var(--accent); }
+
+        .password-display {
+            font-family:var(--font-mono); font-size:12px; background:var(--bg);
+            padding:8px 10px; border:1px solid var(--border); flex:1; user-select:all;
+        }
+
+        /* Modal détail contrat */
+        .ct-detail-body { font-size:13px; }
+        .ct-detail-section { margin-bottom:18px; }
+        .ct-detail-section h4 { font-family:var(--font-display); font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-secondary); margin:0 0 8px; }
+        .ct-detail-row { display:flex; gap:10px; padding:6px 0; border-bottom:1px solid var(--border); }
+        .ct-detail-row .lbl { width:140px; color:var(--text-muted); font-size:12px; }
+        .ct-detail-row .val { flex:1; color:var(--text-primary); font-size:12.5px; }
+        .ct-detail-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+        .ct-detail-actions button { font-size:12px; padding:8px 12px; }
+        .ct-link-copy {
+            display:flex; gap:8px; align-items:center; margin-top:8px;
+            background:var(--bg); padding:8px 10px; border:1px solid var(--border);
+        }
+        .ct-link-copy input {
+            flex:1; background:transparent; border:none; color:var(--text-primary);
+            font-family:var(--font-mono); font-size:11.5px; padding:0;
+        }
+        .ct-link-copy input:focus { outline:none; }
+        .ct-link-copy button { padding:6px 10px; font-size:11px; }
+
+        /* Bouton "copier lien avocat" en accès direct dans la liste */
+        .btn-copy-lawyer {
+            display:inline-flex; align-items:center; justify-content:center;
+            width:30px; height:30px; cursor:pointer; border-radius:3px;
+            background:transparent; border:1px solid #f59e0b; color:#f59e0b;
+            transition:background .15s, color .15s;
+        }
+        .btn-copy-lawyer:hover { background:#f59e0b; color:#0a0a0a; }
+        .btn-copy-lawyer.copied { background:#22c55e; border-color:#22c55e; color:#0a0a0a; }
+    </style>
+</head>
+<body>
+    <%- include('../partials/admin-sidebar', { currentPage: 'contracts' }) %>
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title">Contrats</div>
+            <div class="page-subtitle">G&eacute;n&eacute;ration, signatures et renouvellement des contrats employ&eacute;s</div>
+        </div>
+
+        <div class="config-cards">
+            <div class="config-card">
+                <h3><i class="fa-solid fa-pen-ruler"></i> Templates actifs</h3>
+                <%
+                    function _renderActive(label, t) {
+                        if (t) {
+                            return '<div style="font-size:12.5px;margin-bottom:6px;"><span style="font-weight:700;color:var(--text-secondary);">' + label + ' :</span> ' + t.name + ' <span style="font-size:10px;color:var(--text-muted);">— maj ' + new Date(t.updatedAt).toLocaleDateString('fr-FR') + '</span></div>';
+                        }
+                        return '<div style="font-size:12.5px;margin-bottom:6px;color:#f59e0b;"><span style="font-weight:700;">' + label + ' :</span> ⚠ aucun</div>';
+                    }
+                %>
+                <%- _renderActive('CDI', activeTemplates.CDI) %>
+                <%- _renderActive('CDD', activeTemplates.CDD) %>
+                <% if (activeTemplates.generic) { %>
+                    <%- _renderActive('Générique (fallback)', activeTemplates.generic) %>
+                <% } %>
+                <% if (!activeTemplates.CDI && !activeTemplates.CDD && !activeTemplates.generic) { %>
+                    <div style="font-size:12px;color:#f59e0b;margin:8px 0;">Aucun nouveau contrat ne pourra être généré tant qu'un template n'est pas actif.</div>
+                <% } else if (!activeTemplates.CDI && !activeTemplates.generic) { %>
+                    <div style="font-size:11.5px;color:#f59e0b;margin:6px 0;">⚠ Les contrats CDI ne pourront pas être générés.</div>
+                <% } else if (!activeTemplates.CDD && !activeTemplates.generic) { %>
+                    <div style="font-size:11.5px;color:#f59e0b;margin:6px 0;">⚠ Les contrats CDD ne pourront pas être générés.</div>
+                <% } %>
+                <a class="btn-secondary" href="/admin/contracts/template" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;margin-top:8px;">
+                    <i class="fa-solid fa-pen"></i> &Eacute;diter les templates
+                </a>
+            </div>
+
+            <div class="config-card">
+                <h3><i class="fa-solid fa-toggle-on"></i> Signature entreprise</h3>
+                <label class="absence-toggle" style="margin-bottom:6px;">
+                    <input type="checkbox" id="toggle-auto-company"<%= autoCompany ? ' checked' : '' %>>
+                    <span class="absence-toggle-slider"></span>
+                    <span>Auto-signer pour la direction d&egrave;s la signature employ&eacute;</span>
+                </label>
+                <div class="config-card-help">
+                    Si ON, le contrat passe direct en <code>company-signed</code> apr&egrave;s signature de l'employ&eacute; (companySignedBy = "auto"). Sinon, un admin doit signer manuellement depuis cette page.
+                </div>
+            </div>
+
+            <div class="config-card">
+                <h3><i class="fa-solid fa-traffic-light"></i> Seuils renouvellement</h3>
+                <div class="config-row">
+                    <label>🟢 Vert (anticiper) si &leq;</label>
+                    <input type="number" id="th-green" value="<%= thresholds.greenDays %>" min="1"> jours
+                </div>
+                <div class="config-row">
+                    <label>🟠 Orange si &leq;</label>
+                    <input type="number" id="th-orange" value="<%= thresholds.orangeDays %>" min="1"> jours
+                </div>
+                <div class="config-row">
+                    <label>🔴 Rouge si &leq;</label>
+                    <input type="number" id="th-red" value="<%= thresholds.redDays %>" min="1"> jours
+                </div>
+                <button class="btn-secondary" id="btn-save-thresholds" style="font-size:11px;padding:6px 12px;">Enregistrer</button>
+            </div>
+        </div>
+
+        <div class="config-card" style="margin-bottom:28px;">
+            <h3><i class="fa-solid fa-scale-balanced"></i> Compte avocat</h3>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">
+                Mot de passe unique partag&eacute; à l'avocat. C'est lui qui prot&egrave;ge le lien public de signature avocat
+                ET la page tableau de bord avocat (vue d'ensemble des contrats).
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+                <% if (lawyerAccount) { %>
+                    <span class="password-display"><%= lawyerAccount.password %></span>
+                <% } else { %>
+                    <span style="font-size:12px;color:#f59e0b;flex:1;">Aucun mot de passe défini.</span>
+                <% } %>
+                <input type="text" id="new-lawyer-password" placeholder="Nouveau mot de passe..." style="flex:1;padding:8px 10px;">
+                <button class="btn-secondary" id="btn-save-lawyer-password" style="font-size:11px;padding:8px 14px;">Mettre à jour</button>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <span style="font-size:11px;color:var(--text-muted);min-width:130px;">Dashboard avocat :</span>
+                <input type="text" id="lawyer-dashboard-url" readonly value="" style="flex:1;font-family:var(--font-mono);font-size:11.5px;padding:8px 10px;background:var(--bg);">
+                <button class="btn-secondary" onclick="copyDashboardUrl()" style="font-size:11px;padding:8px 14px;">
+                    <i class="fa-solid fa-copy"></i> Copier
+                </button>
+            </div>
+        </div>
+
+        <form class="admin-toolbar" method="GET" action="/admin/contracts">
+            <div class="admin-toolbar-left" style="flex-wrap:wrap;gap:10px;">
+                <input type="text" class="admin-search" name="q" placeholder="Rechercher par nom..." value="<%= query.q %>">
+                <select class="f-select toolbar-select" name="status" title="Statut">
+                    <option value="all"<%= query.status === 'all' ? ' selected' : '' %>>Tous</option>
+                    <option value="pending"<%= query.status === 'pending' ? ' selected' : '' %>>En attente employé</option>
+                    <option value="employee-signed"<%= query.status === 'employee-signed' ? ' selected' : '' %>>Employé signé</option>
+                    <option value="company-signed"<%= query.status === 'company-signed' ? ' selected' : '' %>>Direction signée</option>
+                    <option value="signed"<%= query.status === 'signed' ? ' selected' : '' %>>Finalisé</option>
+                    <option value="cancelled"<%= query.status === 'cancelled' ? ' selected' : '' %>>Annulé</option>
+                    <option value="superseded"<%= query.status === 'superseded' ? ' selected' : '' %>>Remplacé</option>
+                </select>
+                <% if (query.q || query.status !== 'all') { %>
+                    <a href="/admin/contracts" class="toolbar-reset-link" style="font-size:13px;color:var(--text-muted);"><i class="fa-solid fa-rotate-left"></i> R&eacute;initialiser</a>
+                <% } %>
+            </div>
+        </form>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+            <table class="admin-table contracts-table">
+                <thead>
+                    <tr>
+                        <th>Employ&eacute;</th>
+                        <th>Type</th>
+                        <th>P&eacute;riode</th>
+                        <th>Statut</th>
+                        <th>Cr&eacute;&eacute;</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (contracts.length === 0) { %>
+                        <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted)">Aucun contrat</td></tr>
+                    <% } %>
+                    <% const _now = new Date(); %>
+                    <% contracts.forEach(function(c) { %>
+                        <tr>
+                            <td style="font-weight:500"><%= c.employeeFirstName %> <%= c.employeeLastName %></td>
+                            <td><span class="contract-badge <%= c.contractKind.toLowerCase() %>"><%= c.contractKind %></span></td>
+                            <td class="mono" style="font-size:12px;color:var(--text-secondary)">
+                                <%= new Date(c.startDate).toLocaleDateString('fr-FR') %>
+                                <% if (c.endDate) { %> &rarr; <%= new Date(c.endDate).toLocaleDateString('fr-FR') %><% } %>
+                                <% if (c.endDate && new Date(c.endDate) < _now && c.status !== 'cancelled' && c.status !== 'superseded') { %>
+                                    <span class="expired-badge">EXPIRÉ</span>
+                                <% } %>
+                            </td>
+                            <td><span class="status-badge status-<%= c.status %>"><%= c.status %></span></td>
+                            <td class="mono" style="font-size:12px;color:var(--text-muted)"><%= new Date(c.createdAt).toLocaleDateString('fr-FR') %></td>
+                            <td>
+                                <div class="table-actions">
+                                    <%
+                                        // Le bouton "copier lien avocat" est visible tant que la signature
+                                        // avocat n'est pas faite ET que le contrat est encore vivant.
+                                        const _lawyerCopyable = c.lawyerSignToken
+                                            && !c.lawyerSignedAt
+                                            && c.status !== 'cancelled'
+                                            && c.status !== 'superseded'
+                                            && c.status !== 'signed';
+                                    %>
+                                    <% if (_lawyerCopyable) { %>
+                                        <button class="btn-copy-lawyer"
+                                                data-token="<%= c.lawyerSignToken %>"
+                                                onclick="copyLawyerLink(this)"
+                                                title="Copier le lien de signature avocat">
+                                            <i class="fa-solid fa-scale-balanced"></i>
+                                        </button>
+                                    <% } %>
+                                    <button class="btn-edit" onclick="openContractDetail(<%= c.id %>)" title="Voir / actions">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Modal Détail Contrat -->
+    <div class="modal-overlay" id="modal-detail">
+        <div class="modal" style="width:920px;">
+            <div class="modal-header">
+                <div class="modal-title" id="detail-title">Contrat</div>
+                <button class="modal-close" onclick="closeModal('modal-detail')">&#10005;</button>
+            </div>
+            <div class="modal-body ct-detail-body" id="detail-body">
+                <div class="detail-empty"><div class="detail-empty-inner"><i class="fa-solid fa-spinner fa-spin"></i>Chargement…</div></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast success" id="toast">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toast-msg">Action effectu&eacute;e</span>
+    </div>
+
+    <script src="/js/admin-ajax.js"></script>
+    <script>
+        function openModal(id) {
+            var o = document.getElementById(id);
+            o.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeModal(id) {
+            var o = document.getElementById(id);
+            o.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+        function showToast(msg, type) {
+            type = type || 'success';
+            var t = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            t.className = 'toast ' + type + ' show';
+            setTimeout(function() { t.classList.remove('show'); }, 3500);
+        }
+
+        // ── Toggle auto-company ─────────────────────────────────────────
+        var toggleAuto = document.getElementById('toggle-auto-company');
+        toggleAuto.addEventListener('change', function() {
+            var enabled = toggleAuto.checked;
+            fetch('/admin/contracts/config/auto-company', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ enabled: enabled }),
+            })
+            .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+            .then(function() { showToast(enabled ? 'Signature entreprise auto activée' : 'Signature entreprise auto désactivée'); })
+            .catch(function(err) {
+                toggleAuto.checked = !enabled;
+                showToast('Erreur : ' + err.message, 'error');
+            });
+        });
+
+        // ── Seuils renouvellement ───────────────────────────────────────
+        document.getElementById('btn-save-thresholds').addEventListener('click', function() {
+            var greenDays = parseInt(document.getElementById('th-green').value);
+            var orangeDays = parseInt(document.getElementById('th-orange').value);
+            var redDays = parseInt(document.getElementById('th-red').value);
+            fetch('/admin/contracts/config/thresholds', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ greenDays: greenDays, orangeDays: orangeDays, redDays: redDays }),
+            })
+            .then(function(r) { return r.json().then(function(d) { return { ok:r.ok, data:d }; }); })
+            .then(function(r) {
+                if (!r.ok) throw new Error((r.data && r.data.error) || 'Erreur');
+                showToast('Seuils enregistrés');
+            })
+            .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        });
+
+        // ── Mot de passe avocat ─────────────────────────────────────────
+        document.getElementById('btn-save-lawyer-password').addEventListener('click', function() {
+            var input = document.getElementById('new-lawyer-password');
+            var v = input.value.trim();
+            if (!v) { showToast('Mot de passe vide', 'error'); return; }
+            fetch('/admin/contracts/lawyer-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ password: v }),
+            })
+            .then(function(r) { return r.json().then(function(d) { return { ok:r.ok, data:d }; }); })
+            .then(function(r) {
+                if (!r.ok) throw new Error((r.data && r.data.error) || 'Erreur');
+                showToast('Mot de passe avocat mis à jour');
+                input.value = '';
+                setTimeout(function() { window.location.reload(); }, 800);
+            })
+            .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        });
+
+        // ── Modal détail contrat ────────────────────────────────────────
+        function openContractDetail(id) {
+            openModal('modal-detail');
+            document.getElementById('detail-body').innerHTML =
+                '<div class="detail-empty"><div class="detail-empty-inner"><i class="fa-solid fa-spinner fa-spin"></i>Chargement…</div></div>';
+            fetch('/admin/contracts/' + id, { credentials: 'same-origin' })
+                .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                .then(function(data) { renderContractDetail(data); })
+                .catch(function(err) {
+                    document.getElementById('detail-body').innerHTML =
+                        '<div class="recap-empty">Erreur de chargement : ' + err.message + '</div>';
+                });
+        }
+
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        function renderContractDetail(data) {
+            var c = data.contract;
+            var empName = (c.employeeFirstName || '') + ' ' + (c.employeeLastName || '');
+            document.getElementById('detail-title').textContent = 'Contrat — ' + empName.trim();
+
+            var sigRows = [
+                row('Employé', c.signedName, c.signedAt),
+                row('Direction', c.companySignedBy + (c.companySignedAuto ? ' (auto)' : ''), c.companySignedAt),
+                row('Avocat', c.lawyerSignedName, c.lawyerSignedAt),
+            ];
+            function row(lbl, name, at) {
+                if (!at) return '<div class="ct-detail-row"><div class="lbl">' + lbl + '</div><div class="val" style="color:var(--text-muted);font-style:italic;">En attente</div></div>';
+                return '<div class="ct-detail-row"><div class="lbl">' + lbl + '</div><div class="val">' + escapeHtml(name || '—') + ' <span style="color:var(--text-muted);font-size:11px;">— ' + new Date(at).toLocaleString('fr-FR') + '</span></div></div>';
+            }
+
+            var actions = '<div class="ct-detail-actions">';
+            if (c.status === 'employee-signed') {
+                actions += '<button class="btn-primary" onclick="signCompany(' + c.id + ')"><i class="fa-solid fa-signature"></i> Signer pour la direction</button>';
+            }
+            if (c.status !== 'cancelled' && c.status !== 'superseded' && c.status !== 'signed') {
+                actions += '<button class="btn-secondary" onclick="cancelContract(' + c.id + ')"><i class="fa-solid fa-ban"></i> Annuler</button>';
+            }
+            actions += '</div>';
+
+            var lawyerBlock = '';
+            if (data.lawyerSignUrl && c.status !== 'cancelled' && c.status !== 'superseded' && !c.lawyerSignedAt) {
+                lawyerBlock =
+                    '<div class="ct-detail-section">' +
+                        '<h4>Lien public avocat</h4>' +
+                        '<div style="font-size:11.5px;color:var(--text-muted);margin-bottom:6px;">À partager avec l\'avocat. La signature ne fonctionnera qu\'une fois le statut <code>company-signed</code>.</div>' +
+                        '<div class="ct-link-copy">' +
+                            '<input type="text" readonly value="' + escapeHtml(data.lawyerSignUrl) + '" onclick="this.select()">' +
+                            '<button class="btn-secondary" onclick="copyText(\'' + escapeHtml(data.lawyerSignUrl) + '\')"><i class="fa-solid fa-copy"></i> Copier</button>' +
+                        '</div>' +
+                    '</div>';
+            }
+
+            document.getElementById('detail-body').innerHTML =
+                '<div class="ct-detail-section">' +
+                    '<h4>Informations</h4>' +
+                    '<div class="ct-detail-row"><div class="lbl">Statut</div><div class="val"><span class="status-badge status-' + c.status + '">' + c.status + '</span></div></div>' +
+                    '<div class="ct-detail-row"><div class="lbl">Type</div><div class="val">' + c.contractKind + '</div></div>' +
+                    '<div class="ct-detail-row"><div class="lbl">Période</div><div class="val">' + new Date(c.startDate).toLocaleDateString('fr-FR') + (c.endDate ? ' → ' + new Date(c.endDate).toLocaleDateString('fr-FR') : '') + '</div></div>' +
+                '</div>' +
+                '<div class="ct-detail-section">' +
+                    '<h4>Signatures</h4>' +
+                    sigRows.join('') +
+                '</div>' +
+                lawyerBlock +
+                '<div class="ct-detail-section">' +
+                    '<h4>Aperçu du contrat</h4>' +
+                    '<div style="background:#fff;color:#111;padding:24px 28px;border:1px solid var(--border);font-family:Georgia,serif;line-height:1.6;font-size:13px;max-height:360px;overflow:auto;">' +
+                        c.htmlSnapshot +
+                    '</div>' +
+                '</div>' +
+                actions;
+        }
+
+        function copyText(text) {
+            navigator.clipboard.writeText(text).then(function() { showToast('Lien copié'); });
+        }
+
+        // Affiche l'URL du dashboard avocat dans la carte Compte avocat.
+        document.getElementById('lawyer-dashboard-url').value = window.location.origin + '/lawyer/';
+
+        function copyDashboardUrl() {
+            var url = document.getElementById('lawyer-dashboard-url').value;
+            navigator.clipboard.writeText(url).then(function() { showToast('Lien dashboard avocat copié'); });
+        }
+
+        // Copie rapide du lien avocat depuis une ligne de la liste.
+        // L'URL est construite côté client à partir du token (évite de la
+        // sérialiser en attribut data pour chaque ligne).
+        function copyLawyerLink(btn) {
+            var token = btn.getAttribute('data-token');
+            if (!token) return;
+            var url = window.location.origin + '/lawyer/contract/' + token;
+            navigator.clipboard.writeText(url).then(function() {
+                showToast('Lien avocat copié');
+                btn.classList.add('copied');
+                var orig = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                setTimeout(function() {
+                    btn.classList.remove('copied');
+                    btn.innerHTML = orig;
+                }, 1500);
+            }).catch(function() {
+                showToast('Erreur de copie', 'error');
+            });
+        }
+
+        function signCompany(id) {
+            fetch('/admin/contracts/' + id + '/sign-company', { method: 'POST', credentials: 'same-origin' })
+                .then(function(r) { return r.json().then(function(d) { return { ok:r.ok, data:d }; }); })
+                .then(function(r) {
+                    if (!r.ok) throw new Error((r.data && r.data.error) || 'Erreur');
+                    showToast('Signature direction enregistrée');
+                    closeModal('modal-detail');
+                    setTimeout(function() { window.location.reload(); }, 600);
+                })
+                .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+
+        function cancelContract(id) {
+            if (!confirm('Annuler ce contrat ?')) return;
+            fetch('/admin/contracts/' + id + '/cancel', { method: 'POST', credentials: 'same-origin' })
+                .then(function(r) { return r.json().then(function(d) { return { ok:r.ok, data:d }; }); })
+                .then(function(r) {
+                    if (!r.ok) throw new Error((r.data && r.data.error) || 'Erreur');
+                    showToast('Contrat annulé');
+                    closeModal('modal-detail');
+                    setTimeout(function() { window.location.reload(); }, 600);
+                })
+                .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+
+        document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+            var downTarget = null;
+            overlay.addEventListener('mousedown', function(e) { downTarget = e.target; });
+            overlay.addEventListener('mouseup', function(e) {
+                if (downTarget === overlay && e.target === overlay) {
+                    overlay.classList.remove('open');
+                    document.body.style.overflow = '';
+                }
+                downTarget = null;
+            });
+        });
+    </script>
+</body>
+</html>

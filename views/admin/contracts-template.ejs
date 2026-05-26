@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL Admin — Template contrat</title>
+    <link rel="stylesheet" href="/css/admin-shared.css">
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+    <style>
+        .tpl-layout { display:grid; grid-template-columns:280px 1fr; gap:18px; }
+        .tpl-list { background:var(--bg-card); border:1px solid var(--border); padding:14px; }
+        .tpl-list-header {
+            display:flex; align-items:center; justify-content:space-between;
+            margin-bottom:10px;
+        }
+        .tpl-list-header h3 { margin:0; font-size:12px; letter-spacing:.16em; color:var(--text-secondary); text-transform:uppercase; }
+        .tpl-item {
+            padding:10px 12px; background:var(--bg); border:1px solid var(--border);
+            cursor:pointer; margin-bottom:6px; transition:border-color .15s;
+        }
+        .tpl-item:hover { border-color:rgba(255,255,255,.15); }
+        .tpl-item.editing { border-color:var(--accent); }
+        .tpl-item.active { border-left:3px solid #22c55e; }
+        .tpl-item-name { font-weight:600; font-size:13px; }
+        .tpl-item-meta { font-size:11px; color:var(--text-muted); margin-top:3px; }
+        .tpl-item-badge { font-size:10px; padding:2px 6px; background:rgba(34,197,94,.18); color:#4ade80; border:1px solid #22c55e; margin-left:6px; }
+        .tpl-kind-badge { font-size:9.5px; padding:1px 6px; margin-left:6px; font-weight:700; letter-spacing:.04em; border-radius:2px; }
+        .tpl-kind-cdi { background:rgba(59,130,246,.18); color:#60a5fa; border:1px solid #3b82f6; }
+        .tpl-kind-cdd { background:rgba(255,193,7,.18); color:#fbbf24; border:1px solid #f59e0b; }
+        .tpl-kind-generic { background:rgba(120,120,120,.15); color:#aaa; border:1px solid #666; }
+
+        .tpl-editor { background:var(--bg-card); border:1px solid var(--border); padding:18px; }
+        .tpl-editor-row { margin-bottom:14px; }
+        .tpl-editor-row .f-label { display:block; margin-bottom:6px; }
+
+        #quill-editor {
+            min-height:480px; background:#fff;
+            color:#111; font-family:Georgia, 'Times New Roman', serif;
+        }
+        .ql-toolbar.ql-snow { background:var(--bg); border:1px solid var(--border); border-bottom:none; }
+        .ql-toolbar.ql-snow .ql-stroke { stroke:var(--text-secondary); }
+        .ql-toolbar.ql-snow .ql-fill { fill:var(--text-secondary); }
+        .ql-container.ql-snow { border:1px solid var(--border); border-top:none; }
+
+        .placeholders-doc {
+            background:var(--bg); border:1px solid var(--border); padding:12px 14px;
+            margin-bottom:14px; font-size:12px;
+        }
+        .placeholders-doc h4 { margin:0 0 8px; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-secondary); }
+        .ph-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:6px 14px; }
+        .ph-grid code { background:rgba(255,84,34,.15); color:var(--accent); padding:1px 6px; border-radius:3px; font-size:11.5px; cursor:pointer; }
+        .ph-desc { color:var(--text-muted); font-size:11px; margin-left:6px; }
+    </style>
+</head>
+<body>
+    <%- include('../partials/admin-sidebar', { currentPage: 'contracts' }) %>
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title">Template de contrat</div>
+            <div class="page-subtitle">
+                <a href="/admin/contracts" style="color:var(--text-muted);font-size:13px;"><i class="fa-solid fa-arrow-left"></i> Retour aux contrats</a>
+            </div>
+        </div>
+
+        <div class="placeholders-doc">
+            <h4><i class="fa-solid fa-code"></i> Placeholders disponibles (clique pour copier)</h4>
+            <div class="ph-grid">
+                <div><code onclick="copyPh('{{firstName}}')">{{firstName}}</code><span class="ph-desc">Prénom</span></div>
+                <div><code onclick="copyPh('{{lastName}}')">{{lastName}}</code><span class="ph-desc">Nom</span></div>
+                <div><code onclick="copyPh('{{role}}')">{{role}}</code><span class="ph-desc">Poste</span></div>
+                <div><code onclick="copyPh('{{contract}}')">{{contract}}</code><span class="ph-desc">CDI / CDD</span></div>
+                <div><code onclick="copyPh('{{startDate}}')">{{startDate}}</code><span class="ph-desc">Date début</span></div>
+                <div><code onclick="copyPh('{{endDate}}')">{{endDate}}</code><span class="ph-desc">Date fin</span></div>
+                <div><code onclick="copyPh('{{phone}}')">{{phone}}</code><span class="ph-desc">Téléphone</span></div>
+                <div><code onclick="copyPh('{{iban}}')">{{iban}}</code><span class="ph-desc">IBAN</span></div>
+                <div><code onclick="copyPh('{{today}}')">{{today}}</code><span class="ph-desc">Date du jour</span></div>
+                <div><code onclick="copyPh('{{replaces}}')">{{replaces}}</code><span class="ph-desc">Remplace (si CDD)</span></div>
+                <div><code onclick="copyPh('{{companyName}}')">{{companyName}}</code><span class="ph-desc">Société</span></div>
+                <div><code onclick="copyPh('{{directorName}}')">{{directorName}}</code><span class="ph-desc">Direction</span></div>
+            </div>
+        </div>
+
+        <div class="tpl-layout">
+            <aside class="tpl-list">
+                <div class="tpl-list-header">
+                    <h3>Templates</h3>
+                    <button class="btn-add" style="font-size:11px;padding:5px 10px;" onclick="newTemplate()">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+                <% if (templates.length === 0) { %>
+                    <div style="font-size:12px;color:var(--text-muted);padding:8px 0;">Aucun template. Cr&eacute;e-en un.</div>
+                <% } %>
+                <% templates.forEach(function(t) { %>
+                    <div class="tpl-item<%= (editingId === t.id) ? ' editing' : '' %><%= t.isActive ? ' active' : '' %>"
+                         data-id="<%= t.id %>"
+                         data-name="<%= t.name %>"
+                         data-kind="<%= t.kind || '' %>"
+                         data-active="<%= t.isActive ? '1' : '0' %>"
+                         data-content="<%= encodeURIComponent(t.content) %>">
+                        <div class="tpl-item-name">
+                            <%= t.name %>
+                            <% if (t.kind) { %><span class="tpl-kind-badge tpl-kind-<%= t.kind.toLowerCase() %>"><%= t.kind %></span><% } else { %><span class="tpl-kind-badge tpl-kind-generic">TOUS</span><% } %>
+                            <% if (t.isActive) { %><span class="tpl-item-badge">ACTIF</span><% } %>
+                        </div>
+                        <div class="tpl-item-meta">Mis à jour le <%= new Date(t.updatedAt).toLocaleDateString('fr-FR') %></div>
+                    </div>
+                <% }); %>
+            </aside>
+
+            <div class="tpl-editor">
+                <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px;">
+                    <div>
+                        <label class="f-label">Nom du template</label>
+                        <input type="text" class="f-input" id="tpl-name" placeholder="ex. CDD livreur 2026">
+                    </div>
+                    <div>
+                        <label class="f-label">Type de contrat ciblé</label>
+                        <select class="f-select" id="tpl-kind">
+                            <option value="">Tous types (générique / fallback)</option>
+                            <option value="CDI">CDI uniquement</option>
+                            <option value="CDD">CDD uniquement</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="tpl-editor-row">
+                    <label class="f-label">Contenu HTML (utilise les placeholders ci-dessus)</label>
+                    <div id="quill-editor"></div>
+                </div>
+                <div style="display:flex;gap:10px;align-items:center;">
+                    <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);cursor:pointer;">
+                        <input type="checkbox" id="tpl-set-active"> D&eacute;finir comme template actif (pour le type s&eacute;lectionn&eacute;)
+                    </label>
+                    <div style="flex:1;"></div>
+                    <button class="btn-secondary" onclick="newTemplate()" style="font-size:12px;">Nouveau</button>
+                    <button class="btn-primary" id="btn-save" style="font-size:12px;">
+                        <i class="fa-solid fa-check"></i> Enregistrer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="toast success" id="toast">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toast-msg">Action effectu&eacute;e</span>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+    <script>
+        function showToast(msg, type) {
+            type = type || 'success';
+            var t = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            t.className = 'toast ' + type + ' show';
+            setTimeout(function() { t.classList.remove('show'); }, 3500);
+        }
+
+        var quill = new Quill('#quill-editor', {
+            theme: 'snow',
+            placeholder: 'Rédige ici le corps du contrat...',
+            modules: {
+                toolbar: [
+                    [{ header: [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ list: 'ordered' }, { list: 'bullet' }],
+                    [{ align: [] }],
+                    ['link'],
+                    ['clean'],
+                ],
+            },
+        });
+
+        var currentId = null;
+
+        function loadTemplate(id, name, content, kind) {
+            currentId = id;
+            document.getElementById('tpl-name').value = name || '';
+            document.getElementById('tpl-kind').value = kind || '';
+            quill.setContents([]);
+            if (content) quill.clipboard.dangerouslyPasteHTML(0, decodeURIComponent(content));
+            document.getElementById('tpl-set-active').checked = false;
+            document.querySelectorAll('.tpl-item').forEach(function(el) {
+                el.classList.toggle('editing', String(el.dataset.id) === String(id));
+            });
+        }
+
+        function newTemplate() {
+            currentId = null;
+            document.getElementById('tpl-name').value = '';
+            document.getElementById('tpl-kind').value = '';
+            quill.setContents([]);
+            document.getElementById('tpl-set-active').checked = false;
+            document.querySelectorAll('.tpl-item').forEach(function(el) {
+                el.classList.remove('editing');
+            });
+        }
+
+        document.querySelectorAll('.tpl-item').forEach(function(el) {
+            el.addEventListener('click', function() {
+                loadTemplate(el.dataset.id, el.dataset.name, el.dataset.content, el.dataset.kind);
+            });
+        });
+
+        // Charge auto si editingId fourni en query
+        var editingDataAttr = document.querySelector('.tpl-item.editing');
+        if (editingDataAttr) {
+            loadTemplate(editingDataAttr.dataset.id, editingDataAttr.dataset.name, editingDataAttr.dataset.content, editingDataAttr.dataset.kind);
+        }
+
+        document.getElementById('btn-save').addEventListener('click', function() {
+            var name = document.getElementById('tpl-name').value.trim();
+            var kind = document.getElementById('tpl-kind').value;
+            var content = quill.getSemanticHTML().trim();
+            var text = quill.getText().trim();
+            if (!name) { showToast('Nom du template requis', 'error'); return; }
+            if (!text) { showToast('Contenu vide', 'error'); return; }
+            var setActive = document.getElementById('tpl-set-active').checked;
+            fetch('/admin/contracts/template', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    id: currentId || undefined,
+                    name: name, content: content, kind: kind || null, setActive: setActive,
+                }),
+            })
+            .then(function(r) { return r.json().then(function(d) { return { ok:r.ok, data:d }; }); })
+            .then(function(r) {
+                if (!r.ok) throw new Error((r.data && r.data.error) || 'Erreur');
+                showToast('Template enregistré');
+                setTimeout(function() { window.location.href = '/admin/contracts/template?id=' + r.data.id; }, 600);
+            })
+            .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        });
+
+        function copyPh(text) {
+            navigator.clipboard.writeText(text).then(function() { showToast('Copié : ' + text); });
+        }
+    </script>
+</body>
+</html>

@@ -55,6 +55,7 @@ model Employee {
   purchases        Purchase[]
   weekStats        WeekStats[]
   specialBonuses   SpecialBonus[]
+  contracts        Contract[]
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 }
@@ -316,6 +317,88 @@ model FaqEntry {
 model GovAccount {
   id        Int      @id @default(autoincrement())
   username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ── Contrats ──
+
+// Template de contrat éditable depuis /admin/contracts (HTML produit par Quill).
+// Les placeholders {{firstName}}, {{lastName}}, {{startDate}}, etc. sont remplacés
+// au moment de la génération d'un Contract. Un seul template peut être marqué
+// `isActive` à la fois — c'est lui qui sert pour toutes les nouvelles générations.
+model ContractTemplate {
+  id        Int      @id @default(autoincrement())
+  name      String
+  content   String   // HTML
+  // Type de contrat ciblé : "CDI" | "CDD" | null (générique, fallback).
+  // À la génération, on cherche d'abord le template actif du même kind que
+  // l'employé, puis on retombe sur un template générique si absent.
+  kind      String?
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Instance de contrat liée à un employé. Le HTML rendu (avec valeurs substituées)
+// est stocké tel quel dans `htmlSnapshot` : si le template évolue plus tard,
+// les contrats déjà émis ne changent pas. Workflow 3 niveaux : employé → entreprise
+// → avocat. Tokens uniques pour les liens de signature (employé via Discord casier,
+// avocat via lien public protégé par mdp).
+model Contract {
+  id                Int       @id @default(autoincrement())
+  // SetNull à la suppression de l'Employee : on conserve l'historique du contrat
+  // grâce au snapshot du nom (cohérent avec les autres tables).
+  employeeId        Int?
+  employee          Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  employeeFirstName String?
+  employeeLastName  String?
+
+  // Template au moment de la génération. SetNull si le template est supprimé.
+  templateId        Int?
+  template          ContractTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  htmlSnapshot      String              // HTML final figé — source de vérité
+
+  contractKind      String              // CDI | CDD (snapshot au moment de la création)
+  startDate         DateTime
+  endDate           DateTime?
+
+  // pending | employee-signed | company-signed | signed | cancelled | superseded
+  status            String    @default("pending")
+
+  // Signature employé : token utilisé dans le lien Discord casier
+  signToken         String    @unique
+  signedAt          DateTime?
+  signedName        String?
+  signedIp          String?
+  signedUserAgent   String?
+
+  // Contre-signature entreprise (admin). companySignedBy = nom admin OU "auto".
+  companySignedAt   DateTime?
+  companySignedBy   String?
+  companySignedAuto Boolean   @default(false)
+
+  // Signature avocat (lien public protégé par mdp LawyerAccount). Token généré
+  // par l'admin via /admin/contracts/:id (bouton "Envoyer à l'avocat").
+  lawyerSignToken   String?   @unique
+  lawyerSignedAt    DateTime?
+  lawyerSignedName  String?
+  lawyerSignedIp    String?
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([employeeId, status])
+  @@index([status])
+}
+
+// Compte avocat : singleton applicatif (comme GovAccount) pour protéger le lien
+// public de signature avocat. Pas d'username — un mot de passe partagé suffit
+// (compte de service, pas une session utilisateur). Mot de passe en clair :
+// l'admin doit pouvoir le voir et le communiquer à l'avocat.
+model LawyerAccount {
+  id        Int      @id @default(autoincrement())
   password  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -111,6 +111,22 @@ async function requireEmployee(req, res, next) {
     req.session.isAdmin = currentIsAdmin;
   }
   req.employee = user.employee;
+
+  // Contrat en attente de signature → exposé à toutes les vues employé pour
+  // la bannière "Tu dois signer ton contrat". Une requête supplémentaire par
+  // hit, mais light (un seul row, index sur (employeeId, status)).
+  try {
+    const pending = await prisma.contract.findFirst({
+      where: { employeeId: user.employee.id, status: 'pending' },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, signToken: true },
+    });
+    res.locals.pendingContract = pending || null;
+  } catch (e) {
+    // Si la table n'existe pas encore (migration pas faite), on ignore
+    // silencieusement plutôt que de planter toutes les routes employé.
+    res.locals.pendingContract = null;
+  }
   next();
 }
 

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('partials/head') %>
+    <title>RON OIL — Espace avocat</title>
+    <link rel="stylesheet" href="/css/shared.css">
+    <style>
+        body { background:var(--bg, #0D0D12); color:var(--text-primary); min-height:100vh; }
+        .lw-wrap { max-width:1100px; margin:32px auto; padding:0 24px; }
+        .lw-header {
+            display:flex; justify-content:space-between; align-items:flex-end;
+            padding-bottom:18px; border-bottom:1px solid var(--border);
+            margin-bottom:24px;
+        }
+        .lw-title {
+            font-family:var(--font-display); font-size:24px; font-weight:700;
+            letter-spacing:.04em;
+        }
+        .lw-title span { color:var(--accent); }
+        .lw-subtitle { font-size:13px; color:var(--text-muted); margin-top:4px; }
+        .lw-logout {
+            display:inline-flex; align-items:center; gap:8px;
+            padding:9px 14px; font-size:12px; font-weight:600;
+            color:var(--text-secondary); border:1px solid var(--border);
+            text-decoration:none;
+        }
+        .lw-logout:hover { border-color:var(--accent); color:var(--accent); }
+
+        .lw-filters { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
+        .lw-chip {
+            padding:7px 14px; font-size:12px; font-weight:600;
+            background:var(--bg-card); border:1px solid var(--border);
+            color:var(--text-secondary); text-decoration:none;
+            letter-spacing:.04em;
+        }
+        .lw-chip:hover { border-color:var(--accent); color:var(--text-primary); }
+        .lw-chip.active { background:var(--accent); border-color:var(--accent); color:#0a0a0a; }
+
+        .lw-table {
+            width:100%; border-collapse:collapse;
+            background:var(--bg-card); border:1px solid var(--border);
+        }
+        .lw-table th, .lw-table td {
+            padding:13px 16px; text-align:left;
+            border-bottom:1px solid var(--border);
+            font-size:13px;
+        }
+        .lw-table th {
+            font-family:var(--font-display); font-size:11px;
+            letter-spacing:.14em; text-transform:uppercase;
+            color:var(--text-muted); font-weight:700;
+            background:rgba(255,255,255,.02);
+        }
+        .lw-table tr:last-child td { border-bottom:none; }
+        .lw-table tr:hover td { background:rgba(255,255,255,.02); }
+        .lw-emp { font-weight:600; }
+
+        .lw-status {
+            display:inline-block; padding:3px 10px; font-size:10.5px; font-weight:700;
+            letter-spacing:.06em; text-transform:uppercase; border-radius:3px;
+        }
+        .lw-status.pending          { background:rgba(59,130,246,.18); color:#60a5fa; border:1px solid #3b82f6; }
+        .lw-status.employee-signed  { background:rgba(245,158,11,.15); color:#fbbf24; border:1px solid #f59e0b; }
+        .lw-status.company-signed   { background:rgba(34,197,94,.18); color:#4ade80; border:1px solid #22c55e; }
+        .lw-status.signed           { background:rgba(34,197,94,.30); color:#4ade80; border:1px solid #22c55e; }
+        .lw-status.cancelled        { background:rgba(239,68,68,.15); color:#f87171; border:1px solid #ef4444; }
+        .lw-status.superseded       { background:rgba(120,120,120,.15); color:#aaa; border:1px solid #666; }
+
+        .lw-action {
+            display:inline-flex; align-items:center; gap:6px;
+            padding:7px 12px; font-size:11.5px; font-weight:600;
+            background:var(--accent); color:#0a0a0a; text-decoration:none;
+            text-transform:uppercase; letter-spacing:.04em;
+            border:1px solid var(--accent);
+        }
+        .lw-action:hover { background:var(--accent-hover, #FF6D3F); }
+        .lw-action.disabled {
+            background:transparent; color:var(--text-muted);
+            border-color:var(--border); cursor:not-allowed;
+        }
+        .lw-action.view {
+            background:transparent; color:var(--text-secondary);
+            border-color:var(--border);
+        }
+        .lw-action.view:hover { border-color:var(--accent); color:var(--accent); }
+
+        .lw-count { color:var(--text-muted); font-size:12px; margin-bottom:14px; }
+        .lw-empty { text-align:center; padding:40px; color:var(--text-muted); font-size:13px; }
+        .lw-dates { font-family:var(--font-mono); font-size:12px; color:var(--text-secondary); }
+    </style>
+</head>
+<body>
+    <div class="lw-wrap">
+        <div class="lw-header">
+            <div>
+                <div class="lw-title">RON&nbsp;<span>OIL</span> &mdash; Espace avocat</div>
+                <div class="lw-subtitle">Liste des contrats &agrave; signer ou consulter</div>
+            </div>
+            <a class="lw-logout" href="/lawyer/logout">
+                <i class="fa-solid fa-right-from-bracket"></i> D&eacute;connexion
+            </a>
+        </div>
+
+        <%
+            // Compteurs par statut pour les chips
+            const counts = { all: contracts.length };
+            ['pending','employee-signed','company-signed','signed','cancelled','superseded'].forEach(function(s) {
+                counts[s] = 0;
+            });
+            contracts.forEach(function(c) { counts[c.status] = (counts[c.status] || 0) + 1; });
+        %>
+        <div class="lw-filters">
+            <a class="lw-chip<%= query.status === 'all' ? ' active' : '' %>" href="/lawyer/">Tous (<%= counts.all %>)</a>
+            <a class="lw-chip<%= query.status === 'company-signed' ? ' active' : '' %>" href="/lawyer/?status=company-signed">À signer (<%= counts['company-signed'] || 0 %>)</a>
+            <a class="lw-chip<%= query.status === 'employee-signed' ? ' active' : '' %>" href="/lawyer/?status=employee-signed">En attente direction (<%= counts['employee-signed'] || 0 %>)</a>
+            <a class="lw-chip<%= query.status === 'pending' ? ' active' : '' %>" href="/lawyer/?status=pending">En attente employé (<%= counts.pending || 0 %>)</a>
+            <a class="lw-chip<%= query.status === 'signed' ? ' active' : '' %>" href="/lawyer/?status=signed">Finalis&eacute;s (<%= counts.signed || 0 %>)</a>
+        </div>
+
+        <% if (contracts.length === 0) { %>
+            <div class="lw-empty">Aucun contrat à afficher.</div>
+        <% } else { %>
+        <table class="lw-table">
+            <thead>
+                <tr>
+                    <th>Employé</th>
+                    <th>Type</th>
+                    <th>Période</th>
+                    <th>Statut</th>
+                    <th>Créé le</th>
+                    <th style="text-align:right;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% contracts.forEach(function(c) { %>
+                    <tr>
+                        <td class="lw-emp"><%= c.employeeFirstName %> <%= c.employeeLastName %></td>
+                        <td><%= c.contractKind %></td>
+                        <td class="lw-dates">
+                            <%= new Date(c.startDate).toLocaleDateString('fr-FR') %>
+                            <% if (c.endDate) { %> → <%= new Date(c.endDate).toLocaleDateString('fr-FR') %><% } %>
+                        </td>
+                        <td><span class="lw-status <%= c.status %>"><%= c.status %></span></td>
+                        <td class="lw-dates"><%= new Date(c.createdAt).toLocaleDateString('fr-FR') %></td>
+                        <td style="text-align:right;">
+                            <% if (c.lawyerSignToken) { %>
+                                <% if (c.status === 'company-signed') { %>
+                                    <a class="lw-action" href="/lawyer/contract/<%= c.lawyerSignToken %>">
+                                        <i class="fa-solid fa-signature"></i> Signer
+                                    </a>
+                                <% } else if (c.status === 'signed' || c.status === 'cancelled' || c.status === 'superseded') { %>
+                                    <a class="lw-action view" href="/lawyer/contract/<%= c.lawyerSignToken %>">
+                                        <i class="fa-solid fa-eye"></i> Consulter
+                                    </a>
+                                <% } else { %>
+                                    <a class="lw-action view" href="/lawyer/contract/<%= c.lawyerSignToken %>" title="Visible mais pas encore signable">
+                                        <i class="fa-solid fa-clock"></i> Pas encore prêt
+                                    </a>
+                                <% } %>
+                            <% } else { %>
+                                <span class="lw-action disabled"><i class="fa-solid fa-ban"></i> Aucun lien</span>
+                            <% } %>
+                        </td>
+                    </tr>
+                <% }); %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</body>
+</html>

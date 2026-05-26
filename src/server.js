@@ -98,12 +98,14 @@ const employeeRoutes = require('./routes/employee');
 const adminRoutes = require('./routes/admin');
 const apiRoutes = require('./routes/api');
 const gouvRoutes = require('./routes/gouv');
+const lawyerRoutes = require('./routes/lawyer');
 
 app.use('/', authRoutes);
 app.use('/', employeeRoutes);
 app.use('/admin', adminRoutes);
 app.use('/api', apiRoutes);
 app.use('/gouv', gouvRoutes);
+app.use('/lawyer', lawyerRoutes);
 
 // Root redirect
 app.get('/', (req, res) => {

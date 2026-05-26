@@ -32,6 +32,17 @@ const {
 const {
   isAutoDeactivateEnabled, setAutoDeactivateEnabled,
 } = require('../services/absences');
+const {
+  isAutoCompanySignatureEnabled, setAutoCompanySignatureEnabled,
+  getRenewThresholds, setRenewThresholds,
+  contractUrgencyFromDate,
+  getActiveTemplate, listTemplates, saveTemplate, activateTemplate,
+  renderTemplate, buildVarsForEmployee,
+  generateForEmployee,
+  signByCompany, cancelContract, supersedeAndRenew,
+  getLawyerAccount, setLawyerPassword,
+} = require('../services/contracts');
+const { notifyContractSignLink } = require('../services/bot');
 
 // ── Helpers : génération d'identifiants ──
 
@@ -98,7 +109,7 @@ router.get('/salaries', async (req, res) => {
     const sort = req.query.sort || 'default';
     const page = Math.max(1, parseInt(req.query.page) || 1);
 
-    const [employees, dutyLogs, roles, futureAbsences, autoDeactivate] = await Promise.all([
+    const [employees, dutyLogs, roles, futureAbsences, autoDeactivate, thresholds, latestContracts] = await Promise.all([
       prisma.employee.findMany({ orderBy: { id: 'asc' } }),
       prisma.logEntry.findMany({
         where: { type: 'duty' },
@@ -114,6 +125,14 @@ router.get('/salaries', async (req, res) => {
         include: { employee: { select: { id: true, firstName: true, lastName: true, status: true } } },
       }),
       isAutoDeactivateEnabled(),
+      getRenewThresholds(),
+      // Dernier contrat actif (non superseded/cancelled) par employé — sert à
+      // la pastille de statut à côté du nom. On prend le plus récent.
+      prisma.contract.findMany({
+        where: { status: { in: ['pending', 'employee-signed', 'company-signed', 'signed'] } },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, employeeId: true, status: true },
+      }),
     ]);
 
     // Dernier log de service par nom normalisé (first-wins car trié desc).
@@ -127,10 +146,19 @@ router.get('/salaries', async (req, res) => {
       dutyByName.set(name, { onDuty: d[1] === 'true', since: log.timestamp });
     }
 
+    // Map employeeId -> dernier contrat actif (first-wins, vu que findMany est trié desc).
+    const contractByEmployee = new Map();
+    for (const c of latestContracts) {
+      if (c.employeeId == null) continue;
+      if (!contractByEmployee.has(c.employeeId)) contractByEmployee.set(c.employeeId, c);
+    }
+
     const enriched = employees.map(e => {
       const key = (e.firstName + ' ' + e.lastName).trim().toLowerCase().replace(/\s+/g, ' ');
       const duty = dutyByName.get(key) || null;
-      return { ...e, duty };
+      const contract = contractByEmployee.get(e.id) || null;
+      const renewUrgency = contractUrgencyFromDate(e.endDate, thresholds);
+      return { ...e, duty, latestContract: contract, renewUrgency };
     });
 
     // Compteurs globaux (avant filtrage) — affichés en haut de page.
@@ -288,10 +316,12 @@ router.post('/salaries', async (req, res) => {
 
     // Création du casier Discord. Si ça échoue, on rollback Employee + User
     // (la transaction Prisma est déjà committée, donc cleanup manuel).
+    let casierChannelId = null;
     try {
       const { channelId } = await createCasier({
         discordId, firstName, lastName, username, password,
       });
+      casierChannelId = channelId;
       await prisma.employee.update({
         where: { id: employee.id },
         data: { channelId, casierId: channelId },
@@ -311,7 +341,31 @@ router.post('/salaries', async (req, res) => {
       });
     }
 
-    res.json({ ok: true, id: employee.id });
+    // Génération du contrat + post du lien de signature dans le casier.
+    // Best-effort : si pas de template actif ou si le bot rate, on n'annule
+    // pas la création de l'employé — l'admin pourra générer manuellement le
+    // contrat depuis /admin/contracts (bouton "Générer un contrat").
+    let contractWarning = null;
+    try {
+      const newContract = await generateForEmployee(employee.id, {
+        startDate: hireDate ? new Date(hireDate) : new Date(),
+        endDate: endDate ? new Date(endDate) : null,
+      });
+      if (casierChannelId) {
+        notifyContractSignLink({
+          channelId: casierChannelId,
+          signUrl: buildEmployeeSignUrl(req, newContract.signToken),
+          dateStart: newContract.startDate.toISOString(),
+          dateEnd: newContract.endDate ? newContract.endDate.toISOString() : null,
+          reason: 'initial',
+        }).catch(err => console.warn('[salaries] notifyContractSignLink:', err.message));
+      }
+    } catch (cErr) {
+      console.warn('[salaries] génération contrat échouée:', cErr.message);
+      contractWarning = cErr.message;
+    }
+
+    res.json({ ok: true, id: employee.id, contractWarning });
   } catch (err) {
     console.error('POST /salaries error:', err);
     res.status(500).json({ error: err.message });
@@ -1939,6 +1993,263 @@ router.post('/gouv/regenerate', async (req, res) => {
   } catch (err) {
     console.error('POST /admin/gouv/regenerate error:', err);
     res.redirect('/admin/gouv?error=' + encodeURIComponent(err.message));
+  }
+});
+
+// ══════════════════════════════════════
+//  CONTRATS
+// ══════════════════════════════════════
+
+// Helper : URL absolue de signature employé pour le lien Discord.
+function buildEmployeeSignUrl(req, token) {
+  const base = process.env.PUBLIC_URL || (req.protocol + '://' + req.get('host'));
+  return base.replace(/\/$/, '') + '/contract/' + token;
+}
+
+// Liste des contrats. Filtres simples : statut, employé (recherche nom).
+router.get('/contracts', async (req, res) => {
+  try {
+    const status = req.query.status || 'all';
+    const q = (req.query.q || '').trim();
+    const where = {};
+    if (status !== 'all') where.status = status;
+    if (q) {
+      const ql = q.toLowerCase();
+      where.OR = [
+        { employeeFirstName: { contains: ql } },
+        { employeeLastName: { contains: ql } },
+      ];
+    }
+    const [contracts, activeTemplates, autoCompany, thresholds, lawyer] = await Promise.all([
+      prisma.contract.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: 200,
+      }),
+      getActiveTemplatesByKind(),
+      isAutoCompanySignatureEnabled(),
+      getRenewThresholds(),
+      getLawyerAccount(),
+    ]);
+    res.render('admin/contracts', {
+      contracts, activeTemplates,
+      autoCompany, thresholds, lawyerAccount: lawyer,
+      query: { status, q },
+    });
+  } catch (err) {
+    console.error('GET /contracts error:', err);
+    res.status(500).send('Erreur serveur');
+  }
+});
+
+// Édition du template. Une seule page : liste des templates en haut, éditeur
+// Quill pour le template sélectionné en bas. Pour MVP on n'expose qu'un seul
+// template "actif" — c'est lui qui sert pour toutes les nouvelles générations.
+router.get('/contracts/template', async (req, res) => {
+  try {
+    const [templates, activeByKind] = await Promise.all([listTemplates(), getActiveTemplatesByKind()]);
+    res.render('admin/contracts-template', {
+      templates, activeByKind,
+      editingId: req.query.id ? parseInt(req.query.id) : null,
+    });
+  } catch (err) {
+    console.error('GET /contracts/template error:', err);
+    res.status(500).send('Erreur serveur');
+  }
+});
+
+router.post('/contracts/template', async (req, res) => {
+  try {
+    const { id, name, content, kind, setActive } = req.body || {};
+    if (!name || !content) {
+      return res.status(400).json({ error: 'Nom et contenu requis' });
+    }
+    const t = await saveTemplate({
+      id: id ? parseInt(id) : undefined,
+      name,
+      content,
+      kind,
+      setActive: setActive === 'on' || setActive === true || setActive === 'true',
+    });
+    res.json({ ok: true, id: t.id, name: t.name, kind: t.kind });
+  } catch (err) {
+    console.error('POST /contracts/template error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/contracts/template/:id/activate', async (req, res) => {
+  try {
+    await activateTemplate(parseInt(req.params.id));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /contracts/template/:id/activate error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Détail contrat : utilisé par la modal admin (récap + actions).
+router.get('/contracts/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const contract = await prisma.contract.findUnique({ where: { id } });
+    if (!contract) return res.status(404).json({ error: 'Not found' });
+    const base = process.env.PUBLIC_URL || (req.protocol + '://' + req.get('host'));
+    res.json({
+      contract,
+      employeeSignUrl: base.replace(/\/$/, '') + '/contract/' + contract.signToken,
+      lawyerSignUrl: contract.lawyerSignToken
+        ? base.replace(/\/$/, '') + '/lawyer/contract/' + contract.lawyerSignToken
+        : null,
+    });
+  } catch (err) {
+    console.error('GET /contracts/:id error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/contracts/:id/sign-company', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    // Identité admin : on prend le nom affiché dans la sidebar (adminUser.name)
+    // qui a été calculé par le middleware requireAdmin.
+    const byName = (res.locals.adminUser && res.locals.adminUser.name) || 'Admin';
+    const updated = await signByCompany(id, { byName });
+    res.json({ ok: true, status: updated.status });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post('/contracts/:id/cancel', async (req, res) => {
+  try {
+    const updated = await cancelContract(parseInt(req.params.id));
+    res.json({ ok: true, status: updated.status });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Génération manuelle pour un employé existant qui n'a pas (encore) de contrat.
+// Utilisé via le bouton 'Générer un contrat' dans la liste salariés (employés
+// pré-existants avant l'introduction du système contrats).
+router.post('/contracts/generate/:employeeId', async (req, res) => {
+  try {
+    const employeeId = parseInt(req.params.employeeId);
+    const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
+    if (!employee) return res.status(404).json({ error: 'Employé introuvable' });
+    const contract = await generateForEmployee(employeeId, {
+      startDate: employee.hireDate,
+      endDate: employee.endDate,
+    });
+    // Post Discord casier (best-effort)
+    if (employee.channelId) {
+      notifyContractSignLink({
+        channelId: employee.channelId,
+        signUrl: buildEmployeeSignUrl(req, contract.signToken),
+        dateStart: contract.startDate.toISOString(),
+        dateEnd: contract.endDate ? contract.endDate.toISOString() : null,
+        reason: 'initial',
+      }).catch(err => console.warn('[contracts] notifyContractSignLink:', err.message));
+    }
+    res.json({ ok: true, contractId: contract.id });
+  } catch (err) {
+    console.error('POST /contracts/generate/:employeeId error:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Renouvellement : supersede l'ancien contrat + crée un nouveau pending + post
+// le lien de signature dans le canal casier. Appelé par le bouton coloré
+// "Renouveler" dans la liste salariés.
+router.post('/contracts/renew/:employeeId', async (req, res) => {
+  try {
+    const employeeId = parseInt(req.params.employeeId);
+    const { startDate, endDate } = req.body || {};
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'startDate et endDate requis' });
+    }
+    const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
+    if (!employee) return res.status(404).json({ error: 'Employé introuvable' });
+
+    const contract = await supersedeAndRenew(employeeId, { startDate, endDate });
+    if (employee.channelId) {
+      notifyContractSignLink({
+        channelId: employee.channelId,
+        signUrl: buildEmployeeSignUrl(req, contract.signToken),
+        dateStart: contract.startDate.toISOString(),
+        dateEnd: contract.endDate ? contract.endDate.toISOString() : null,
+        reason: 'renewal',
+      }).catch(err => console.warn('[contracts] notifyContractSignLink:', err.message));
+    }
+    res.json({ ok: true, contractId: contract.id });
+  } catch (err) {
+    console.error('POST /contracts/renew/:employeeId error:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Prévisualisation HTML d'un contrat pour un employé donné, avec dates ajustables.
+// Retourne le HTML rendu (template actif + variables) sans rien créer en BDD.
+// Utilisé par la modal de renouvellement pour afficher l'aperçu avant confirmation.
+router.post('/contracts/preview', async (req, res) => {
+  try {
+    const { employeeId, startDate, endDate } = req.body || {};
+    if (!employeeId) return res.status(400).json({ error: 'employeeId requis' });
+    const employee = await prisma.employee.findUnique({ where: { id: parseInt(employeeId) } });
+    if (!employee) return res.status(404).json({ error: 'Employé introuvable' });
+    // Choisit le template selon le type de contrat de l'employé (CDI/CDD)
+    // avec fallback sur un template générique si aucun spécifique n'existe.
+    const template = await getActiveTemplate(employee.contract);
+    if (!template) {
+      return res.status(400).json({
+        error: 'Aucun template actif pour les contrats ' + employee.contract + ' (ni de générique)',
+      });
+    }
+    const vars = await buildVarsForEmployee(employee, {
+      startDate: startDate ? new Date(startDate) : new Date(),
+      endDate: endDate ? new Date(endDate) : null,
+    });
+    res.json({ html: renderTemplate(template.content, vars), templateName: template.name, templateKind: template.kind });
+  } catch (err) {
+    console.error('POST /contracts/preview error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Toggle global "signature entreprise auto" — n'impacte que les contrats futurs.
+router.post('/contracts/config/auto-company', async (req, res) => {
+  try {
+    const enabled = await setAutoCompanySignatureEnabled(req.body && req.body.enabled);
+    res.json({ ok: true, enabled });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Seuils de couleur pour le bouton "Renouveler" dans la liste salariés.
+router.post('/contracts/config/thresholds', async (req, res) => {
+  try {
+    const { greenDays, orangeDays, redDays } = req.body || {};
+    const t = await setRenewThresholds({ greenDays, orangeDays, redDays });
+    res.json({ ok: true, thresholds: t });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Mot de passe du compte avocat (singleton). Stocké en clair comme GovAccount
+// — c'est un compte de service partagé que l'admin doit pouvoir lire.
+router.post('/contracts/lawyer-password', async (req, res) => {
+  try {
+    const { password } = req.body || {};
+    if (!password || !String(password).trim()) {
+      return res.status(400).json({ error: 'Mot de passe requis' });
+    }
+    await setLawyerPassword(password);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

@@ -19,6 +19,7 @@ const {
 const { getStoredRecords } = require('../services/records');
 const { notifyAbsence } = require('../services/bot');
 const { isAutoDeactivateEnabled, deactivateForAbsence } = require('../services/absences');
+const { signByEmployee } = require('../services/contracts');
 
 function fmt(n) {
   return new Intl.NumberFormat('fr-FR').format(Math.round(n)) + '$';
@@ -624,6 +625,54 @@ router.get('/faq', requireEmployee, async (req, res) => {
   } catch (err) {
     console.error('FAQ error:', err);
     res.status(500).send('Erreur serveur');
+  }
+});
+
+// ─── GET/POST /contract/:token (signature employé) ───
+// Token unique posé à la création du contrat. La page exige une session employé
+// connectée — c'est l'authentification qui prouve l'identité du signataire.
+// Le token sert juste à router vers le bon contrat (envoyé par Discord).
+router.get('/contract/:token', requireEmployee, async (req, res) => {
+  try {
+    const contract = await prisma.contract.findUnique({
+      where: { signToken: req.params.token },
+    });
+    if (!contract) return res.status(404).send('Lien de signature invalide');
+    if (contract.employeeId !== req.session.employeeId) {
+      // Sécurité : un employé ne peut pas signer le contrat d'un autre, même
+      // s'il a réussi à se procurer le token.
+      return res.status(403).send('Ce contrat ne vous est pas adressé');
+    }
+    res.render('employee/contract', { employee: req.employee, contract });
+  } catch (err) {
+    console.error('GET /contract/:token error:', err);
+    res.status(500).send('Erreur serveur');
+  }
+});
+
+router.post('/contract/:token/sign', requireEmployee, async (req, res) => {
+  try {
+    const contract = await prisma.contract.findUnique({
+      where: { signToken: req.params.token },
+      select: { id: true, employeeId: true, status: true },
+    });
+    if (!contract) return res.status(404).json({ error: 'Lien invalide' });
+    if (contract.employeeId !== req.session.employeeId) {
+      return res.status(403).json({ error: 'Ce contrat ne vous est pas adressé' });
+    }
+    const { name, accepted } = req.body || {};
+    if (!accepted || (accepted !== 'on' && accepted !== true && accepted !== 'true')) {
+      return res.status(400).json({ error: 'Vous devez accepter les termes du contrat' });
+    }
+    const updated = await signByEmployee(req.params.token, {
+      name,
+      ip: req.ip || null,
+      userAgent: req.get('user-agent') || null,
+    });
+    res.json({ ok: true, status: updated.status });
+  } catch (err) {
+    console.error('POST /contract/:token/sign error:', err);
+    res.status(400).json({ error: err.message });
   }
 });
 

@@ -153,6 +153,18 @@
                             <% var dutyClass = (e.duty && e.duty.onDuty) ? 'on' : 'off'; %>
                             <% var dutyTitle = e.duty ? ((e.duty.onDuty ? 'En service' : 'Hors service') + ' depuis ' + new Date(e.duty.since).toLocaleString('fr-FR')) : 'Hors service (aucun log)'; %>
                             <span class="duty-dot <%= dutyClass %>" title="<%= dutyTitle %>"></span>
+                            <%
+                                // Pastille statut contrat (gris=aucun, bleu=pending, orange=partiel, vert=signé)
+                                let cDot = 'none', cLbl = 'Aucun contrat';
+                                if (e.latestContract) {
+                                    const s = e.latestContract.status;
+                                    if (s === 'pending') { cDot = 'pending'; cLbl = 'Contrat en attente de signature employé'; }
+                                    else if (s === 'employee-signed') { cDot = 'partial'; cLbl = 'Contrat signé par l\'employé, en attente direction'; }
+                                    else if (s === 'company-signed') { cDot = 'partial'; cLbl = 'Signé par employé + direction, en attente avocat'; }
+                                    else if (s === 'signed') { cDot = 'signed'; cLbl = 'Contrat finalisé'; }
+                                }
+                            %>
+                            <span class="contract-dot <%= cDot %>" title="<%= cLbl %>"></span>
                             <a href="#" class="employee-name-link" onclick="event.preventDefault(); openRecap(<%= e.id %>)" title="Voir le récap"><%= e.firstName %> <%= e.lastName %></a>
                             <% if (e.replacesId || e.replacesLastName) {
                                  const _repName = (e.replacesFirstName || '') + ' ' + (e.replacesLastName || '');
@@ -174,6 +186,19 @@
                         <td class="mono" style="color:var(--text-secondary)"><%= e.phone || '—' %></td>
                         <td>
                             <div class="table-actions">
+                                <% if (e.renewUrgency && e.renewUrgency !== 'none') { %>
+                                    <button type="button" class="btn-renew btn-renew-<%= e.renewUrgency %>"
+                                            onclick="openRenewModal(<%= e.id %>)"
+                                            title="Renouveler le contrat (<%= e.renewUrgency === 'red' ? 'urgent' : (e.renewUrgency === 'orange' ? 'bientôt' : 'à anticiper') %>)">
+                                        <i class="fa-solid fa-arrows-rotate"></i>
+                                    </button>
+                                <% } else if (!e.latestContract) { %>
+                                    <button type="button" class="btn-renew btn-renew-none"
+                                            onclick="generateContract(<%= e.id %>)"
+                                            title="Générer un contrat (aucun contrat en BDD)">
+                                        <i class="fa-solid fa-file-circle-plus"></i>
+                                    </button>
+                                <% } %>
                                 <button class="btn-edit" onclick="editEmployee(<%= e.id %>)" title="Modifier"><i class="fa-solid fa-pen"></i></button>
                                 <button type="button" class="btn-toggle-status" onclick="toggleStatus(<%= e.id %>)" title="<%= e.status === 'active' ? 'Désactiver' : 'Réactiver' %>">
                                     <i class="fa-solid <%= e.status === 'active' ? 'fa-user-slash' : 'fa-user-check' %>"></i>
@@ -364,6 +389,39 @@
         </div>
     </div>
 
+    <!-- Modal Renouvellement contrat -->
+    <div class="modal-overlay renew-modal" id="modal-renew">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title" id="renew-title">Renouveler le contrat</div>
+                <button class="modal-close" onclick="closeModal('modal-renew')">&#10005;</button>
+            </div>
+            <div class="modal-body">
+                <div class="renew-grid">
+                    <div class="renew-form-col">
+                        <label>Nouvelle date de début</label>
+                        <input type="date" class="f-input" id="renew-start">
+                        <label>Nouvelle date de fin</label>
+                        <input type="date" class="f-input" id="renew-end">
+                        <div style="font-size:11.5px;color:var(--text-muted);padding:8px 10px;background:var(--bg);border:1px solid var(--border);">
+                            En confirmant, l'ancien contrat passe en <code>superseded</code> et un nouveau contrat est généré. Le lien de signature est posté automatiquement dans le casier Discord de l'employé.
+                        </div>
+                    </div>
+                    <div class="renew-preview-col">
+                        <h4>Aperçu du nouveau contrat</h4>
+                        <div class="renew-preview" id="renew-preview">
+                            <div style="color:#777;text-align:center;padding:30px;">Chargement…</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('modal-renew')">Annuler</button>
+                <button type="button" class="btn-primary" id="btn-renew-confirm"><i class="fa-solid fa-check"></i> Confirmer le renouvellement</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Récap -->
     <div class="modal-overlay" id="modal-recap">
         <div class="modal" style="width:1100px;">
@@ -482,6 +540,45 @@
         }
         .absence-toggle input:checked + .absence-toggle-slider::after {
             left:18px; background:var(--accent);
+        }
+
+        /* Pastille de statut contrat à côté du nom (à la manière de la duty-dot) */
+        .contract-dot {
+            display:inline-block; width:8px; height:8px; border-radius:50%;
+            margin-right:6px; vertical-align:middle;
+        }
+        .contract-dot.none    { background:#555; }
+        .contract-dot.pending { background:#3B82F6; box-shadow:0 0 0 2px rgba(59,130,246,.2); }
+        .contract-dot.partial { background:#f59e0b; box-shadow:0 0 0 2px rgba(245,158,11,.2); }
+        .contract-dot.signed  { background:#22c55e; box-shadow:0 0 0 2px rgba(34,197,94,.2); }
+
+        /* Bouton "Renouveler le contrat" coloré selon urgence */
+        .btn-renew {
+            display:inline-flex; align-items:center; justify-content:center;
+            width:30px; height:30px; cursor:pointer; border-radius:3px;
+            border:1px solid currentColor; background:transparent;
+        }
+        .btn-renew:hover { background:currentColor; color:#0a0a0a !important; }
+        .btn-renew-green  { color:#22c55e; }
+        .btn-renew-orange { color:#f59e0b; }
+        .btn-renew-red    { color:#ef4444; animation:pulseRenew 1.6s ease-in-out infinite; }
+        .btn-renew-none   { color:var(--text-muted); }
+        @keyframes pulseRenew {
+            0%,100% { box-shadow:0 0 0 0 rgba(239,68,68,.35); }
+            50%     { box-shadow:0 0 0 4px rgba(239,68,68,0); }
+        }
+
+        /* Modal renouvellement : aperçu + dates */
+        .renew-modal .modal { width:880px; }
+        .renew-grid { display:grid; grid-template-columns:280px 1fr; gap:18px; }
+        .renew-form-col label { display:block; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-secondary); margin-bottom:6px; }
+        .renew-form-col input { width:100%; padding:9px 12px; margin-bottom:14px; }
+        .renew-preview-col h4 { margin:0 0 8px; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-secondary); }
+        .renew-preview {
+            background:#fff; color:#111; padding:20px 24px;
+            border:1px solid var(--border); font-family:Georgia, serif;
+            font-size:12.5px; line-height:1.55;
+            max-height:420px; overflow:auto;
         }
 
         /* Badge "Remplace [Nom]" dans la liste salariés */
@@ -643,6 +740,107 @@
                 observer.observe(overlay, { attributes: true, attributeFilter: ['class'] });
             });
         })();
+
+        // ── Renouvellement de contrat (bouton coloré sur chaque ligne) ──────
+        var renewState = { employeeId: null, debounceTimer: null };
+
+        function pad(n) { return String(n).padStart(2, '0'); }
+        function isoDate(d) {
+            return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+        }
+
+        function openRenewModal(employeeId) {
+            var emp = employeesData.find(function(e) { return e.id === employeeId; });
+            if (!emp) { showToast('Employé introuvable', 'error'); return; }
+            renewState.employeeId = employeeId;
+            document.getElementById('renew-title').innerHTML =
+                'Renouveler le contrat <span style="font-size:12px;color:var(--text-muted);font-weight:400;margin-left:8px;">' + emp.firstName + ' ' + emp.lastName + '</span>';
+            var today = new Date();
+            var defaultEnd = new Date(today.getTime() + 21 * 86400000);
+            document.getElementById('renew-start').value = isoDate(today);
+            document.getElementById('renew-end').value = isoDate(defaultEnd);
+            document.getElementById('renew-preview').innerHTML =
+                '<div style="color:#777;text-align:center;padding:30px;">Chargement…</div>';
+            openModal('modal-renew');
+            refreshRenewPreview();
+        }
+
+        function refreshRenewPreview() {
+            if (!renewState.employeeId) return;
+            fetch('/admin/contracts/preview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    employeeId: renewState.employeeId,
+                    startDate: document.getElementById('renew-start').value,
+                    endDate: document.getElementById('renew-end').value,
+                }),
+            })
+            .then(function(r) { return r.json().then(function(d) { return { ok:r.ok, data:d }; }); })
+            .then(function(r) {
+                if (!r.ok) throw new Error((r.data && r.data.error) || 'Erreur');
+                document.getElementById('renew-preview').innerHTML = r.data.html;
+            })
+            .catch(function(err) {
+                document.getElementById('renew-preview').innerHTML =
+                    '<div style="color:#ef4444;padding:20px;">Erreur : ' + err.message + '</div>';
+            });
+        }
+
+        // Rafraîchit l'aperçu quand l'admin change les dates (avec debounce léger)
+        ['renew-start', 'renew-end'].forEach(function(id) {
+            var el = document.getElementById(id);
+            el.addEventListener('change', function() {
+                clearTimeout(renewState.debounceTimer);
+                renewState.debounceTimer = setTimeout(refreshRenewPreview, 200);
+            });
+        });
+
+        document.getElementById('btn-renew-confirm').addEventListener('click', function() {
+            if (!renewState.employeeId) return;
+            var btn = this;
+            btn.disabled = true;
+            fetch('/admin/contracts/renew/' + renewState.employeeId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    startDate: document.getElementById('renew-start').value,
+                    endDate: document.getElementById('renew-end').value,
+                }),
+            })
+            .then(function(r) { return r.json().then(function(d) { return { ok:r.ok, data:d }; }); })
+            .then(function(r) {
+                if (!r.ok) throw new Error((r.data && r.data.error) || 'Erreur');
+                showToast('Contrat renouvelé, lien envoyé sur Discord');
+                closeModal('modal-renew');
+                return AdminAjax.reloadMain();
+            })
+            .catch(function(err) {
+                showToast('Erreur : ' + err.message, 'error');
+                btn.disabled = false;
+            })
+            .then(function() { btn.disabled = false; });
+        });
+
+        // Génération manuelle d'un contrat pour un employé pré-existant sans contrat.
+        function generateContract(employeeId) {
+            var emp = employeesData.find(function(e) { return e.id === employeeId; });
+            var name = emp ? (emp.firstName + ' ' + emp.lastName) : 'cet employé';
+            if (!confirm('Générer un contrat pour ' + name + ' et envoyer le lien sur Discord ?')) return;
+            fetch('/admin/contracts/generate/' + employeeId, {
+                method: 'POST',
+                credentials: 'same-origin',
+            })
+            .then(function(r) { return r.json().then(function(d) { return { ok:r.ok, data:d }; }); })
+            .then(function(r) {
+                if (!r.ok) throw new Error((r.data && r.data.error) || 'Erreur');
+                showToast('Contrat généré');
+                return AdminAjax.reloadMain();
+            })
+            .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
 
         function toggleStatus(id) {
             AdminAjax.post('/admin/salaries/' + id + '/toggle')
