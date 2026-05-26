@@ -753,6 +753,19 @@
             });
         })();
 
+        // Bascule contrat → CDI : on vide visuellement la date de fin dans la modal.
+        // Purement front : le backend reste seul juge de ce qui est persisté.
+        ['modal-add', 'modal-edit'].forEach(function(id) {
+            var overlay = document.getElementById(id);
+            if (!overlay) return;
+            var contractSel = overlay.querySelector('select[name="contract"]');
+            var endDateInput = overlay.querySelector('input[name="endDate"]');
+            if (!contractSel || !endDateInput) return;
+            contractSel.addEventListener('change', function() {
+                if (contractSel.value === 'CDI') endDateInput.value = '';
+            });
+        });
+
         // ── Renouvellement de contrat (bouton coloré sur chaque ligne) ──────
         var renewState = { employeeId: null, debounceTimer: null };
 
