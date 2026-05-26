@@ -4,6 +4,7 @@
     <%- include('../partials/head') %>
     <title>RON OIL Admin — R&ocirc;les</title>
     <link rel="stylesheet" href="/css/admin-shared.css">
+    <link rel="stylesheet" href="/css/responsive.css">
 </head>
 <body>
     <%- include('../partials/admin-sidebar', { currentPage: 'roles' }) %>
@@ -15,6 +16,7 @@
 
         <div class="card" style="padding:24px;max-width:720px;">
             <form id="form-roles" method="POST" action="/admin/roles">
+                <div class="table-scroll">
                 <table class="admin-table" id="roles-table" style="margin-bottom:16px;">
                     <thead>
                         <tr>
@@ -42,6 +44,7 @@
                         <% }); %>
                     </tbody>
                 </table>
+                </div>
 
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
                     <button type="button" class="btn-secondary" onclick="addRow()"><i class="fa-solid fa-plus"></i> Ajouter un r&ocirc;le</button>

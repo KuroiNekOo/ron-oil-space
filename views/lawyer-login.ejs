@@ -94,6 +94,18 @@
             padding: 10px 14px; margin-bottom: 20px;
             text-align: center; letter-spacing: .04em;
         }
+
+        /* Responsive : centre la box en plein-largeur et masque les coins
+           décoratifs qui débordent du viewport sous 540px. */
+        @media (max-width: 540px) {
+            body { padding: 16px; overflow-y: auto; overflow-x: hidden; }
+            .login-box {
+                width: 100%; max-width: 100%;
+                padding: 32px 24px;
+                box-shadow: none;
+            }
+            .login-corner { display: none; }
+        }
     </style>
 </head>
 <body>

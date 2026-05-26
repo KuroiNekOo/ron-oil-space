@@ -4,6 +4,7 @@
     <%- include('../partials/head') %>
     <title>RON OIL Admin — Facturations</title>
     <link rel="stylesheet" href="/css/admin-shared.css">
+    <link rel="stylesheet" href="/css/responsive.css">
 </head>
 <body>
     <%- include('../partials/admin-sidebar', { currentPage: 'facturations' }) %>
@@ -19,6 +20,7 @@
         </form>
 
         <div class="card" style="padding:0;overflow:hidden;">
+            <div class="table-scroll">
             <table class="admin-table">
                 <thead>
                     <tr>
@@ -46,6 +48,7 @@
                     <% }); %>
                 </tbody>
             </table>
+            </div>
             <%- include('../partials/pagination', { page, totalPages, total, query }) %>
         </div>
     </main>

@@ -4,6 +4,7 @@
     <%- include('../partials/head') %>
     <title>RON OIL — Classement</title>
     <link rel="stylesheet" href="/css/shared.css">
+    <link rel="stylesheet" href="/css/responsive.css">
     <style>
         /* Podium Cards */
         .podium-cards {
@@ -74,6 +75,17 @@
         .podium-deliveries {
             font-family: var(--font-mono);
             font-size: 11.5px; color: var(--text-muted);
+        }
+
+        /* Mobile : podium en colonne (gold en haut, puis silver, puis bronze).
+           L'ordre source est silver/gold/bronze pour que gold soit centré en
+           desktop → on inverse via `order` au lieu de réordonner le HTML. */
+        @media (max-width: 767.98px) {
+            .podium-cards { grid-template-columns: 1fr; gap: 12px; margin-bottom: 22px; }
+            .podium-card.podium-gold   { order: 1; padding-top: 28px; }
+            .podium-card.podium-silver { order: 2; }
+            .podium-card.podium-bronze { order: 3; }
+            .cl-row { padding: 12px 14px; gap: 12px; flex-wrap: wrap; }
         }
 
         /* Classement List */

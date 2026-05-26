@@ -4,6 +4,7 @@
     <%- include('../partials/head') %>
     <title>RON OIL Admin — Achats</title>
     <link rel="stylesheet" href="/css/admin-shared.css">
+    <link rel="stylesheet" href="/css/responsive.css">
     <style>
         .type-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
         .type-row {
@@ -66,6 +67,7 @@
         </form>
 
         <div class="card" style="padding:0;overflow:hidden;">
+            <div class="table-scroll">
             <table class="admin-table">
                 <thead>
                     <tr>
@@ -107,6 +109,7 @@
                     <% }); %>
                 </tbody>
             </table>
+            </div>
             <%- include('../partials/pagination', { page, totalPages, total, query }) %>
         </div>
     </main>

@@ -4,6 +4,7 @@
     <%- include('../partials/head') %>
     <title>RON OIL Admin — V&eacute;hicules</title>
     <link rel="stylesheet" href="/css/admin-shared.css">
+    <link rel="stylesheet" href="/css/responsive.css">
     <style>
         .maint-history { margin-top: 20px; }
         .maint-entry {
@@ -109,6 +110,7 @@
         </style>
 
         <div class="card" style="padding:0;overflow:hidden;">
+            <div class="table-scroll">
             <table class="admin-table">
                 <thead>
                     <tr>
@@ -144,6 +146,7 @@
                     <% }); %>
                 </tbody>
             </table>
+            </div>
             <%- include('../partials/pagination', { page, totalPages, total, query }) %>
         </div>
     </main>

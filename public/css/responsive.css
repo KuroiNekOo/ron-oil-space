@@ -1,0 +1,213 @@
+/* ═══════════════════════════════════════════
+   RON OIL — Layer responsive (mobile / tablette)
+   ───────────────────────────────────────────
+   Chargé APRÈS shared.css / admin-shared.css. Ne contient que
+   des règles d'adaptation à un viewport étroit : collapse de la
+   sidebar en off-canvas + hamburger, primitives de tableaux /
+   modals / formulaires / grilles partagées. Les ajustements
+   propres à une view (cartes spécifiques, layouts particuliers)
+   restent dans le <style> de la view, à côté du composant qu'ils
+   modifient.
+
+   Breakpoints :
+     --bp-sm  480px   - mini phones
+     --bp-md  768px   - phones large / petites tablettes
+     --bp-lg  1024px  - tablettes / petits laptops (sidebar collapse ici)
+   ═══════════════════════════════════════════ */
+
+:root {
+    --bp-sm: 480px;
+    --bp-md: 768px;
+    --bp-lg: 1024px;
+}
+
+/* ─── Wrapper de scroll horizontal pour les tableaux. Posé en HTML
+   autour de chaque <table class="admin-table">, hors @media car la
+   propriété overflow-x:auto est inerte tant que le contenu ne déborde
+   pas — donc aucun effet sur desktop où la table tient dans la card.
+   La pagination est sœur du wrapper, pas enfant, donc elle reste fixe
+   pendant qu'on swipe la table horizontalement. */
+.table-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+.table-scroll > .admin-table {
+    min-width: max-content;
+}
+
+/* ─── Hamburger : bouton fixé en haut-gauche, visible uniquement
+   en mode collapsed. Masqué par défaut (≥1024px). Disposé par le
+   media query ci-dessous. */
+.sidebar-toggle {
+    display: none;
+    position: fixed;
+    top: 14px; left: 14px;
+    z-index: 150;
+    width: 40px; height: 40px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-size: 17px;
+    cursor: pointer;
+    align-items: center; justify-content: center;
+    transition: background .15s, border-color .15s;
+}
+.sidebar-toggle:hover { background: var(--bg-card-hover); border-color: var(--border-accent); }
+.sidebar-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ─── Overlay sombre injecté par sidebar-mobile.js quand la
+   sidebar est ouverte. Position fixed, click → ferme. */
+.sidebar-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.55);
+    z-index: 99;
+    opacity: 0;
+    transition: opacity .2s;
+}
+.sidebar-overlay.open { opacity: 1; }
+
+/* Empêche le scroll du body quand la sidebar est ouverte sur
+   mobile (sinon l'utilisateur peut scroller "sous" la sidebar). */
+body.sidebar-open { overflow: hidden; }
+
+/* ═══════════════════════════════════════════
+   < 1024px — collapse de la sidebar + ajustements layout
+   ═══════════════════════════════════════════ */
+@media (max-width: 1023.98px) {
+    .sidebar-toggle { display: inline-flex; }
+
+    /* Sidebar devient off-canvas : translatée hors écran, slide-in
+       quand .open est ajoutée par sidebar-mobile.js. La largeur est
+       préservée pour rester lisible. */
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform .25s cubic-bezier(.4,0,.2,1);
+        box-shadow: 4px 0 24px rgba(0,0,0,.4);
+    }
+    .sidebar.open { transform: translateX(0); }
+
+    /* Le contenu reprend toute la largeur. Padding réduit pour
+       ne pas écraser le contenu sur tablette. Padding-top laisse
+       la place au bouton hamburger (40+14*2 ≈ 70). */
+    .main-content {
+        margin-left: 0;
+        padding: 68px 22px 40px;
+    }
+
+    /* Grilles "stats" passent de 4/3/2 cols à 2 sur tablette. */
+    .g4 { grid-template-columns: repeat(2, 1fr); }
+    .g3 { grid-template-columns: repeat(2, 1fr); }
+
+    /* Form-grid 2 colonnes → 1 colonne (modal + form page). */
+    .form-grid { grid-template-columns: 1fr; gap: 16px; }
+
+    /* Form page (sidebar 340 + main) → stack. */
+    .form-page-layout {
+        grid-template-columns: 1fr;
+        min-height: 0;
+    }
+    .form-page-sidebar { border: 1px solid var(--border); padding: 28px 24px; }
+    .form-page-main { padding: 28px 24px; }
+    .form-autofill-stack { margin-top: 20px; }
+
+    /* History (270 + 1fr) → stack. */
+    .history-grid { grid-template-columns: 1fr; gap: 16px; }
+
+    /* Toolbar admin (search + selects + reset + btn-add) :
+       autorise le wrap et étire la barre de recherche. */
+    .admin-toolbar { flex-wrap: wrap; gap: 12px; }
+    .admin-toolbar-left { flex-wrap: wrap; gap: 10px; width: 100%; }
+    .admin-search { width: 100%; }
+
+    /* Le bouton "Ajouter" passe à la ligne sous les filtres. */
+    .admin-toolbar > .btn-add { width: 100%; justify-content: center; }
+
+    /* Le scroll horizontal des tables est géré par .table-scroll, voir
+       en haut du fichier. Ici on s'occupe juste du cas .table-wrap qui
+       contient un classement employé. */
+    .table-wrap > .admin-table,
+    .table-wrap > .ranking-table {
+        min-width: max-content;
+    }
+
+    /* Page header un peu plus serré. */
+    .page-title { font-size: 21px; }
+    .page-subtitle { font-size: 13px; }
+}
+
+/* ═══════════════════════════════════════════
+   < 768px — téléphones standard
+   ═══════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+    .main-content { padding: 64px 16px 32px; }
+
+    /* Grilles passent à 1 colonne sauf si la view décide le
+       contraire dans son <style>. */
+    .g4, .g3, .g2 { grid-template-columns: 1fr; gap: 12px; }
+
+    /* Modal : presque plein écran, padding réduit. */
+    .modal {
+        width: 96vw;
+        max-height: 92vh;
+    }
+    .modal-header { padding: 16px 18px 12px; }
+    .modal-body { padding: 18px; }
+    .modal-footer { padding: 14px 18px; flex-direction: column-reverse; }
+
+    /* Boutons modal : largeur auto et plein-bord en stack.
+       Override du min-width:180px hérité de admin-shared.css. */
+    .modal-footer .btn-primary,
+    .modal-footer .btn-secondary {
+        width: 100%; min-width: 0;
+    }
+
+    /* Boutons form submit/reset : stack et pleine largeur. */
+    .form-submit-row { flex-direction: column-reverse; align-items: stretch; }
+    .form-submit-row .btn-submit-form,
+    .form-submit-row .btn-reset-form { width: 100%; min-width: 0; }
+
+    /* Toolbar reset link visible sur sa propre ligne. */
+    .admin-toolbar-left .toolbar-reset-link { width: 100%; }
+
+    /* Toasts un peu plus serrés et clamp à la largeur dispo. */
+    .toast {
+        left: 12px; right: 12px; bottom: 16px;
+        font-size: 13px;
+    }
+
+    /* Login centré : la box devient plein-écran. */
+    .login-box { width: 100%; max-width: 100%; padding: 32px 24px; box-shadow: none; }
+
+    /* Page header encore plus compact. */
+    .page-header { margin-bottom: 18px; }
+    .page-title { font-size: 19px; }
+    .page-subtitle { font-size: 12.5px; }
+    .section-title { font-size: 11.5px; }
+}
+
+/* ═══════════════════════════════════════════
+   < 480px — mini phones
+   ═══════════════════════════════════════════ */
+@media (max-width: 479.98px) {
+    .main-content { padding: 60px 12px 28px; }
+
+    /* Sidebar : prend ~88% de l'écran pour rester lisible sans
+       cacher complètement l'arrière-plan (UX off-canvas standard). */
+    .sidebar { width: min(88vw, var(--sidebar-width)); }
+
+    .modal { width: 100vw; max-height: 100vh; border: none; }
+    .modal-overlay { padding: 0; }
+
+    /* Table actions : compresse les boutons d'icône. */
+    .table-actions { gap: 4px; }
+    .btn-edit, .btn-delete, .btn-toggle-status { padding: 5px 8px; font-size: 11px; }
+}
+
+/* ─── Impression : on cache le hamburger et l'overlay,
+   et on neutralise le translate-X de la sidebar (peu importe,
+   .contract-paper imprime déjà via sa propre règle @media print). */
+@media print {
+    .sidebar-toggle, .sidebar-overlay { display: none !important; }
+    .sidebar { transform: none !important; }
+}

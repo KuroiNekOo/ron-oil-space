@@ -4,6 +4,7 @@
     <%- include('../partials/head') %>
     <title>RON OIL Admin — Contrats</title>
     <link rel="stylesheet" href="/css/admin-shared.css">
+    <link rel="stylesheet" href="/css/responsive.css">
     <style>
         .contracts-table .status-badge {
             font-size:10.5px; padding:3px 8px; letter-spacing:.04em; font-weight:600;
@@ -248,6 +249,7 @@
         </form>
 
         <div class="card" style="padding:0;overflow:hidden;">
+            <div class="table-scroll">
             <table class="admin-table contracts-table">
                 <thead>
                     <tr>
@@ -308,6 +310,7 @@
                     <% }); %>
                 </tbody>
             </table>
+            </div>
         </div>
     </main>
 

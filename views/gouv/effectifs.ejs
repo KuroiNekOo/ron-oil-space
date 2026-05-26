@@ -4,6 +4,7 @@
     <%- include('../partials/head') %>
     <title>RON OIL Gouvernement — Effectifs</title>
     <link rel="stylesheet" href="/css/admin-shared.css">
+    <link rel="stylesheet" href="/css/responsive.css">
 </head>
 <body>
     <%- include('../partials/gouv-sidebar', { currentPage: 'effectifs' }) %>
@@ -20,6 +21,7 @@
         </div>
 
         <div class="card" style="padding:0;overflow:hidden;">
+            <div class="table-scroll">
             <table class="admin-table">
                 <thead>
                     <tr>
@@ -45,6 +47,7 @@
                     <% }); %>
                 </tbody>
             </table>
+            </div>
         </div>
     </main>
 </body>

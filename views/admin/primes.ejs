@@ -4,6 +4,7 @@
     <%- include('../partials/head') %>
     <title>RON OIL Admin — Primes</title>
     <link rel="stylesheet" href="/css/admin-shared.css">
+    <link rel="stylesheet" href="/css/responsive.css">
 </head>
 <body>
     <%- include('../partials/admin-sidebar', { currentPage: 'primes' }) %>
@@ -81,6 +82,7 @@
                 <!-- Grille paliers -->
                 <div style="margin-bottom:16px;">
                     <label class="f-label">Grille des paliers</label>
+                    <div class="table-scroll">
                     <table class="admin-table" id="tiers-table" style="width:100%;">
                         <thead>
                             <tr>
@@ -101,6 +103,7 @@
                             <% }); %>
                         </tbody>
                     </table>
+                    </div>
                     <div style="margin-top:10px;">
                         <button type="button" class="btn-add" onclick="addTierRow()"><i class="fa-solid fa-plus"></i> Ajouter un palier</button>
                     </div>
@@ -116,6 +119,7 @@
         <div class="section-title">Taux de prime de livraison par rôle</div>
         <div class="card" style="padding:24px;max-width:680px;margin-bottom:32px;">
             <form method="POST" id="form-primes" action="/admin/primes">
+                <div class="table-scroll">
                 <table class="admin-table" style="width:100%;">
                     <thead>
                         <tr>
@@ -142,6 +146,7 @@
                         <% }); %>
                     </tbody>
                 </table>
+                </div>
                 <% if (rows.length > 0) { %>
                     <div style="margin-top:20px;display:flex;justify-content:flex-end;gap:8px;">
                         <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Enregistrer</button>
@@ -158,6 +163,7 @@
                 <!-- Notes de frais : types éditables -->
                 <div style="margin-bottom:24px;">
                     <label class="f-label">Types de notes de frais — % rembours&eacute; par l&#39;entreprise</label>
+                    <div class="table-scroll">
                     <table class="admin-table" id="expense-types-table" style="width:100%;">
                         <thead>
                             <tr>
@@ -188,6 +194,7 @@
                             <% }); %>
                         </tbody>
                     </table>
+                    </div>
                     <div style="margin-top:10px;display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
                         <div style="flex:1;min-width:160px;">
                             <label class="f-label" style="margin-bottom:4px;">Libell&eacute;</label>
@@ -263,6 +270,7 @@
             </button>
         </div>
         <div class="card" style="padding:0;overflow:hidden;">
+            <div class="table-scroll">
             <table class="admin-table">
                 <thead>
                     <tr>
@@ -299,6 +307,7 @@
                     <% }); %>
                 </tbody>
             </table>
+            </div>
         </div>
     </main>
 

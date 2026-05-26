@@ -4,6 +4,7 @@
     <%- include('../partials/head') %>
     <title>RON OIL Gouvernement — Achats</title>
     <link rel="stylesheet" href="/css/admin-shared.css">
+    <link rel="stylesheet" href="/css/responsive.css">
 </head>
 <body>
     <%- include('../partials/gouv-sidebar', { currentPage: 'achats' }) %>
@@ -30,6 +31,7 @@
         </form>
 
         <div class="card" style="padding:0;overflow:hidden;">
+            <div class="table-scroll">
             <table class="admin-table">
                 <thead>
                     <tr>
@@ -64,6 +66,7 @@
                     <% }); %>
                 </tbody>
             </table>
+            </div>
             <%- include('../partials/pagination', { page: page, totalPages: totalPages, total: total, query: query }) %>
         </div>
     </main>
