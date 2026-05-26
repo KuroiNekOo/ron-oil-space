@@ -41,9 +41,25 @@
         .absence-toggle input:checked + .absence-toggle-slider { background:var(--accent-dim); border-color:var(--accent); }
         .absence-toggle input:checked + .absence-toggle-slider::after { left:18px; background:var(--accent); }
 
-        .password-display {
-            font-family:var(--font-mono); font-size:12px; background:var(--bg);
-            padding:8px 10px; border:1px solid var(--border); flex:1; user-select:all;
+        /* Reprend le pattern de /admin/gouv pour la cohérence visuelle des
+           comptes externes (mdp, copy, toggle visibility). */
+        .field-row {
+            display:flex; align-items:stretch; gap:8px; margin-bottom:12px;
+        }
+        .field-row .f-input { flex:1; font-family:var(--font-mono); }
+        .icon-btn {
+            background:var(--bg-input); border:1px solid var(--border);
+            color:var(--text-secondary); cursor:pointer;
+            padding:0 14px; font-size:14px;
+            transition:all .15s;
+            display:flex; align-items:center; justify-content:center;
+            min-width:44px;
+        }
+        .icon-btn:hover { border-color:var(--border-accent); color:var(--accent); }
+        .icon-btn.copied { color:#4ade80; border-color:rgba(74, 222, 128, .35); }
+        .field-label {
+            display:block; font-size:10px; letter-spacing:.18em;
+            text-transform:uppercase; color:var(--text-secondary); margin-bottom:8px;
         }
 
         /* Modal détail contrat */
@@ -145,24 +161,33 @@
 
         <div class="config-card" style="margin-bottom:28px;">
             <h3><i class="fa-solid fa-scale-balanced"></i> Compte avocat</h3>
-            <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">
                 Mot de passe unique partag&eacute; à l'avocat. C'est lui qui prot&egrave;ge le lien public de signature avocat
                 ET la page tableau de bord avocat (vue d'ensemble des contrats).
             </div>
-            <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
-                <% if (lawyerAccount) { %>
-                    <span class="password-display"><%= lawyerAccount.password %></span>
-                <% } else { %>
-                    <span style="font-size:12px;color:#f59e0b;flex:1;">Aucun mot de passe défini.</span>
-                <% } %>
-                <input type="text" id="new-lawyer-password" placeholder="Nouveau mot de passe..." style="flex:1;padding:8px 10px;background:var(--bg);color:var(--text-primary);border:1px solid var(--border);">
-                <button class="btn-secondary" id="btn-save-lawyer-password" style="font-size:11px;padding:8px 14px;">Mettre à jour</button>
+
+            <label class="field-label" for="lawyer-password">Mot de passe</label>
+            <div class="field-row">
+                <input type="password" id="lawyer-password" class="f-input"
+                       value="<%= lawyerAccount ? lawyerAccount.password : '' %>"
+                       placeholder="<%= lawyerAccount ? '' : 'Aucun mot de passe défini' %>"
+                       autocomplete="off">
+                <button type="button" class="icon-btn" id="toggle-lawyer-pwd" title="Afficher / masquer">
+                    <i class="fa-solid fa-eye"></i>
+                </button>
+                <button type="button" class="icon-btn" data-copy-target="lawyer-password" title="Copier">
+                    <i class="fa-solid fa-copy"></i>
+                </button>
+                <button type="button" class="icon-btn" id="btn-save-lawyer-password" title="Enregistrer" style="min-width:auto;padding:0 16px;">
+                    <i class="fa-solid fa-floppy-disk"></i>&nbsp; Enregistrer
+                </button>
             </div>
-            <div style="display:flex;gap:8px;align-items:center;">
-                <span style="font-size:11px;color:var(--text-muted);min-width:130px;">Dashboard avocat :</span>
-                <input type="text" id="lawyer-dashboard-url" readonly value="" style="flex:1;font-family:var(--font-mono);font-size:11.5px;padding:8px 10px;background:var(--bg);color:var(--text-primary);border:1px solid var(--border);">
-                <button class="btn-secondary" onclick="copyDashboardUrl()" style="font-size:11px;padding:8px 14px;">
-                    <i class="fa-solid fa-copy"></i> Copier
+
+            <label class="field-label" for="lawyer-dashboard-url" style="margin-top:6px;">Lien du dashboard avocat</label>
+            <div class="field-row" style="margin-bottom:0;">
+                <input type="text" id="lawyer-dashboard-url" class="f-input" readonly value="" style="font-size:12px;">
+                <button type="button" class="icon-btn" data-copy-target="lawyer-dashboard-url" title="Copier">
+                    <i class="fa-solid fa-copy"></i>
                 </button>
             </div>
         </div>
@@ -321,10 +346,42 @@
             .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
         });
 
-        // ── Mot de passe avocat ─────────────────────────────────────────
+        // ── Mot de passe avocat (pattern aligné sur /admin/gouv) ────────
+        document.getElementById('toggle-lawyer-pwd').addEventListener('click', function() {
+            var input = document.getElementById('lawyer-password');
+            var icon = this.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-solid fa-eye';
+            }
+        });
+
+        // Copie générique pour tout bouton avec data-copy-target (mdp + lien dashboard).
+        // Si l'input est de type password, on force temporairement type=text pour
+        // que la lecture de .value renvoie la vraie valeur côté navigateur.
+        document.querySelectorAll('[data-copy-target]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var target = document.getElementById(btn.getAttribute('data-copy-target'));
+                if (!target) return;
+                var prevType = target.type;
+                if (prevType === 'password') target.type = 'text';
+                var v = target.value;
+                if (prevType === 'password') target.type = 'password';
+                if (!v) { showToast('Rien à copier', 'error'); return; }
+                navigator.clipboard.writeText(v).then(function() {
+                    btn.classList.add('copied');
+                    showToast('Copié');
+                    setTimeout(function() { btn.classList.remove('copied'); }, 1500);
+                });
+            });
+        });
+
         document.getElementById('btn-save-lawyer-password').addEventListener('click', function() {
-            var input = document.getElementById('new-lawyer-password');
-            var v = input.value.trim();
+            var input = document.getElementById('lawyer-password');
+            var v = (input.value || '').trim();
             if (!v) { showToast('Mot de passe vide', 'error'); return; }
             fetch('/admin/contracts/lawyer-password', {
                 method: 'POST',
@@ -335,9 +392,7 @@
             .then(function(r) { return r.json().then(function(d) { return { ok:r.ok, data:d }; }); })
             .then(function(r) {
                 if (!r.ok) throw new Error((r.data && r.data.error) || 'Erreur');
-                showToast('Mot de passe avocat mis à jour');
-                input.value = '';
-                setTimeout(function() { window.location.reload(); }, 800);
+                showToast('Mot de passe avocat enregistré');
             })
             .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
         });
@@ -426,11 +481,6 @@
 
         // Affiche l'URL du dashboard avocat dans la carte Compte avocat.
         document.getElementById('lawyer-dashboard-url').value = window.location.origin + '/lawyer/';
-
-        function copyDashboardUrl() {
-            var url = document.getElementById('lawyer-dashboard-url').value;
-            navigator.clipboard.writeText(url).then(function() { showToast('Lien dashboard avocat copié'); });
-        }
 
         // Copie rapide du lien avocat depuis une ligne de la liste.
         // L'URL est construite côté client à partir du token (évite de la
