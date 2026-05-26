@@ -186,16 +186,19 @@
                         <td class="mono" style="color:var(--text-secondary)"><%= e.phone || '—' %></td>
                         <td>
                             <div class="table-actions">
+                                <% const _inactive = e.status !== 'active'; %>
                                 <% if (e.renewUrgency && e.renewUrgency !== 'none') { %>
                                     <button type="button" class="btn-renew btn-renew-<%= e.renewUrgency %>"
+                                            <%= _inactive ? 'disabled' : '' %>
                                             onclick="openRenewModal(<%= e.id %>)"
-                                            title="Renouveler le contrat (<%= e.renewUrgency === 'red' ? 'urgent' : (e.renewUrgency === 'orange' ? 'bientôt' : 'à anticiper') %>)">
+                                            title="<%= _inactive ? 'Salarié inactif — réactive-le pour renouveler son contrat' : ('Renouveler le contrat (' + (e.renewUrgency === 'red' ? 'urgent' : (e.renewUrgency === 'orange' ? 'bientôt' : 'à anticiper')) + ')') %>">
                                         <i class="fa-solid fa-arrows-rotate"></i>
                                     </button>
                                 <% } else if (!e.latestContract) { %>
                                     <button type="button" class="btn-renew btn-renew-none"
+                                            <%= _inactive ? 'disabled' : '' %>
                                             onclick="generateContract(<%= e.id %>)"
-                                            title="Générer un contrat (aucun contrat en BDD)">
+                                            title="<%= _inactive ? 'Salarié inactif — réactive-le pour générer son contrat' : 'Générer un contrat (aucun contrat en BDD)' %>">
                                         <i class="fa-solid fa-file-circle-plus"></i>
                                     </button>
                                 <% } %>
@@ -567,6 +570,9 @@
         .btn-renew-orange:hover { background:rgba(245,158,11,.18); }
         .btn-renew-red:hover    { background:rgba(239,68,68,.18); }
         .btn-renew-none:hover   { background:rgba(255,255,255,.06); border-color:var(--text-secondary); color:var(--text-secondary); }
+        /* Inactif : bouton grisé, plus de pulse rouge, plus de hover coloré. */
+        .btn-renew:disabled { cursor:not-allowed; opacity:.35; animation:none; }
+        .btn-renew:disabled:hover { background:transparent; border-color:currentColor; color:inherit; }
         @keyframes pulseRenew {
             0%,100% { box-shadow:0 0 0 0 rgba(239,68,68,.35); }
             50%     { box-shadow:0 0 0 4px rgba(239,68,68,0); }
