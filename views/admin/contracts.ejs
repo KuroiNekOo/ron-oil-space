@@ -155,12 +155,12 @@
                 <% } else { %>
                     <span style="font-size:12px;color:#f59e0b;flex:1;">Aucun mot de passe défini.</span>
                 <% } %>
-                <input type="text" id="new-lawyer-password" placeholder="Nouveau mot de passe..." style="flex:1;padding:8px 10px;">
+                <input type="text" id="new-lawyer-password" placeholder="Nouveau mot de passe..." style="flex:1;padding:8px 10px;background:var(--bg);color:var(--text-primary);border:1px solid var(--border);">
                 <button class="btn-secondary" id="btn-save-lawyer-password" style="font-size:11px;padding:8px 14px;">Mettre à jour</button>
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
                 <span style="font-size:11px;color:var(--text-muted);min-width:130px;">Dashboard avocat :</span>
-                <input type="text" id="lawyer-dashboard-url" readonly value="" style="flex:1;font-family:var(--font-mono);font-size:11.5px;padding:8px 10px;background:var(--bg);">
+                <input type="text" id="lawyer-dashboard-url" readonly value="" style="flex:1;font-family:var(--font-mono);font-size:11.5px;padding:8px 10px;background:var(--bg);color:var(--text-primary);border:1px solid var(--border);">
                 <button class="btn-secondary" onclick="copyDashboardUrl()" style="font-size:11px;padding:8px 14px;">
                     <i class="fa-solid fa-copy"></i> Copier
                 </button>
