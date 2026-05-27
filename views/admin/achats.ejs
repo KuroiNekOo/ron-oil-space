@@ -93,7 +93,7 @@
                         <td class="mono" style="color:var(--text-muted)"><%= a.id %></td>
                         <td><span style="font-family:var(--font-mono);font-size:13px;color:var(--accent)">S<%= a.week %></span></td>
                         <td class="mono" style="color:var(--text-secondary);font-size:11px"><%= new Date(a.date).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) %></td>
-                        <td><%= a.type ? a.type.name : '—' %></td>
+                        <td><%= a.typeRef ? a.typeRef.label : '—' %></td>
                         <td style="color:var(--text-secondary)"><%= name || '—' %><% if (name && !a.employee) { %> <span style="font-size:10px;color:var(--text-muted);font-style:italic">(supprimé)</span><% } %></td>
                         <td class="mono"><%= a.qty %></td>
                         <td class="mono"><%= a.unitPrice.toFixed(2) %>$</td>
@@ -128,16 +128,16 @@
                             <label class="f-label f-required">Type d'achat</label>
                             <div class="select-with-manage">
                                 <div>
-                                    <select class="f-select" name="typeId" id="add-type" required>
+                                    <select class="f-select" name="typeKey" id="add-type" required>
                                         <option value="" disabled selected>S&eacute;lectionner...</option>
                                         <% types.forEach(function(t) { %>
-                                        <option value="<%= t.id %>"><%= t.name %></option>
+                                        <option value="<%= t.key %>"><%= t.label %></option>
                                         <% }); %>
                                     </select>
                                 </div>
-                                <button type="button" class="btn-manage-types" onclick="closeModal('modal-add');openModal('modal-types')" title="G&eacute;rer les types">
+                                <a class="btn-manage-types" href="/admin/types" title="G&eacute;rer les types" style="text-decoration:none;">
                                     <i class="fa-solid fa-gear"></i>
-                                </button>
+                                </a>
                             </div>
                         </div>
                         <div>
@@ -190,10 +190,10 @@
                     <div class="form-grid">
                         <div class="form-group-full">
                             <label class="f-label f-required">Type d'achat</label>
-                            <select class="f-select" name="typeId" id="edit-type" required>
+                            <select class="f-select" name="typeKey" id="edit-type" required>
                                 <option value="" disabled>S&eacute;lectionner...</option>
                                 <% types.forEach(function(t) { %>
-                                <option value="<%= t.id %>"><%= t.name %></option>
+                                <option value="<%= t.key %>"><%= t.label %></option>
                                 <% }); %>
                             </select>
                         </div>
@@ -235,25 +235,7 @@
         </div>
     </div>
 
-    <!-- Modal G&eacute;rer les types -->
-    <div class="modal-overlay" id="modal-types">
-        <div class="modal">
-            <div class="modal-header">
-                <div class="modal-title">G&eacute;rer les types d'achat</div>
-                <button class="modal-close" onclick="closeModal('modal-types')">&#10005;</button>
-            </div>
-            <div class="modal-body">
-                <div class="type-list" id="type-list"></div>
-                <div class="type-add-row">
-                    <input type="text" class="f-input" id="new-type-name" placeholder="Nouveau type...">
-                    <button class="btn-primary" onclick="addType()"><i class="fa-solid fa-plus"></i> Ajouter</button>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn-secondary" onclick="closeModal('modal-types');openAddPurchase()"><i class="fa-solid fa-arrow-left"></i> Retour aux achats</button>
-            </div>
-        </div>
-    </div>
+    <!-- (Gestion des types : centralis&eacute;e sur /admin/types, accessible via l'ic&ocirc;ne d'engrenage dans le modal d'ajout) -->
 
     <div class="toast success" id="toast">
         <i class="fa-solid fa-circle-check"></i>
@@ -332,7 +314,7 @@
                 .then(function(r) {
                     var form = document.getElementById('form-edit');
                     form.action = '/admin/achats/' + id + '/edit';
-                    form.typeId.value = r.typeId != null ? String(r.typeId) : '';
+                    form.typeKey.value = r.typeKey != null ? String(r.typeKey) : '';
                     form.employeeId.value = r.employeeId != null ? String(r.employeeId) : '';
                     form.qty.value = r.qty != null ? r.qty : '';
                     form.unitPrice.value = r.unitPrice != null ? r.unitPrice : '';
@@ -354,95 +336,8 @@
             }).catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
         });
 
-        // ── Type management via fetch ──
-        function loadTypes() {
-            fetch('/admin/achats/types')
-                .then(function(r) { return r.json(); })
-                .then(function(typesData) {
-                    renderTypeList(typesData);
-                    renderTypeSelect(typesData);
-                });
-        }
-
-        function renderTypeSelect(typesData) {
-            var sel = document.getElementById('add-type');
-            var current = sel.value;
-            sel.innerHTML = '<option value="" disabled selected>S\u00e9lectionner...</option>' +
-                typesData.map(function(t) {
-                    return '<option value="' + t.id + '"' + (String(t.id) === current ? ' selected' : '') + '>' + t.name + '</option>';
-                }).join('');
-        }
-
-        function renderTypeList(typesData) {
-            var container = document.getElementById('type-list');
-            container.innerHTML = typesData.map(function(t) {
-                return '<div class="type-row" id="type-row-' + t.id + '">' +
-                    '<div class="type-row-name" id="type-name-' + t.id + '">' + t.name + '</div>' +
-                    '<input type="text" class="type-row-input" id="type-input-' + t.id + '" value="' + t.name + '" style="display:none;">' +
-                    '<div class="type-row-actions">' +
-                        '<button class="btn-edit" id="type-edit-' + t.id + '" onclick="startEditType(' + t.id + ')" title="Renommer"><i class="fa-solid fa-pen"></i></button>' +
-                        '<button class="btn-primary" id="type-save-' + t.id + '" onclick="saveEditType(' + t.id + ')" style="display:none;padding:5px 10px;font-size:12px;" title="Valider"><i class="fa-solid fa-check"></i></button>' +
-                        '<button class="btn-delete" onclick="deleteType(' + t.id + ')" title="Supprimer"><i class="fa-solid fa-trash"></i></button>' +
-                    '</div>' +
-                '</div>';
-            }).join('');
-        }
-
-        function startEditType(id) {
-            document.getElementById('type-name-' + id).style.display = 'none';
-            document.getElementById('type-input-' + id).style.display = '';
-            document.getElementById('type-edit-' + id).style.display = 'none';
-            document.getElementById('type-save-' + id).style.display = '';
-            document.getElementById('type-input-' + id).focus();
-        }
-
-        function saveEditType(id) {
-            var input = document.getElementById('type-input-' + id);
-            var val = input.value.trim();
-            if (!val) return showToast('Le nom ne peut pas \u00eatre vide', 'error');
-
-            fetch('/admin/achats/types/' + id, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: val })
-            })
-            .then(function(r) { return r.json(); })
-            .then(function() {
-                loadTypes();
-                showToast('Type renomm\u00e9');
-            })
-            .catch(function() { showToast('Erreur', 'error'); });
-        }
-
-        function deleteType(id) {
-            if (!confirm('Supprimer ce type ?')) return;
-            fetch('/admin/achats/types/' + id, { method: 'DELETE' })
-                .then(function(r) { return r.json(); })
-                .then(function() {
-                    loadTypes();
-                    showToast('Type supprim\u00e9');
-                })
-                .catch(function() { showToast('Erreur', 'error'); });
-        }
-
-        function addType() {
-            var input = document.getElementById('new-type-name');
-            var val = input.value.trim();
-            if (!val) return showToast('Nom requis', 'error');
-
-            fetch('/admin/achats/types', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: val })
-            })
-            .then(function(r) { return r.json(); })
-            .then(function() {
-                input.value = '';
-                loadTypes();
-                showToast('Type ajout\u00e9');
-            })
-            .catch(function() { showToast('Erreur', 'error'); });
-        }
+        // (La gestion des types — création, renommage, archivage, catégorie,
+        // scope frais/achats — est centralisée sur /admin/types.)
 
         function openModal(id) {
             var overlay = document.getElementById(id);
@@ -477,8 +372,6 @@
             });
         });
 
-        // Load types on modal open
-        loadTypes();
     </script>
     <script src="/js/search-autosubmit.js"></script>
     <script src="/js/auto-refresh.js"></script>

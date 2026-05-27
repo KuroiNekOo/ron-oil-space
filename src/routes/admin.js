@@ -23,8 +23,12 @@ const {
   getImpoundReimbursementPercent, setImpoundReimbursementPercent,
 } = require('../services/reimbursements');
 const {
-  getExpenseTypes, createExpenseType, updateExpenseType, deleteExpenseType,
+  createExpenseType, updateExpenseType, deleteExpenseType,
 } = require('../services/expenseTypes');
+const {
+  CATEGORIES: TYPE_CATEGORIES, CATEGORY_LABELS: TYPE_CATEGORY_LABELS,
+  getTypes, getExpenseTypes, getPurchaseTypes, createType, updateType, deleteType,
+} = require('../services/types');
 const { getRoles, setRoles, getRoleNames } = require('../services/roles');
 const {
   getOrCreateGovAccount, updateGovAccount, regeneratePassword: regenerateGovPassword,
@@ -764,7 +768,7 @@ router.get('/achats', async (req, res) => {
     const where = q ? {
       OR: [
         { description: { contains: q } },
-        { type: { name: { contains: q } } },
+        { typeRef: { label: { contains: q } } },
         { employeeFirstName: { contains: q } },
         { employeeLastName: { contains: q } },
       ],
@@ -779,7 +783,7 @@ router.get('/achats', async (req, res) => {
     ] = await Promise.all([
       prisma.purchase.findMany({
         where,
-        include: { type: true, employee: true },
+        include: { typeRef: true, employee: true },
         orderBy: { id: 'desc' },
         skip: (page - 1) * LIST_PAGE_SIZE,
         take: LIST_PAGE_SIZE,
@@ -788,7 +792,9 @@ router.get('/achats', async (req, res) => {
       prisma.purchase.findMany({ select: { qty: true, unitPrice: true } }),
       prisma.purchase.findMany({ where: { week: currentWeek }, select: { qty: true, unitPrice: true } }),
       prisma.purchase.count(),
-      prisma.purchaseType.findMany({ orderBy: { name: 'asc' } }),
+      // Liste des types disponibles côté achats (présence d'un PurchaseTypeConfig,
+      // non archivés). Gérés depuis /admin/types.
+      getPurchaseTypes(),
       prisma.employee.findMany({
         where: { status: 'active' },
         orderBy: { firstName: 'asc' },
@@ -818,7 +824,8 @@ router.get('/achats', async (req, res) => {
 
 router.post('/achats', async (req, res) => {
   try {
-    const { typeId, employeeId, qty, unitPrice, date, description } = req.body;
+    const { typeKey, employeeId, qty, unitPrice, date, description } = req.body;
+    if (!typeKey) return res.status(400).json({ error: 'Type requis' });
 
     const purchaseDate = date ? new Date(date) : new Date();
     const { week: weekNum } = getWeekAndYear(purchaseDate);
@@ -836,7 +843,7 @@ router.post('/achats', async (req, res) => {
     const purchase = await prisma.purchase.create({
       data: {
         week: weekNum,
-        typeId: parseInt(typeId),
+        typeKey,
         employeeId: empId,
         ...snapshot,
         qty: parseFloat(qty),
@@ -861,7 +868,8 @@ router.post('/achats/:id/edit', async (req, res) => {
     const existing = await prisma.purchase.findUnique({ where: { id } });
     if (!existing) return res.status(404).json({ error: 'Not found' });
 
-    const { typeId, employeeId, qty, unitPrice, date, description } = req.body;
+    const { typeKey, employeeId, qty, unitPrice, date, description } = req.body;
+    if (!typeKey) return res.status(400).json({ error: 'Type requis' });
 
     const purchaseDate = date ? new Date(date) : existing.date;
     const { week: weekNum } = getWeekAndYear(purchaseDate);
@@ -880,7 +888,7 @@ router.post('/achats/:id/edit', async (req, res) => {
       where: { id },
       data: {
         week: weekNum,
-        typeId: parseInt(typeId),
+        typeKey,
         employeeId: empId,
         ...snapshot,
         qty: parseFloat(qty),
@@ -907,53 +915,11 @@ router.post('/achats/:id/delete', async (req, res) => {
   }
 });
 
-// Purchase types JSON API
-router.get('/achats/types', async (req, res) => {
-  try {
-    const types = await prisma.purchaseType.findMany({ orderBy: { name: 'asc' } });
-    res.json(types);
-  } catch (err) {
-    console.error('GET /achats/types error:', err);
-    res.json([]);
-  }
-});
+// (Les anciennes routes /admin/achats/types* ont été supprimées : la gestion des
+// types — création, renommage, archivage, catégorie, scope — est centralisée
+// sur /admin/types qui couvre notes de frais ET achats.)
 
-router.post('/achats/types', async (req, res) => {
-  try {
-    const { name } = req.body;
-    const type = await prisma.purchaseType.create({ data: { name } });
-    res.json(type);
-  } catch (err) {
-    console.error('POST /achats/types error:', err);
-    res.status(400).json({ error: 'Impossible de créer le type' });
-  }
-});
-
-router.put('/achats/types/:id', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const { name } = req.body;
-    const type = await prisma.purchaseType.update({ where: { id }, data: { name } });
-    res.json(type);
-  } catch (err) {
-    console.error('PUT /achats/types/:id error:', err);
-    res.status(400).json({ error: 'Impossible de renommer le type' });
-  }
-});
-
-router.delete('/achats/types/:id', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    await prisma.purchaseType.delete({ where: { id } });
-    res.json({ success: true });
-  } catch (err) {
-    console.error('DELETE /achats/types/:id error:', err);
-    res.status(400).json({ error: 'Impossible de supprimer le type' });
-  }
-});
-
-// Détail d'un achat (modal d'édition côté client). Doit rester APRÈS les routes
-// /achats/types* pour ne pas attraper "types" comme un :id.
+// Détail d'un achat (modal d'édition côté client).
 router.get('/achats/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -961,7 +927,7 @@ router.get('/achats/:id', async (req, res) => {
     const purchase = await prisma.purchase.findUnique({
       where: { id },
       select: {
-        id: true, typeId: true, employeeId: true,
+        id: true, typeKey: true, employeeId: true,
         qty: true, unitPrice: true, date: true, description: true,
       },
     });
@@ -1334,7 +1300,9 @@ router.post('/reimbursements', async (req, res) => {
   }
 });
 
-// ── Types de notes de frais : CRUD (parallèle à /admin/achats/types) ──
+// ── Types de notes de frais : CRUD historique (DEPRECATED) ──
+// Ces routes restent ouvertes pendant la fenêtre de migration prod. Toute la
+// gestion passe en pratique par /admin/types ci-dessous. Supprimées au cleanup.
 router.get('/expense-types', async (req, res) => {
   try {
     res.json(await getExpenseTypes());
@@ -1374,6 +1342,102 @@ router.delete('/expense-types/:id', async (req, res) => {
   } catch (err) {
     console.error('DELETE /expense-types/:id error:', err);
     res.status(400).json({ error: 'Impossible de supprimer le type' });
+  }
+});
+
+// ── Types unifiés (notes de frais + achats) ──
+// Référentiel unique géré ici. Remplace les anciennes routes /admin/expense-types
+// et /admin/achats/types (supprimées plus haut au cleanup une fois la migration
+// validée).
+
+router.get('/types', async (req, res) => {
+  try {
+    const allTypes = await getTypes();
+    res.render('admin/types', {
+      types: allTypes,
+      categories: TYPE_CATEGORIES,
+      categoryLabels: TYPE_CATEGORY_LABELS,
+    });
+  } catch (err) {
+    console.error('GET /types error:', err);
+    res.status(500).send('Erreur serveur');
+  }
+});
+
+router.post('/types', async (req, res) => {
+  try {
+    const { label, category, expense, purchase, reimbursementPercent } = req.body || {};
+    const type = await createType({
+      label,
+      category,
+      scope: {
+        expense: expense === 'true' || expense === true || expense === 'on' || expense === '1',
+        purchase: purchase === 'true' || purchase === true || purchase === 'on' || purchase === '1',
+        reimbursementPercent,
+      },
+    });
+    res.json(type);
+  } catch (err) {
+    console.error('POST /types error:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post('/types/:id/edit', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { label, category, position, expense, purchase, reimbursementPercent } = req.body || {};
+    const patch = {};
+    if (label !== undefined) patch.label = label;
+    if (category !== undefined) patch.category = category;
+    if (position !== undefined) patch.position = position;
+    const scope = {};
+    if (expense !== undefined) {
+      scope.expense = expense === 'true' || expense === true || expense === 'on' || expense === '1';
+    }
+    if (purchase !== undefined) {
+      scope.purchase = purchase === 'true' || purchase === true || purchase === 'on' || purchase === '1';
+    }
+    if (reimbursementPercent !== undefined) scope.reimbursementPercent = reimbursementPercent;
+    if (Object.keys(scope).length > 0) patch.scope = scope;
+    const type = await updateType(id, patch);
+    res.json(type);
+  } catch (err) {
+    console.error('POST /types/:id/edit error:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post('/types/:id/archive', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const type = await updateType(id, { archived: true });
+    res.json(type);
+  } catch (err) {
+    console.error('POST /types/:id/archive error:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post('/types/:id/unarchive', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const type = await updateType(id, { archived: false });
+    res.json(type);
+  } catch (err) {
+    console.error('POST /types/:id/unarchive error:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post('/types/:id/delete', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    await deleteType(id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /types/:id/delete error:', err);
+    res.status(400).json({ error: err.message });
   }
 });
 
@@ -1590,13 +1654,40 @@ function sumWeekStats(rows) {
   }
   const totalPrimes = bonusSalary + tierPrime + podiumPrize + specialBonus;
   const totalFrais  = expenseRefund + repatBonus + impoundReimbursement;
+  // Charges salariales : tout ce que l'entreprise paie aux employés (primes
+  // versées + remboursements de frais + rapatriements + part fourrière prise
+  // par l'entreprise). Pure dérivation de WeekStats — pas de stockage.
+  const chargesSalariales = totalPrimes + totalFrais;
   return {
     livraisons, gainEnterprise, gainEmployee,
     bonusSalary, tierPrime, podiumPrize, specialBonus, totalPrimes,
     expenseRefund, expenseCost, repatBonus, impoundReimbursement, totalFrais,
     impoundPenalty, primeFinale,
+    chargesSalariales,
     activeEmployees: rows.length,
   };
+}
+
+// Buckets d'achats par catégorie de Type. Renvoie un Map(key='year|week' → object).
+// `null`/inconnu = bucket 'autres'.
+function buildPurchaseBuckets(purchases) {
+  const byWeek = new Map();
+  for (const p of purchases) {
+    const { week, year } = getWeekAndYear(p.date);
+    const k = year + '|' + week;
+    if (!byWeek.has(k)) {
+      byWeek.set(k, { total: 0, vehicules: 0, matieres: 0, contractuelles: 0, autres: 0 });
+    }
+    const slot = byWeek.get(k);
+    const amount = (p.qty || 0) * (p.unitPrice || 0);
+    slot.total += amount;
+    const cat = p.typeRef && p.typeRef.category;
+    if (cat === 'VEHICULE') slot.vehicules += amount;
+    else if (cat === 'MATIERE_PREMIERE') slot.matieres += amount;
+    else if (cat === 'JURIDIQUE') slot.contractuelles += amount;
+    else slot.autres += amount;
+  }
+  return byWeek;
 }
 
 router.get('/statistiques', async (req, res) => {
@@ -1620,20 +1711,29 @@ router.get('/statistiques', async (req, res) => {
       }),
       // Charge tous les achats : on dérive l'année ISO depuis la date pour pouvoir
       // les agréger par (year, week) sans dépendre du champ Purchase.week qui n'a
-      // pas d'année associée.
-      prisma.purchase.findMany({ select: { date: true, qty: true, unitPrice: true } }),
+      // pas d'année associée. typeRef.category alimente le bucketing des cartes
+      // « Détail des dépenses » (Véhicules / Matières / Contractuelles / Autres).
+      prisma.purchase.findMany({
+        select: {
+          date: true, qty: true, unitPrice: true,
+          typeRef: { select: { category: true } },
+        },
+      }),
     ]);
 
-    const purchasesByWeek = new Map();
-    for (const p of allPurchases) {
-      const { week, year } = getWeekAndYear(p.date);
-      const k = year + '|' + week;
-      purchasesByWeek.set(k, (purchasesByWeek.get(k) || 0) + (p.qty || 0) * (p.unitPrice || 0));
+    const purchaseBuckets = buildPurchaseBuckets(allPurchases);
+    function applyBucket(totals, key) {
+      const slot = purchaseBuckets.get(key) || { total: 0, vehicules: 0, matieres: 0, contractuelles: 0, autres: 0 };
+      totals.achats = slot.total;
+      totals.achatsVehicules = slot.vehicules;
+      totals.achatsMatieres = slot.matieres;
+      totals.achatsContractuelles = slot.contractuelles;
+      totals.achatsAutres = slot.autres;
     }
 
     const liveTop = liveRows.slice().sort((a, b) => b.gainEnterprise - a.gainEnterprise);
     const currentTotals = sumWeekStats(liveRows);
-    currentTotals.achats = purchasesByWeek.get(currentYear + '|' + currentWeek) || 0;
+    applyBucket(currentTotals, currentYear + '|' + currentWeek);
     currentTotals.totalDepenses =
       currentTotals.totalPrimes + currentTotals.totalFrais + currentTotals.achats;
     currentTotals.beneficeNet = currentTotals.gainEnterprise - currentTotals.totalDepenses;
@@ -1646,7 +1746,7 @@ router.get('/statistiques', async (req, res) => {
     }
     const history = Array.from(byWeek.values()).map(w => {
       const totals = sumWeekStats(w.rows);
-      totals.achats = purchasesByWeek.get(w.year + '|' + w.week) || 0;
+      applyBucket(totals, w.year + '|' + w.week);
       totals.totalDepenses = totals.totalPrimes + totals.totalFrais + totals.achats;
       totals.beneficeNet = totals.gainEnterprise - totals.totalDepenses;
       return {

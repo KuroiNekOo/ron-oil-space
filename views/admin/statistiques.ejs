@@ -55,7 +55,7 @@
 
         <!-- Composantes de la perte entreprise -->
         <div class="section-title">Détail des dépenses</div>
-        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:28px;">
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:14px;">
             <div class="card">
                 <div class="card-label">Primes versées</div>
                 <div class="card-value c-danger">-<%= fmt(currentTotals.totalPrimes) %></div>
@@ -78,6 +78,35 @@
             <div class="card">
                 <div class="card-label">Achats</div>
                 <div class="card-value c-danger">-<%= fmt(currentTotals.achats) %></div>
+            </div>
+        </div>
+
+        <!-- Regroupement analytique : la somme de cette ligne = Dépenses totales -->
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:28px;">
+            <div class="card">
+                <div class="card-label">Charges salariales</div>
+                <div class="card-value c-danger">-<%= fmt(currentTotals.chargesSalariales) %></div>
+                <div class="card-sub">primes + frais + rapat. + fourrières</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Véhicules</div>
+                <div class="card-value c-danger">-<%= fmt(currentTotals.achatsVehicules) %></div>
+                <div class="card-sub">achats de type Véhicules</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Matières premières</div>
+                <div class="card-value c-danger">-<%= fmt(currentTotals.achatsMatieres) %></div>
+                <div class="card-sub">achats de type Matières premières</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Contractuelles</div>
+                <div class="card-value c-danger">-<%= fmt(currentTotals.achatsContractuelles) %></div>
+                <div class="card-sub">achats de type Juridique</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Autres achats</div>
+                <div class="card-value c-danger">-<%= fmt(currentTotals.achatsAutres) %></div>
+                <div class="card-sub">types sans catégorie</div>
             </div>
         </div>
 
@@ -182,7 +211,8 @@
                     </div>
                     <div id="h-detail-body" style="display:none;">
                         <div id="h-detail-totals" style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:14px;"></div>
-                        <div id="h-detail-breakdown" style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:18px;"></div>
+                        <div id="h-detail-breakdown" style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:14px;"></div>
+                        <div id="h-detail-categories" style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:18px;"></div>
                         <div class="card" style="padding:0;overflow:hidden;">
                             <div class="table-scroll">
                             <table class="admin-table">
@@ -255,6 +285,14 @@
                 <div class="card"><div class="card-label">Rapatriements</div><div class="card-value c-danger">-${fmt(t.repatBonus)}</div></div>
                 <div class="card"><div class="card-label">Fourrières</div><div class="card-value c-danger">-${fmt(t.impoundReimbursement)}</div></div>
                 <div class="card"><div class="card-label">Achats</div><div class="card-value c-danger">-${fmt(t.achats)}</div></div>
+            `;
+            const categoriesRow = document.getElementById('h-detail-categories');
+            if (categoriesRow) categoriesRow.innerHTML = `
+                <div class="card"><div class="card-label">Charges salariales</div><div class="card-value c-danger">-${fmt(t.chargesSalariales)}</div><div class="card-sub">primes + frais + rapat. + fourrières</div></div>
+                <div class="card"><div class="card-label">Véhicules</div><div class="card-value c-danger">-${fmt(t.achatsVehicules)}</div><div class="card-sub">achats de type Véhicules</div></div>
+                <div class="card"><div class="card-label">Matières premières</div><div class="card-value c-danger">-${fmt(t.achatsMatieres)}</div><div class="card-sub">achats de type Matières premières</div></div>
+                <div class="card"><div class="card-label">Contractuelles</div><div class="card-value c-danger">-${fmt(t.achatsContractuelles)}</div><div class="card-sub">achats de type Juridique</div></div>
+                <div class="card"><div class="card-label">Autres achats</div><div class="card-value c-danger">-${fmt(t.achatsAutres)}</div><div class="card-sub">types sans catégorie</div></div>
             `;
 
             const tbody = document.getElementById('h-detail-rows');

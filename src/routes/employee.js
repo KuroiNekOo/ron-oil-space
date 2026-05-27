@@ -5,7 +5,7 @@ const { requireEmployee } = require('../middleware/auth');
 const { canRapatriement } = require('../services/permissions');
 const { getWeekFromTimestamp, getYearFromTimestamp, getWeekAndYear } = require('../services/week');
 const { getBonusRates, getBonusRate } = require('../services/bonus');
-const { getExpenseTypes, computeRefund: computeExpenseRefund } = require('../services/expenseTypes');
+const { getExpenseTypes, computeRefund: computeExpenseRefund } = require('../services/types');
 const {
   getRepatCostPerEvent, getRepatReimbursementPercent,
   getImpoundCostPerEvent, getImpoundReimbursementPercent,

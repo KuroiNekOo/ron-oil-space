@@ -84,6 +84,9 @@ model Maintenance {
 
 // ── Achats ──
 
+// DEPRECATED : remplacé par Type + PurchaseTypeConfig. Conservé pendant la
+// fenêtre de migration prod (cf. scripts/migrate-unified-types.js).
+// Sera supprimé dans le commit de cleanup une fois la migration validée.
 model PurchaseType {
   id        Int        @id @default(autoincrement())
   name      String     @unique
@@ -91,10 +94,17 @@ model PurchaseType {
 }
 
 model Purchase {
-  id          Int          @id @default(autoincrement())
+  id          Int     @id @default(autoincrement())
   week        Int
-  typeId      Int
-  type        PurchaseType @relation(fields: [typeId], references: [id])
+  // Ancienne FK vers PurchaseType, nullable pendant la migration ; remplacée
+  // par typeKey/typeRef ci-dessous. Supprimée lors du cleanup.
+  typeId      Int?
+  type        PurchaseType? @relation(fields: [typeId], references: [id])
+  // Référence par slug stable vers Type.key — résiste aux renommages de label.
+  // SetNull à la suppression du Type (par sécurité) ; en pratique on archive
+  // plutôt qu'on ne supprime (Type.archived) pour conserver l'historique.
+  typeKey     String?
+  typeRef     Type?   @relation(fields: [typeKey], references: [key], onDelete: SetNull)
   qty         Float
   unitPrice   Float
   description String
@@ -137,7 +147,7 @@ model Expense {
   employeeLastName  String?
   week       Int
   year               Int
-  type       String   // slug = ExpenseType.key (pas de FK pour conserver les valeurs historiques même si le type est supprimé)
+  type       String   // slug = Type.key (pas de FK pour conserver les valeurs historiques même si le Type est supprimé)
   amount     Float
   comment    String?
   createdAt  DateTime @default(now())
@@ -145,14 +155,53 @@ model Expense {
   @@index([year, week])
 }
 
-// Types de notes de frais éditables depuis l'admin (seedés la première fois avec
-// les 6 valeurs historiques carburant/repas/transport/equipement/peage/autre).
+// DEPRECATED : remplacé par Type + ExpenseTypeConfig. Conservé pendant la
+// fenêtre de migration prod (cf. scripts/migrate-unified-types.js).
+// Sera supprimé dans le commit de cleanup une fois la migration validée.
 model ExpenseType {
   id                   Int      @id @default(autoincrement())
-  key                  String   @unique // slug stocké dans Expense.type
+  key                  String   @unique
   label                String
   reimbursementPercent Float    @default(0)
   createdAt            DateTime @default(now())
+}
+
+// ── Types unifiés (notes de frais + achats + futurs domaines) ──
+
+// Référentiel unique de "type" partagé entre tous les domaines (Expense, Purchase,
+// et plus tard d'autres). Le `key` est un slug immuable utilisé par les tables
+// métier (Expense.type, Purchase.typeKey) pour préserver l'historique même si le
+// label est renommé. `category` pilote le bucketing sur /admin/statistiques sans
+// dépendre du label (lui-même libre).
+model Type {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique             // slug stable, immuable après création
+  label     String                       // libellé affiché, librement modifiable
+  category  String?                      // VEHICULE | MATIERE_PREMIERE | JURIDIQUE | null = AUTRE
+  position  Int      @default(0)         // ordre d'affichage (asc) dans /admin/types
+  archived  Boolean  @default(false)     // soft-delete : disparaît des formulaires mais l'historique reste lisible
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  expenseConfig  ExpenseTypeConfig?
+  purchaseConfig PurchaseTypeConfig?
+  purchases      Purchase[]
+}
+
+// Activation du Type côté notes de frais. Présence de la ligne = utilisable dans
+// /admin/frais et le formulaire employé /frais. Porte le % de remboursement
+// (spécifique au domaine notes de frais).
+model ExpenseTypeConfig {
+  typeId               Int   @id
+  type                 Type  @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  reimbursementPercent Float @default(0)
+}
+
+// Activation du Type côté achats. Présence de la ligne = utilisable dans
+// /admin/achats. Vide pour l'instant — extensible (budget annuel, alerte plafond…).
+model PurchaseTypeConfig {
+  typeId Int  @id
+  type   Type @relation(fields: [typeId], references: [id], onDelete: Cascade)
 }
 
 model Breakdown {

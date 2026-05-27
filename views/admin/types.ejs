@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL Admin — Types</title>
+    <link rel="stylesheet" href="/css/admin-shared.css">
+    <link rel="stylesheet" href="/css/responsive.css">
+    <style>
+        .type-key {
+            font-family: var(--font-mono); font-size: 11px;
+            color: var(--text-muted); display: inline-block;
+            padding: 2px 6px; background: rgba(255,255,255,.04);
+            border: 1px solid var(--border);
+        }
+        .scope-cell {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        }
+        .scope-cell label {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 12px; color: var(--text-secondary); cursor: pointer;
+        }
+        .scope-cell .pct-input {
+            width: 60px; padding: 4px 6px; font-size: 12px;
+            background: var(--bg-input); border: 1px solid var(--border);
+            color: var(--text-primary); font-family: var(--font-mono);
+        }
+        .pct-input:disabled { opacity: 0.4; cursor: not-allowed; }
+        .type-row-archived { opacity: 0.55; }
+        .badge-archived {
+            display: inline-block; padding: 2px 8px; font-size: 11px;
+            background: rgba(255,150,80,.1); border: 1px solid rgba(255,150,80,.3);
+            color: #ffaa66; margin-left: 8px;
+        }
+        .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+    </style>
+</head>
+<body>
+    <%- include('../partials/admin-sidebar', { currentPage: 'types' }) %>
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title">Types</div>
+            <div class="page-subtitle">R&eacute;f&eacute;rentiel unique partag&eacute; entre notes de frais et achats</div>
+        </div>
+
+        <!-- ── Création ── -->
+        <div class="card" style="padding:20px;margin-bottom:24px;max-width:980px;">
+            <div style="font-size:14px;font-weight:500;margin-bottom:12px;">Ajouter un type</div>
+            <form id="form-create" method="POST" action="/admin/types" style="display:grid;grid-template-columns:1fr 200px 1fr auto;gap:12px;align-items:end;">
+                <div>
+                    <label class="f-label">Libellé</label>
+                    <input type="text" name="label" class="f-input" required placeholder="ex : Véhicules">
+                </div>
+                <div>
+                    <label class="f-label">Catégorie</label>
+                    <select name="category" class="f-input">
+                        <option value="">— Aucune —</option>
+                        <% categories.forEach(function(c) { %>
+                            <option value="<%= c %>"><%= categoryLabels[c] %></option>
+                        <% }); %>
+                    </select>
+                </div>
+                <div>
+                    <label class="f-label">Disponible pour</label>
+                    <div style="display:flex;gap:14px;align-items:center;height:42px;">
+                        <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+                            <input type="checkbox" name="expense" value="on" id="create-expense">
+                            Notes de frais
+                        </label>
+                        <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+                            <input type="checkbox" name="purchase" value="on" id="create-purchase" checked>
+                            Achats
+                        </label>
+                        <input type="number" name="reimbursementPercent" class="pct-input" min="0" max="100" step="1" placeholder="%" id="create-pct" disabled>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary"><i class="fa-solid fa-plus"></i> Cr&eacute;er</button>
+            </form>
+        </div>
+
+        <!-- ── Liste ── -->
+        <div class="section-title">Types existants</div>
+        <% if (types.length === 0) { %>
+            <div class="card" style="padding:24px;color:var(--text-muted);text-align:center;">
+                Aucun type pour le moment. Cr&eacute;ez-en un ci-dessus.
+            </div>
+        <% } else { %>
+        <div class="card" style="padding:0;overflow:hidden;">
+            <div class="table-scroll">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th style="width:24%;">Libellé / clé</th>
+                        <th style="width:18%;">Catégorie</th>
+                        <th>Disponibilité</th>
+                        <th style="width:80px;">Pos.</th>
+                        <th style="width:180px;text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% types.forEach(function(t) { %>
+                        <% const hasExp = !!t.expenseConfig; %>
+                        <% const hasPur = !!t.purchaseConfig; %>
+                        <% const pct = hasExp ? t.expenseConfig.reimbursementPercent : 0; %>
+                        <tr class="type-row<%= t.archived ? ' type-row-archived' : '' %>" data-type-id="<%= t.id %>" data-label="<%= t.label %>">
+                            <td>
+                                <input type="text" data-field="label" class="f-input" value="<%= t.label %>" required style="width:100%;font-size:13px;">
+                                <div style="margin-top:4px;">
+                                    <span class="type-key"><%= t.key %></span>
+                                    <% if (t.archived) { %>
+                                        <span class="badge-archived">Archivé</span>
+                                    <% } %>
+                                </div>
+                            </td>
+                            <td>
+                                <select data-field="category" class="f-input" style="width:100%;font-size:13px;">
+                                    <option value=""<%= !t.category ? ' selected' : '' %>>— Aucune —</option>
+                                    <% categories.forEach(function(c) { %>
+                                        <option value="<%= c %>"<%= t.category === c ? ' selected' : '' %>><%= categoryLabels[c] %></option>
+                                    <% }); %>
+                                </select>
+                            </td>
+                            <td>
+                                <div class="scope-cell">
+                                    <label>
+                                        <input type="checkbox" data-field="expense" class="chk-expense"<%= hasExp ? ' checked' : '' %>>
+                                        Frais
+                                    </label>
+                                    <input type="number" data-field="reimbursementPercent" class="pct-input" min="0" max="100" step="1" value="<%= pct %>"<%= hasExp ? '' : ' disabled' %>>
+                                    <span style="color:var(--text-muted);font-size:11px;">%</span>
+                                    <label style="margin-left:12px;">
+                                        <input type="checkbox" data-field="purchase"<%= hasPur ? ' checked' : '' %>>
+                                        Achats
+                                    </label>
+                                </div>
+                            </td>
+                            <td>
+                                <input type="number" data-field="position" class="f-input" value="<%= t.position %>" step="1" style="width:60px;font-size:13px;text-align:center;">
+                            </td>
+                            <td>
+                                <div class="row-actions">
+                                    <button type="button" class="btn-secondary" onclick="saveRow(this)" title="Enregistrer"><i class="fa-solid fa-check"></i></button>
+                                    <% if (t.archived) { %>
+                                        <button type="button" class="btn-secondary" onclick="unarchive(<%= t.id %>)" title="Désarchiver"><i class="fa-solid fa-rotate-left"></i></button>
+                                    <% } else { %>
+                                        <button type="button" class="btn-secondary" onclick="archive(<%= t.id %>)" title="Archiver"><i class="fa-solid fa-box-archive"></i></button>
+                                    <% } %>
+                                    <button type="button" class="btn-delete" onclick="hardDelete(this)" title="Supprimer définitivement"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+            </div>
+        </div>
+        <% } %>
+
+        <div style="margin-top:18px;font-size:12px;color:var(--text-muted);max-width:760px;line-height:1.6;">
+            <strong>Clé (slug)</strong> : générée automatiquement à partir du libellé et <em>immuable</em>. Renommer le libellé ne casse rien — les notes de frais et achats existants restent liés via la clé.<br>
+            <strong>Archivage</strong> : le type disparaît des formulaires (notes de frais et achats) mais reste lisible dans l'historique. Préférez l'archivage à la suppression pour préserver les statistiques.<br>
+            <strong>Catégorie</strong> : pilote le regroupement sur <a href="/admin/statistiques" style="color:var(--accent);">/admin/statistiques</a> (cartes « Détail des dépenses »). Modifiable à tout moment, l'effet est rétroactif sur l'affichage.
+        </div>
+    </main>
+
+    <div class="toast success" id="toast">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toast-msg">Enregistré</span>
+    </div>
+
+    <script src="/js/admin-ajax.js"></script>
+    <script src="/js/auto-refresh.js"></script>
+    <script>
+        function showToast(msg, type) {
+            type = type || 'success';
+            var t = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            t.className = 'toast ' + type + ' show';
+            setTimeout(function () { t.classList.remove('show'); }, 3500);
+        }
+
+        // Active/désactive l'input % en fonction de la checkbox Frais
+        document.addEventListener('change', function (e) {
+            if (!e.target.matches('input[type="checkbox"][data-field="expense"], #create-expense')) return;
+            var scope = e.target.closest('tr') || e.target.closest('form');
+            if (!scope) return;
+            var pct = scope.querySelector('.pct-input');
+            if (pct) {
+                pct.disabled = !e.target.checked;
+                if (e.target.checked && !pct.value) pct.value = 0;
+            }
+        });
+
+        // ── Création (form HTML standard) ──
+        document.getElementById('form-create').addEventListener('submit', function (e) {
+            e.preventDefault();
+            AdminAjax.postForm(e.target).then(function () {
+                e.target.reset();
+                document.getElementById('create-pct').disabled = true;
+                showToast('Type créé');
+                return AdminAjax.reloadMain();
+            }).catch(function (err) { showToast('Erreur : ' + err.message, 'error'); });
+        });
+
+        // ── Save inline (lit les inputs data-field= de la ligne et POST) ──
+        function saveRow(btn) {
+            var tr = btn.closest('tr');
+            if (!tr) return;
+            var id = tr.dataset.typeId;
+            var body = new URLSearchParams();
+            tr.querySelectorAll('[data-field]').forEach(function (el) {
+                var name = el.dataset.field;
+                if (el.type === 'checkbox') {
+                    body.append(name, el.checked ? 'on' : '');
+                } else {
+                    body.append(name, el.value);
+                }
+            });
+            btn.disabled = true;
+            var origHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            fetch('/admin/types/' + id + '/edit', {
+                method: 'POST',
+                body: body,
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                },
+            }).then(function (r) {
+                if (!r.ok) return r.text().then(function (t) { throw new Error(t || 'HTTP ' + r.status); });
+                return r.json();
+            }).then(function () {
+                showToast('Enregistré');
+                return AdminAjax.reloadMain();
+            }).catch(function (err) {
+                showToast('Erreur : ' + err.message, 'error');
+            }).finally(function () {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+            });
+        }
+
+        function archive(id) {
+            if (!confirm('Archiver ce type ? Il disparaîtra des formulaires (notes de frais et achats) mais restera lisible dans l\'historique.')) return;
+            AdminAjax.post('/admin/types/' + id + '/archive').then(function () {
+                showToast('Archivé');
+                return AdminAjax.reloadMain();
+            }).catch(function (err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+
+        function unarchive(id) {
+            AdminAjax.post('/admin/types/' + id + '/unarchive').then(function () {
+                showToast('Désarchivé');
+                return AdminAjax.reloadMain();
+            }).catch(function (err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+
+        function hardDelete(btn) {
+            var tr = btn.closest('tr');
+            if (!tr) return;
+            var id = tr.dataset.typeId;
+            var label = tr.dataset.label || '';
+            if (!confirm('Supprimer définitivement « ' + label + ' » ?\n\nCette action échouera si des notes de frais ou des achats référencent encore ce type. Dans ce cas, utilisez l\'archivage à la place.')) return;
+            AdminAjax.post('/admin/types/' + id + '/delete').then(function () {
+                showToast('Supprimé');
+                return AdminAjax.reloadMain();
+            }).catch(function (err) { showToast('Erreur : ' + err.message, 'error'); });
+        }
+    </script>
+</body>
+</html>

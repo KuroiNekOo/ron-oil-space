@@ -14,7 +14,7 @@ const {
   getRepatCostPerEvent, getRepatReimbursementPercent,
   getImpoundCostPerEvent, getImpoundReimbursementPercent,
 } = require('./reimbursements');
-const { getExpenseTypes, computeRefund: computeExpenseRefund } = require('./expenseTypes');
+const { getExpenseTypes, computeRefund: computeExpenseRefund } = require('./types');
 
 function normalizeName(s) {
   return String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
