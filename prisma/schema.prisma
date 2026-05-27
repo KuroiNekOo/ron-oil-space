@@ -84,22 +84,9 @@ model Maintenance {
 
 // ── Achats ──
 
-// DEPRECATED : remplacé par Type + PurchaseTypeConfig. Conservé pendant la
-// fenêtre de migration prod (cf. scripts/migrate-unified-types.js).
-// Sera supprimé dans le commit de cleanup une fois la migration validée.
-model PurchaseType {
-  id        Int        @id @default(autoincrement())
-  name      String     @unique
-  purchases Purchase[]
-}
-
 model Purchase {
   id          Int     @id @default(autoincrement())
   week        Int
-  // Ancienne FK vers PurchaseType, nullable pendant la migration ; remplacée
-  // par typeKey/typeRef ci-dessous. Supprimée lors du cleanup.
-  typeId      Int?
-  type        PurchaseType? @relation(fields: [typeId], references: [id])
   // Référence par slug stable vers Type.key — résiste aux renommages de label.
   // SetNull à la suppression du Type (par sécurité) ; en pratique on archive
   // plutôt qu'on ne supprime (Type.archived) pour conserver l'historique.
@@ -153,17 +140,6 @@ model Expense {
   createdAt  DateTime @default(now())
 
   @@index([year, week])
-}
-
-// DEPRECATED : remplacé par Type + ExpenseTypeConfig. Conservé pendant la
-// fenêtre de migration prod (cf. scripts/migrate-unified-types.js).
-// Sera supprimé dans le commit de cleanup une fois la migration validée.
-model ExpenseType {
-  id                   Int      @id @default(autoincrement())
-  key                  String   @unique
-  label                String
-  reimbursementPercent Float    @default(0)
-  createdAt            DateTime @default(now())
 }
 
 // ── Types unifiés (notes de frais + achats + futurs domaines) ──

@@ -23,9 +23,6 @@ const {
   getImpoundReimbursementPercent, setImpoundReimbursementPercent,
 } = require('../services/reimbursements');
 const {
-  createExpenseType, updateExpenseType, deleteExpenseType,
-} = require('../services/expenseTypes');
-const {
   CATEGORIES: TYPE_CATEGORIES, CATEGORY_LABELS: TYPE_CATEGORY_LABELS,
   getTypes, getExpenseTypes, getPurchaseTypes, createType, updateType, deleteType,
 } = require('../services/types');
@@ -1300,55 +1297,9 @@ router.post('/reimbursements', async (req, res) => {
   }
 });
 
-// ── Types de notes de frais : CRUD historique (DEPRECATED) ──
-// Ces routes restent ouvertes pendant la fenêtre de migration prod. Toute la
-// gestion passe en pratique par /admin/types ci-dessous. Supprimées au cleanup.
-router.get('/expense-types', async (req, res) => {
-  try {
-    res.json(await getExpenseTypes());
-  } catch (err) {
-    console.error('GET /expense-types error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.post('/expense-types', async (req, res) => {
-  try {
-    const { key, label, reimbursementPercent } = req.body || {};
-    const type = await createExpenseType({ key, label, reimbursementPercent });
-    res.json(type);
-  } catch (err) {
-    console.error('POST /expense-types error:', err);
-    res.status(400).json({ error: err.message });
-  }
-});
-
-router.put('/expense-types/:id', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const type = await updateExpenseType(id, req.body || {});
-    res.json(type);
-  } catch (err) {
-    console.error('PUT /expense-types/:id error:', err);
-    res.status(400).json({ error: err.message });
-  }
-});
-
-router.delete('/expense-types/:id', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    await deleteExpenseType(id);
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('DELETE /expense-types/:id error:', err);
-    res.status(400).json({ error: 'Impossible de supprimer le type' });
-  }
-});
-
 // ── Types unifiés (notes de frais + achats) ──
 // Référentiel unique géré ici. Remplace les anciennes routes /admin/expense-types
-// et /admin/achats/types (supprimées plus haut au cleanup une fois la migration
-// validée).
+// et /admin/achats/types, supprimées depuis l'unification.
 
 router.get('/types', async (req, res) => {
   try {

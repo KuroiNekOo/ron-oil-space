@@ -1,4 +1,9 @@
 // Migration one-shot : unifie ExpenseType + PurchaseType vers le modèle Type.
+//
+// /!\ OBSOLÈTE après ce commit de cleanup : les modèles ExpenseType et
+// PurchaseType ont été supprimés du schema. Relancer ce script lèvera une
+// erreur Prisma "Property does not exist" — comportement attendu. Le fichier
+// peut être supprimé une fois la migration validée sur tous les environnements.
 
 //
 //  - ExpenseType  → Type (par key, déjà un slug) + ExpenseTypeConfig (refund%)
