@@ -94,8 +94,10 @@
                         <% } %>
                     </div>
                 <% }); %>
-                <% absenceCards.endingSoon.forEach(function(a) { %>
-                    <div class="abs-card abs-ending-soon" data-bucket="endingSoon"
+                <% absenceCards.endingSoon.forEach(function(a) {
+                     const _isReplaced = a.replacers && a.replacers.length > 0;
+                %>
+                    <div class="abs-card abs-ending-soon<%= _isReplaced ? ' is-replaced' : '' %>" data-bucket="endingSoon"
                          data-absence-id="<%= a.id %>"
                          data-employee-id="<%= a.employeeId %>"
                          data-employee-name="<%= a.employeeName %>"
@@ -106,7 +108,11 @@
                         <div class="abs-card-name"><%= a.employeeName %></div>
                         <div class="abs-card-type"><%= _absTypes[a.type] || a.type %></div>
                         <div class="abs-card-dates">jusqu'au <%= _fmtFr(a.dateEnd) %></div>
-                        <% if (a.employeeStatus === 'inactive') { %>
+                        <% if (_isReplaced) { %>
+                            <button type="button" class="abs-card-btn" disabled title="Place d&eacute;j&agrave; couverte par <%= a.replacers.join(', ') %>">
+                                <i class="fa-solid fa-user-check"></i> Remplac&eacute; par <%= a.replacers.join(', ') %>
+                            </button>
+                        <% } else if (a.employeeStatus === 'inactive') { %>
                             <button type="button" class="abs-card-btn abs-btn-reactivate" onclick="reactivateFromCard(this)">
                                 <i class="fa-solid fa-user-check"></i> R&eacute;activer le compte
                             </button>
