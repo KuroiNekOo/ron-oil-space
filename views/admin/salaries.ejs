@@ -447,6 +447,37 @@
         </div>
     </div>
 
+    <!-- Modal Avertissement : renouvellement d'un contrat de remplaçant -->
+    <div class="modal-overlay" id="modal-renew-warning">
+        <div class="modal renew-warning-modal">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <i class="fa-solid fa-triangle-exclamation" style="color:#ffb020;margin-right:8px;"></i>
+                    Renouveler un contrat de remplaçant&nbsp;?
+                </div>
+                <button class="modal-close" onclick="closeModal('modal-renew-warning')">&#10005;</button>
+            </div>
+            <div class="modal-body">
+                <div class="renew-warning-body">
+                    <div class="renew-warning-icon"><i class="fa-solid fa-user-clock"></i></div>
+                    <p>
+                        <strong id="renew-warning-name"></strong> est un <strong>remplaçant</strong>
+                        &mdash; son contrat couvre l'absence de
+                        <strong id="renew-warning-replaces"></strong>.
+                    </p>
+                    <p class="renew-warning-hint">
+                        Renouveler ce contrat ne se justifie que si l'absence se prolonge.
+                        Vérifie la date de retour avant de continuer.
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('modal-renew-warning')">Annuler</button>
+                <button type="button" class="btn-primary" onclick="confirmRenewWarning()"><i class="fa-solid fa-arrow-right"></i> Continuer quand m&ecirc;me</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Récap -->
     <div class="modal-overlay" id="modal-recap">
         <div class="modal" style="width:1100px;">
@@ -619,6 +650,14 @@
             font-size:12.5px; line-height:1.55;
             max-height:420px; overflow:auto;
         }
+
+        /* Modal d'avertissement renouvellement d'un remplaçant */
+        .renew-warning-modal { width:520px; max-width:92vw; }
+        .renew-warning-body { text-align:center; padding:6px 10px 2px; }
+        .renew-warning-icon { font-size:46px; color:#ffb020; margin-bottom:14px; }
+        .renew-warning-body p { margin:0 0 12px; line-height:1.55; color:var(--text-primary); }
+        .renew-warning-body p strong { color:#ffb020; }
+        .renew-warning-hint { font-size:13px; color:var(--text-muted); }
 
         /* Badge "Remplace [Nom]" dans la liste salariés */
         .replaces-badge {
@@ -806,16 +845,41 @@
         });
 
         // ── Renouvellement de contrat (bouton coloré sur chaque ligne) ──────
-        var renewState = { employeeId: null, debounceTimer: null };
+        var renewState = { employeeId: null, debounceTimer: null, pendingWarningId: null };
+
+        // Modal d'avertissement quand on tente de renouveler un remplaçant —
+        // ouvre une étape intermédiaire, puis "Continuer" rappelle openRenewModal
+        // avec skipWarning=true pour court-circuiter la garde.
+        function showRenewWarning(emp) {
+            var repName = ((emp.replacesFirstName || '') + ' ' + (emp.replacesLastName || '')).trim();
+            document.getElementById('renew-warning-name').textContent = emp.firstName + ' ' + emp.lastName;
+            document.getElementById('renew-warning-replaces').textContent = repName || 'un autre salarié';
+            renewState.pendingWarningId = emp.id;
+            openModal('modal-renew-warning');
+        }
+
+        function confirmRenewWarning() {
+            var id = renewState.pendingWarningId;
+            renewState.pendingWarningId = null;
+            closeModal('modal-renew-warning');
+            if (id != null) openRenewModal(id, true);
+        }
 
         function pad(n) { return String(n).padStart(2, '0'); }
         function isoDate(d) {
             return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
         }
 
-        function openRenewModal(employeeId) {
+        function openRenewModal(employeeId, skipWarning) {
             var emp = employeesData.find(function(e) { return e.id === employeeId; });
             if (!emp) { showToast('Employé introuvable', 'error'); return; }
+            // Garde-fou pour les remplaçants : un CDD de remplacement est censé
+            // s'arrêter au retour de l'absent, donc le renouveler n'a de sens
+            // qu'en cas d'absence prolongée — on intercale une modal d'alerte.
+            if (!skipWarning && emp.replacesId) {
+                showRenewWarning(emp);
+                return;
+            }
             renewState.employeeId = employeeId;
             document.getElementById('renew-title').innerHTML =
                 'Renouveler le contrat <span style="font-size:12px;color:var(--text-muted);font-weight:400;margin-left:8px;">' + emp.firstName + ' ' + emp.lastName + '</span>';
