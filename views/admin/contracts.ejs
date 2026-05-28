@@ -134,10 +134,7 @@
 <body>
     <%- include('../partials/admin-sidebar', { currentPage: 'contracts' }) %>
     <main class="main-content">
-        <div class="page-header">
-            <div class="page-title">Contrats</div>
-            <div class="page-subtitle">G&eacute;n&eacute;ration, signatures et renouvellement des contrats employ&eacute;s</div>
-        </div>
+        <%- include('../partials/configuration-header', { activeKey: 'contracts' }) %>
 
         <div class="config-cards">
             <div class="config-card">

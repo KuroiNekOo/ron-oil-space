@@ -9,10 +9,7 @@
 <body>
     <%- include('../partials/admin-sidebar', { currentPage: 'entrees-sorties' }) %>
     <main class="main-content">
-        <div class="page-header">
-            <div class="page-title">Entr&eacute;es / Sorties</div>
-            <div class="page-subtitle">Mouvements v&eacute;hicules au garage</div>
-        </div>
+        <%- include('../partials/tracabilite-header', { activeKey: 'entrees-sorties' }) %>
 
         <form class="admin-toolbar" method="GET" action="/admin/entrees-sorties" style="display:flex;gap:8px;align-items:center;">
             <div class="admin-search-wrap">

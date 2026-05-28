@@ -9,10 +9,7 @@
 <body>
     <%- include('../partials/admin-sidebar', { currentPage: 'standard' }) %>
     <main class="main-content">
-        <div class="page-header">
-            <div class="page-title">Standard</div>
-            <div class="page-subtitle">Appels t&eacute;l&eacute;phoniques re&ccedil;us</div>
-        </div>
+        <%- include('../partials/tracabilite-header', { activeKey: 'standard' }) %>
 
         <form class="admin-toolbar" method="GET" action="/admin/standard" style="display:flex;gap:8px;align-items:center;">
             <div class="admin-search-wrap">

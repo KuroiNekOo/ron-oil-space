@@ -7,6 +7,14 @@
         <div class="sidebar-brand-sub">Espace Administration</div>
         <div class="admin-tag"><i class="fa-solid fa-shield-halved"></i> Admin</div>
     </div>
+    <%# Regroupements de pages : 1 lien sidebar pour N sous-pages. L'état actif
+       du lien est dérivé de currentPage qui peut valoir n'importe quelle clé
+       du groupe. Les onglets internes sont rendus dans la page par
+       partials/group-tabs.ejs. %>
+    <% const _configPages = ['primes', 'roles', 'types', 'contracts', 'faq', 'gouv']; %>
+    <% const _tracabilitePages = ['standard', 'livraisons', 'facturations', 'entrees-sorties', 'services']; %>
+    <% const _isConfig = _configPages.indexOf(currentPage) >= 0; %>
+    <% const _isTracabilite = _tracabilitePages.indexOf(currentPage) >= 0; %>
     <nav class="sidebar-nav">
         <div class="nav-section" data-section="admin-gestion">
             <button type="button" class="nav-section-label">Gestion <i class="fa-solid fa-chevron-down nav-chevron"></i></button>
@@ -20,23 +28,8 @@
                 <a class="nav-item<%= currentPage === 'achats' ? ' active' : '' %>" id="nav-achats" href="/admin/achats">
                     <i class="fa-solid fa-bag-shopping"></i> Achats
                 </a>
-                <a class="nav-item<%= currentPage === 'primes' ? ' active' : '' %>" id="nav-primes" href="/admin/primes">
-                    <i class="fa-solid fa-percent"></i> Primes
-                </a>
-                <a class="nav-item<%= currentPage === 'roles' ? ' active' : '' %>" id="nav-roles" href="/admin/roles">
-                    <i class="fa-solid fa-id-badge"></i> R&ocirc;les
-                </a>
-                <a class="nav-item<%= currentPage === 'types' ? ' active' : '' %>" id="nav-types" href="/admin/types">
-                    <i class="fa-solid fa-tags"></i> Types
-                </a>
-                <a class="nav-item<%= currentPage === 'contracts' ? ' active' : '' %>" id="nav-contracts" href="/admin/contracts">
-                    <i class="fa-solid fa-file-signature"></i> Contrats
-                </a>
-                <a class="nav-item<%= currentPage === 'faq' ? ' active' : '' %>" id="nav-faq" href="/admin/faq">
-                    <i class="fa-solid fa-circle-question"></i> FAQ
-                </a>
-                <a class="nav-item<%= currentPage === 'gouv' ? ' active' : '' %>" id="nav-gouv" href="/admin/gouv">
-                    <i class="fa-solid fa-landmark"></i> Gouvernement
+                <a class="nav-item<%= _isConfig ? ' active' : '' %>" id="nav-configuration" href="/admin/primes">
+                    <i class="fa-solid fa-sliders"></i> Configuration
                 </a>
             </div>
         </div>
@@ -63,20 +56,8 @@
                 <a class="nav-item<%= currentPage === 'statistiques' ? ' active' : '' %>" id="nav-statistiques" href="/admin/statistiques">
                     <i class="fa-solid fa-chart-line"></i> Statistiques
                 </a>
-                <a class="nav-item<%= currentPage === 'standard' ? ' active' : '' %>" id="nav-standard" href="/admin/standard">
-                    <i class="fa-solid fa-phone"></i> Standard
-                </a>
-                <a class="nav-item<%= currentPage === 'livraisons' ? ' active' : '' %>" id="nav-livraisons" href="/admin/livraisons">
-                    <i class="fa-solid fa-gas-pump"></i> Livraisons
-                </a>
-                <a class="nav-item<%= currentPage === 'facturations' ? ' active' : '' %>" id="nav-facturations" href="/admin/facturations">
-                    <i class="fa-solid fa-file-invoice-dollar"></i> Facturations
-                </a>
-                <a class="nav-item<%= currentPage === 'entrees-sorties' ? ' active' : '' %>" id="nav-entrees-sorties" href="/admin/entrees-sorties">
-                    <i class="fa-solid fa-right-left"></i> Entr&eacute;es / Sorties
-                </a>
-                <a class="nav-item<%= currentPage === 'services' ? ' active' : '' %>" id="nav-services" href="/admin/services">
-                    <i class="fa-solid fa-clock"></i> Services
+                <a class="nav-item<%= _isTracabilite ? ' active' : '' %>" id="nav-tracabilite" href="/admin/standard">
+                    <i class="fa-solid fa-magnifying-glass-chart"></i> Tra&ccedil;abilit&eacute;
                 </a>
             </div>
         </div>

@@ -9,10 +9,7 @@
 <body>
     <%- include('../partials/admin-sidebar', { currentPage: 'roles' }) %>
     <main class="main-content">
-        <div class="page-header">
-            <div class="page-title">R&ocirc;les</div>
-            <div class="page-subtitle">Liste des r&ocirc;les disponibles + acc&egrave;s au formulaire de rapatriement</div>
-        </div>
+        <%- include('../partials/configuration-header', { activeKey: 'roles' }) %>
 
         <div class="card" style="padding:24px;max-width:720px;">
             <form id="form-roles" method="POST" action="/admin/roles">

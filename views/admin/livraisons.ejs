@@ -9,10 +9,7 @@
 <body>
     <%- include('../partials/admin-sidebar', { currentPage: 'livraisons' }) %>
     <main class="main-content">
-        <div class="page-header">
-            <div class="page-title">Livraisons</div>
-            <div class="page-subtitle">Historique des livraisons effectu&eacute;es</div>
-        </div>
+        <%- include('../partials/tracabilite-header', { activeKey: 'livraisons' }) %>
 
         <form class="admin-toolbar" method="GET" action="/admin/livraisons" style="display:flex;gap:8px;align-items:center;">
             <div class="admin-search-wrap">

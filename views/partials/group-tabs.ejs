@@ -1,0 +1,22 @@
+<%# Header de groupe : titre + sous-titre + rangée d'onglets.
+   Réutilisable pour tout regroupement de pages dans la sidebar.
+
+   Variables attendues :
+     groupTitle    : string — titre principal (ex: "Traçabilité")
+     groupSubtitle : string — sous-titre / pitch (ex: "Vues d'historique sur l'opérationnel")
+     tabs          : array  — [{ key, label, href, icon }] ; icon = classe Font Awesome
+     activeKey     : string — clé de l'onglet actif (matchée sur tabs[].key) %>
+<div class="page-header">
+    <div class="page-title"><%= groupTitle %></div>
+    <% if (groupSubtitle) { %>
+        <div class="page-subtitle"><%= groupSubtitle %></div>
+    <% } %>
+</div>
+<nav class="group-tabs">
+    <% tabs.forEach(function(t) { %>
+        <a class="group-tab<%= t.key === activeKey ? ' active' : '' %>" href="<%= t.href %>">
+            <% if (t.icon) { %><i class="fa-solid <%= t.icon %>"></i><% } %>
+            <span><%- t.label %></span>
+        </a>
+    <% }); %>
+</nav>

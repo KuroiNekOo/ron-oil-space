@@ -9,10 +9,7 @@
 <body>
     <%- include('../partials/admin-sidebar', { currentPage: 'facturations' }) %>
     <main class="main-content">
-        <div class="page-header">
-            <div class="page-title">Facturations</div>
-            <div class="page-subtitle">Factures &eacute;mises aux clients</div>
-        </div>
+        <%- include('../partials/tracabilite-header', { activeKey: 'facturations' }) %>
 
         <form class="admin-toolbar" method="GET" action="/admin/facturations" style="display:flex;gap:8px;align-items:center;">
             <div class="admin-search-wrap">

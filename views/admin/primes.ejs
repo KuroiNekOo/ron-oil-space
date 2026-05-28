@@ -9,10 +9,7 @@
 <body>
     <%- include('../partials/admin-sidebar', { currentPage: 'primes' }) %>
     <main class="main-content">
-        <div class="page-header">
-            <div class="page-title">Primes</div>
-            <div class="page-subtitle">Taux de prime de livraison par rôle + primes spéciales manuelles</div>
-        </div>
+        <%- include('../partials/configuration-header', { activeKey: 'primes' }) %>
 
         <!-- ══════════ Config paliers ══════════ -->
         <div class="section-title">Paliers &amp; r&eacute;partition podium</div>

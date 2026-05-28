@@ -9,10 +9,7 @@
 <body>
     <%- include('../partials/admin-sidebar', { currentPage: 'services' }) %>
     <main class="main-content">
-        <div class="page-header">
-            <div class="page-title">Services</div>
-            <div class="page-subtitle">Prises et fins de service</div>
-        </div>
+        <%- include('../partials/tracabilite-header', { activeKey: 'services' }) %>
 
         <form class="admin-toolbar" method="GET" action="/admin/services" style="display:flex;gap:8px;align-items:center;">
             <div class="admin-search-wrap">

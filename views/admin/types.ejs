@@ -37,10 +37,7 @@
 <body>
     <%- include('../partials/admin-sidebar', { currentPage: 'types' }) %>
     <main class="main-content">
-        <div class="page-header">
-            <div class="page-title">Types</div>
-            <div class="page-subtitle">R&eacute;f&eacute;rentiel unique partag&eacute; entre notes de frais et achats</div>
-        </div>
+        <%- include('../partials/configuration-header', { activeKey: 'types' }) %>
 
         <!-- ── Création ── -->
         <div class="card" style="padding:20px;margin-bottom:24px;max-width:980px;">

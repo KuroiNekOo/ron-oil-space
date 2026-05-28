@@ -1,0 +1,15 @@
+<%# Header partagé des 5 pages du groupe Traçabilité.
+   À inclure en haut du <main> de chaque sous-page, avec activeKey égal à
+   la clé de la page courante (cf. tabs[].key ci-dessous). %>
+<%- include('group-tabs', {
+    groupTitle: 'Traçabilité',
+    groupSubtitle: 'Historique opérationnel : appels, livraisons, facturations, services et entrées/sorties',
+    activeKey: typeof activeKey !== 'undefined' ? activeKey : '',
+    tabs: [
+        { key: 'standard',        label: 'Standard',           href: '/admin/standard',        icon: 'fa-phone' },
+        { key: 'livraisons',      label: 'Livraisons',         href: '/admin/livraisons',      icon: 'fa-gas-pump' },
+        { key: 'facturations',    label: 'Facturations',       href: '/admin/facturations',    icon: 'fa-file-invoice-dollar' },
+        { key: 'entrees-sorties', label: 'Entrées / Sorties',  href: '/admin/entrees-sorties', icon: 'fa-right-left' },
+        { key: 'services',        label: 'Services',           href: '/admin/services',        icon: 'fa-clock' },
+    ]
+}) %>

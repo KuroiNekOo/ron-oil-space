@@ -85,10 +85,7 @@
 <body>
     <%- include('../partials/admin-sidebar', { currentPage: 'gouv' }) %>
     <main class="main-content">
-        <div class="page-header">
-            <div class="page-title">Compte Gouvernement</div>
-            <div class="page-subtitle">Acc&egrave;s unique de surveillance externe (lecture seule)</div>
-        </div>
+        <%- include('../partials/configuration-header', { activeKey: 'gouv' }) %>
 
         <% if (flash) { %><div class="flash"><i class="fa-solid fa-circle-check"></i> <%= flash %></div><% } %>
         <% if (error) { %><div class="flash error"><i class="fa-solid fa-circle-exclamation"></i> <%= error %></div><% } %>

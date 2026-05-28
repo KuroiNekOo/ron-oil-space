@@ -10,10 +10,7 @@
 <body>
     <%- include('../partials/admin-sidebar', { currentPage: 'faq' }) %>
     <main class="main-content">
-        <div class="page-header">
-            <div class="page-title">FAQ</div>
-            <div class="page-subtitle">Questions / r&eacute;ponses affich&eacute;es sur le panel employ&eacute;</div>
-        </div>
+        <%- include('../partials/configuration-header', { activeKey: 'faq' }) %>
 
         <div class="faq-layout">
             <!-- Sidebar catégories -->
