@@ -226,7 +226,6 @@ router.get('/salaries', async (req, res) => {
         dateEnd: a.dateEnd,
         employeeId: a.employeeId,
         employeeName: a.employee.firstName + ' ' + a.employee.lastName,
-        employeeStatus: a.employee.status,
         replacers,
       };
       const start = new Date(a.dateStart);

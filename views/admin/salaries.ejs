@@ -101,7 +101,6 @@
                          data-absence-id="<%= a.id %>"
                          data-employee-id="<%= a.employeeId %>"
                          data-employee-name="<%= a.employeeName %>"
-                         data-employee-status="<%= a.employeeStatus %>"
                          data-date-start="<%= a.dateStart.toISOString() %>"
                          data-date-end="<%= a.dateEnd.toISOString() %>">
                         <div class="abs-card-badge">SE TERMINE BIENT&Ocirc;T</div>
@@ -112,12 +111,10 @@
                             <button type="button" class="abs-card-btn" disabled title="Place d&eacute;j&agrave; couverte par <%= a.replacers.join(', ') %>">
                                 <i class="fa-solid fa-user-check"></i> Remplac&eacute; par <%= a.replacers.join(', ') %>
                             </button>
-                        <% } else if (a.employeeStatus === 'inactive') { %>
-                            <button type="button" class="abs-card-btn abs-btn-reactivate" onclick="reactivateFromCard(this)">
-                                <i class="fa-solid fa-user-check"></i> R&eacute;activer le compte
-                            </button>
                         <% } else { %>
-                            <div class="abs-card-note">Compte actif &mdash; rien à faire au retour.</div>
+                            <button type="button" class="abs-card-btn" onclick="openReplaceModalFromCard(this)">
+                                <i class="fa-solid fa-user-plus"></i> Cr&eacute;er rempla&ccedil;ant
+                            </button>
                         <% } %>
                     </div>
                 <% }); %>
@@ -537,7 +534,6 @@
         .abs-ongoing     .abs-card-btn:hover { background:rgba(255,138,61,.18); }
         .abs-upcoming    .abs-card-btn:hover { background:rgba(59,130,246,.18); }
         .abs-ending-soon .abs-card-btn:hover { background:rgba(255,176,32,.18); }
-        .abs-card-note { font-size:11px; color:var(--text-muted); font-style:italic; margin-top:4px; }
 
         .abs-ongoing { color:#ff8a3d; }
         .abs-ongoing:hover { border-color:#ff8a3d; }
@@ -763,18 +759,6 @@
                     showToast('Erreur : ' + err.message, 'error');
                 });
             });
-        }
-
-        // Réactivation rapide depuis une carte "fin dans 3j" (compte resté inactif).
-        function reactivateFromCard(btn) {
-            var card = btn.closest('.abs-card');
-            if (!card) return;
-            var employeeId = card.dataset.employeeId;
-            if (!employeeId) return;
-            if (!confirm('Réactiver ' + (card.dataset.employeeName || 'cet employé') + ' ?')) return;
-            AdminAjax.post('/admin/salaries/' + employeeId + '/toggle')
-                .then(function() { showToast('Compte réactivé'); return AdminAjax.reloadMain(); })
-                .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
         }
 
         // Reset du titre de la modal add quand on la ferme par les boutons standards
