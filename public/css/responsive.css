@@ -171,10 +171,11 @@ body.sidebar-open { overflow: hidden; }
     .admin-toolbar-left .toolbar-reset-link { width: 100%; }
 
     /* Toasts un peu plus serrés et clamp à la largeur dispo. */
-    .toast {
+    .toast-stack {
         left: 12px; right: 12px; top: 16px;
-        font-size: 13px;
+        align-items: stretch;
     }
+    .toast { font-size: 13px; }
 
     /* Login centré : la box devient plein-écran. */
     .login-box { width: 100%; max-width: 100%; padding: 32px 24px; box-shadow: none; }

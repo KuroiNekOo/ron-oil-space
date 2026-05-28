@@ -168,9 +168,12 @@ body {
 .divider { height:1px; background:var(--border); margin:24px 0; }
 .mono { font-family:var(--font-mono); }
 
-/* ── TOOLBAR ── */
-.admin-toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
-.admin-toolbar-left { display:flex; align-items:center; gap:12px; }
+/* ── TOOLBAR ──
+   .admin-toolbar-left grow=1 absorbe l'espace, .btn-add reste collé à droite
+   à largeur constante — quand le lien "Réinitialiser" apparaît, il pousse
+   simplement le reste du left mais n'affecte pas la position du btn-add. */
+.admin-toolbar { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+.admin-toolbar-left { display:flex; align-items:center; gap:12px; flex:1; min-width:0; }
 
 .admin-search {
     background:var(--bg-input); border:1px solid var(--border);
@@ -185,7 +188,7 @@ body {
     font-family:var(--font-display); font-size:12.5px; font-weight:700;
     letter-spacing:.15em; text-transform:uppercase;
     padding:10px 20px; cursor:pointer; transition:background .2s;
-    display:flex; align-items:center; gap:8px;
+    display:flex; align-items:center; gap:8px; flex-shrink:0;
 }
 .btn-add:hover { background:var(--accent-hover); }
 
@@ -315,13 +318,18 @@ body {
 .tab-pane { display:none; }
 .tab-pane.active { display:block; }
 
-/* ── TOAST ── */
-.toast {
+/* ── TOAST (stack haut-droite, container auto-injecté par toast.js) ── */
+.toast-stack {
     position:fixed; top:28px; right:28px;
+    display:flex; flex-direction:column; align-items:flex-end;
+    gap:10px; z-index:999; pointer-events:none;
+}
+.toast {
     padding:14px 20px; background:var(--bg-card); border:1px solid var(--border);
-    display:flex; align-items:center; gap:12px; font-size:14px; z-index:999;
-    transform:translateY(-80px); opacity:0;
-    transition:all .3s cubic-bezier(.4,0,.2,1); pointer-events:none;
+    display:flex; align-items:center; gap:12px; font-size:14px;
+    transform:translateY(-20px); opacity:0;
+    transition:transform .25s cubic-bezier(.4,0,.2,1), opacity .25s cubic-bezier(.4,0,.2,1);
+    pointer-events:none;
 }
 .toast.show { transform:translateY(0); opacity:1; pointer-events:auto; }
 .toast.success { border-left:2px solid var(--success); }
