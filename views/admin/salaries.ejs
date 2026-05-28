@@ -125,7 +125,14 @@
 
         <form class="admin-toolbar" method="GET" action="/admin/salaries">
             <div class="admin-toolbar-left" style="flex-wrap:wrap;gap:10px;">
-                <input type="text" class="admin-search" name="q" placeholder="Rechercher un salari&eacute;..." value="<%= query.q %>">
+                <div class="admin-search-wrap">
+                    <input type="text" class="admin-search" name="q" placeholder="Rechercher un salari&eacute;..." value="<%= query.q %>">
+                    <% if (query.q) { %>
+                        <button type="button" class="admin-search-clear" title="Effacer la recherche">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    <% } %>
+                </div>
                 <select class="f-select toolbar-select" name="duty" title="Filtrer par service">
                     <option value="all"<%= query.duty === 'all' ? ' selected' : '' %>>Tous les statuts</option>
                     <option value="on"<%= query.duty === 'on' ? ' selected' : '' %>>En service</option>

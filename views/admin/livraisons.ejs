@@ -15,8 +15,14 @@
         </div>
 
         <form class="admin-toolbar" method="GET" action="/admin/livraisons" style="display:flex;gap:8px;align-items:center;">
-            <input type="text" class="admin-search" placeholder="Rechercher employ&eacute;, station..." name="q" value="<%= query.q || '' %>">
-            <% if (query.q) { %><a href="/admin/livraisons" style="font-size:12px;color:var(--text-muted);">R&eacute;initialiser</a><% } %>
+            <div class="admin-search-wrap">
+                <input type="text" class="admin-search" placeholder="Rechercher employ&eacute;, station..." name="q" value="<%= query.q || '' %>">
+                <% if (query.q) { %>
+                    <button type="button" class="admin-search-clear" title="Effacer la recherche">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                <% } %>
+            </div>
         </form>
 
         <div class="card" style="padding:0;overflow:hidden;">

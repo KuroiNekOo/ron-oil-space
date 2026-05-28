@@ -16,10 +16,14 @@
 
         <form class="admin-toolbar" method="GET" action="/admin/pannes">
             <div class="admin-toolbar-left">
-                <input type="text" class="admin-search" name="q" placeholder="Rechercher..." value="<%= query.q %>">
-                <% if (query.q) { %>
-                    <a href="/admin/pannes" style="font-size:13px;color:var(--text-muted);text-decoration:none;">R&eacute;initialiser</a>
-                <% } %>
+                <div class="admin-search-wrap">
+                    <input type="text" class="admin-search" name="q" placeholder="Rechercher..." value="<%= query.q %>">
+                    <% if (query.q) { %>
+                        <button type="button" class="admin-search-clear" title="Effacer la recherche">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    <% } %>
+                </div>
             </div>
         </form>
 

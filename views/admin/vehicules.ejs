@@ -78,7 +78,14 @@
 
         <form class="admin-toolbar" method="GET" action="/admin/vehicules">
             <div class="admin-toolbar-left" style="flex-wrap:wrap;gap:10px;">
-                <input type="text" class="admin-search" name="q" placeholder="Rechercher une plaque..." value="<%= query.q %>">
+                <div class="admin-search-wrap">
+                    <input type="text" class="admin-search" name="q" placeholder="Rechercher une plaque..." value="<%= query.q %>">
+                    <% if (query.q) { %>
+                        <button type="button" class="admin-search-clear" title="Effacer la recherche">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    <% } %>
+                </div>
                 <select class="f-select toolbar-select" name="type" title="Filtrer par type">
                     <option value="all"<%= query.type === 'all' ? ' selected' : '' %>>Tous les types</option>
                     <option value="Camion"<%= query.type === 'Camion' ? ' selected' : '' %>>Camion</option>

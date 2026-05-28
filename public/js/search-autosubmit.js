@@ -18,7 +18,13 @@
     if (!card) return;
 
     var action = form.getAttribute('action') || window.location.pathname;
-    var resetLink = form.querySelector('a[href]');
+    // Deux contrôles de reset distincts :
+    //  - clearBtn : "X" intégré dans l'input, n'efface que la recherche (q='')
+    //  - resetLink : lien à côté des filtres, reset complet (toolbar-reset-link
+    //    sur les pages avec selects, ou créé dynamiquement sinon)
+    var searchWrap = input.closest('.admin-search-wrap');
+    var clearBtn = searchWrap ? searchWrap.querySelector('.admin-search-clear') : null;
+    var resetLink = form.querySelector('.toolbar-reset-link') || form.querySelector('a[href]');
 
     // Sérialise tous les champs nommés du form. La valeur "neutre" d'un <select>
     // est sa première option : ainsi un select rendu en `selected="type-asc"` au
@@ -40,30 +46,41 @@
       return action + (qs ? '?' + qs : '');
     }
 
-    function hasActiveFilters() {
-      if (input.value.trim()) return true;
+    function hasNonSearchFilters() {
       var active = false;
       form.querySelectorAll('select[name]').forEach(function (sel) {
         if (!isDefaultSelect(sel)) active = true;
       });
       return active;
     }
+    function hasActiveFilters() {
+      return !!input.value.trim() || hasNonSearchFilters();
+    }
 
-    function syncResetLink() {
-      var hasQuery = hasActiveFilters();
-      if (hasQuery) {
-        if (!resetLink) {
-          resetLink = document.createElement('a');
-          resetLink.href = action;
-          resetLink.style.fontSize = '12px';
-          resetLink.style.color = 'var(--text-muted)';
-          resetLink.textContent = 'Réinitialiser';
-          form.appendChild(resetLink);
-        }
-        resetLink.style.display = '';
-      } else if (resetLink) {
-        resetLink.style.display = 'none';
+    // X intégré dans l'input : visible dès qu'il y a du texte. Créé à la volée
+    // s'il n'est pas déjà rendu côté EJS, pour rester réactif à la frappe.
+    function syncClearBtn() {
+      if (!searchWrap) return;
+      var shouldShow = !!input.value.trim();
+      if (shouldShow && !clearBtn) {
+        clearBtn = document.createElement('button');
+        clearBtn.type = 'button';
+        clearBtn.className = 'admin-search-clear';
+        clearBtn.title = 'Effacer la recherche';
+        clearBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+        searchWrap.appendChild(clearBtn);
       }
+      if (clearBtn) clearBtn.style.display = shouldShow ? '' : 'none';
+    }
+
+    // Lien "Réinitialiser" complet : visible si filtres non-recherche actifs
+    // (sur les pages avec selects). On ne le crée plus dynamiquement quand
+    // seule la recherche est active : le X dans l'input suffit, le lien fait
+    // doublon.
+    function syncResetLink() {
+      var shouldShow = hasNonSearchFilters();
+      if (!resetLink) return;
+      resetLink.style.display = shouldShow ? '' : 'none';
     }
 
     var timer = null;
@@ -104,10 +121,11 @@
 
     function runSearch() { load(buildUrl()); }
 
+    syncClearBtn();
     syncResetLink();
 
     input.addEventListener('input', function () {
-      syncResetLink();
+      syncClearBtn();
       if (timer) clearTimeout(timer);
       timer = setTimeout(runSearch, DEBOUNCE_MS);
     });
@@ -129,16 +147,30 @@
       });
     });
 
-    // Lien Réinitialiser → vide tous les filtres et relance en AJAX, garde le focus.
-    // Pour les <select>, on remet la première option (convention "all" / "default").
+    // X intégré dans l'input : n'efface que la recherche, garde les filtres.
+    // On délègue au form pour capter aussi le X créé dynamiquement par syncClearBtn.
     form.addEventListener('click', function (e) {
       var t = e.target;
-      if (t && t.tagName === 'A' && form.contains(t)) {
+      var clear = t && t.closest && t.closest('.admin-search-clear');
+      if (clear && form.contains(clear)) {
+        e.preventDefault();
+        input.value = '';
+        syncClearBtn();
+        if (timer) clearTimeout(timer);
+        runSearch();
+        input.focus();
+        return;
+      }
+      // Lien Réinitialiser complet → vide tout (recherche + filtres) et relance.
+      // Pour les <select>, on remet la première option (convention "all" / "default").
+      var resetA = t && t.closest && t.closest('a[href]');
+      if (resetA && form.contains(resetA) && !resetA.closest('.admin-search-wrap')) {
         e.preventDefault();
         input.value = '';
         form.querySelectorAll('select[name]').forEach(function (sel) {
           if (sel.options.length) sel.selectedIndex = 0;
         });
+        syncClearBtn();
         syncResetLink();
         if (timer) clearTimeout(timer);
         runSearch();
