@@ -240,11 +240,19 @@
         }
 
         function archive(id) {
-            if (!confirm('Archiver ce type ? Il disparaîtra des formulaires (notes de frais et achats) mais restera lisible dans l\'historique.')) return;
-            AdminAjax.post('/admin/types/' + id + '/archive').then(function () {
-                showToast('Archivé');
-                return AdminAjax.reloadMain();
-            }).catch(function (err) { showToast('Erreur : ' + err.message, 'error'); });
+            showConfirm({
+                title: 'Archiver le type',
+                message: 'Archiver ce type ?\n\nIl disparaîtra des formulaires (notes de frais et achats) mais restera lisible dans l\'historique.',
+                variant: 'warning',
+                icon: 'fa-box-archive',
+                confirmText: 'Archiver',
+            }).then(function (ok) {
+                if (!ok) return;
+                AdminAjax.post('/admin/types/' + id + '/archive').then(function () {
+                    showToast('Archivé');
+                    return AdminAjax.reloadMain();
+                }).catch(function (err) { showToast('Erreur : ' + err.message, 'error'); });
+            });
         }
 
         function unarchive(id) {
@@ -259,11 +267,18 @@
             if (!tr) return;
             var id = tr.dataset.typeId;
             var label = tr.dataset.label || '';
-            if (!confirm('Supprimer définitivement « ' + label + ' » ?\n\nCette action échouera si des notes de frais ou des achats référencent encore ce type. Dans ce cas, utilisez l\'archivage à la place.')) return;
-            AdminAjax.post('/admin/types/' + id + '/delete').then(function () {
-                showToast('Supprimé');
-                return AdminAjax.reloadMain();
-            }).catch(function (err) { showToast('Erreur : ' + err.message, 'error'); });
+            showConfirm({
+                title: 'Supprimer le type',
+                message: 'Supprimer définitivement « ' + label + ' » ?\n\nCette action échouera si des notes de frais ou des achats référencent encore ce type. Dans ce cas, utilisez l\'archivage à la place.',
+                variant: 'danger',
+                confirmText: 'Supprimer définitivement',
+            }).then(function (ok) {
+                if (!ok) return;
+                AdminAjax.post('/admin/types/' + id + '/delete').then(function () {
+                    showToast('Supprimé');
+                    return AdminAjax.reloadMain();
+                }).catch(function (err) { showToast('Erreur : ' + err.message, 'error'); });
+            });
         }
     </script>
 </body>

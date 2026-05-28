@@ -425,10 +425,16 @@
         }
 
         function deleteBonus(id) {
-            if (!confirm('Supprimer cette prime spéciale ?')) return;
-            AdminAjax.post('/admin/special-bonus/' + id + '/delete')
-                .then(function () { return AdminAjax.reloadMain(); })
-                .catch(function (err) { showToast('Erreur : ' + err.message, 'error'); });
+            showConfirm({
+                title: 'Supprimer la prime',
+                message: 'Supprimer cette prime spéciale ?',
+                variant: 'danger',
+            }).then(function (ok) {
+                if (!ok) return;
+                AdminAjax.post('/admin/special-bonus/' + id + '/delete')
+                    .then(function () { return AdminAjax.reloadMain(); })
+                    .catch(function (err) { showToast('Erreur : ' + err.message, 'error'); });
+            });
         }
 
         document.getElementById('form-bonus').addEventListener('submit', function (e) {

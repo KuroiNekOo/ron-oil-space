@@ -128,7 +128,7 @@
 
             <div class="gouv-section">
                 <div class="gouv-section-title">Actions rapides</div>
-                <form method="POST" action="/admin/gouv/regenerate" onsubmit="return confirm('R&eacute;g&eacute;n&eacute;rer un nouveau mot de passe al&eacute;atoire ? L\'ancien sera invalid&eacute; imm&eacute;diatement.');">
+                <form method="POST" action="/admin/gouv/regenerate" id="form-regenerate-pwd">
                     <button type="submit" class="icon-btn" style="padding:10px 16px;min-width:0;">
                         <i class="fa-solid fa-rotate"></i>&nbsp; R&eacute;g&eacute;n&eacute;rer un mot de passe al&eacute;atoire
                     </button>
@@ -187,6 +187,26 @@
                 window.getSelection().removeAllRanges();
             });
         });
+
+        // Confirmation avant régénération du mot de passe : on intercepte le
+        // submit du form, on ouvre la modal partagée, puis on resoumet via
+        // form.submit() (qui contourne le listener) si l'admin confirme.
+        (function() {
+            var form = document.getElementById('form-regenerate-pwd');
+            if (!form) return;
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                showConfirm({
+                    title: 'Régénérer le mot de passe',
+                    message: 'Régénérer un nouveau mot de passe aléatoire ?\n\nL\'ancien sera invalidé immédiatement.',
+                    variant: 'warning',
+                    icon: 'fa-rotate',
+                    confirmText: 'Régénérer',
+                }).then(function(ok) {
+                    if (ok) form.submit();
+                });
+            });
+        })();
     </script>
 </body>
 </html>

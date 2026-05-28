@@ -246,10 +246,16 @@
     <script src="/js/admin-ajax.js"></script>
     <script>
         function deletePurchase(id) {
-            if (!confirm('Supprimer cet achat ?')) return;
-            AdminAjax.post('/admin/achats/' + id + '/delete')
-                .then(function() { return AdminAjax.reloadMain(); })
-                .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+            showConfirm({
+                title: 'Supprimer l\'achat',
+                message: 'Supprimer cet achat ?',
+                variant: 'danger',
+            }).then(function(ok) {
+                if (!ok) return;
+                AdminAjax.post('/admin/achats/' + id + '/delete')
+                    .then(function() { return AdminAjax.reloadMain(); })
+                    .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+            });
         }
 
         (function() {

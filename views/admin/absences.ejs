@@ -157,10 +157,16 @@
         }
 
         function deleteRow(id) {
-            if (!confirm('Supprimer cette absence ?')) return;
-            AdminAjax.post('/admin/absences/' + id + '/delete')
-                .then(function() { return AdminAjax.reloadMain(); })
-                .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+            showConfirm({
+                title: 'Supprimer l\'absence',
+                message: 'Supprimer cette absence ?',
+                variant: 'danger',
+            }).then(function(ok) {
+                if (!ok) return;
+                AdminAjax.post('/admin/absences/' + id + '/delete')
+                    .then(function() { return AdminAjax.reloadMain(); })
+                    .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+            });
         }
 
         document.getElementById('form-edit').addEventListener('submit', function(e) {

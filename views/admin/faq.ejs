@@ -296,10 +296,16 @@
         function deleteCategory(id) {
             var cat = faqData.find(function(c) { return c.id === id; });
             if (!cat) return;
-            if (!confirm('Supprimer la catégorie "' + cat.name + '" et toutes ses entrées ?')) return;
-            AdminAjax.post('/admin/faq/categories/' + id + '/delete')
-                .then(function() { showToast('Catégorie supprimée'); reload(); })
-                .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+            showConfirm({
+                title: 'Supprimer la catégorie',
+                message: 'Supprimer la catégorie « ' + cat.name + ' » et toutes ses entrées ?',
+                variant: 'danger',
+            }).then(function(ok) {
+                if (!ok) return;
+                AdminAjax.post('/admin/faq/categories/' + id + '/delete')
+                    .then(function() { showToast('Catégorie supprimée'); reload(); })
+                    .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+            });
         }
         function moveCategory(id, direction) {
             var url = '/admin/faq/categories/' + id + '/move';
@@ -379,10 +385,16 @@
             var cat = faqData.find(function(c) { return c.id === selectedCatId; });
             var entry = cat && cat.entries.find(function(e) { return e.id === id; });
             if (!entry) return;
-            if (!confirm('Supprimer la question "' + entry.question + '" ?')) return;
-            AdminAjax.post('/admin/faq/entries/' + id + '/delete')
-                .then(function() { showToast('Entrée supprimée'); reload(); })
-                .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+            showConfirm({
+                title: 'Supprimer la question',
+                message: 'Supprimer la question « ' + entry.question + ' » ?',
+                variant: 'danger',
+            }).then(function(ok) {
+                if (!ok) return;
+                AdminAjax.post('/admin/faq/entries/' + id + '/delete')
+                    .then(function() { showToast('Entrée supprimée'); reload(); })
+                    .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+            });
         }
         function moveEntry(id, direction) {
             fetch('/admin/faq/entries/' + id + '/move', {

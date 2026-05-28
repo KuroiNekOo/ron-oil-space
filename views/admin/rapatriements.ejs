@@ -150,10 +150,16 @@
         }
 
         function deleteRow(id) {
-            if (!confirm('Supprimer ce rapatriement ?')) return;
-            AdminAjax.post('/admin/rapatriements/' + id + '/delete')
-                .then(function() { return AdminAjax.reloadMain(); })
-                .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+            showConfirm({
+                title: 'Supprimer le rapatriement',
+                message: 'Supprimer ce rapatriement ?',
+                variant: 'danger',
+            }).then(function(ok) {
+                if (!ok) return;
+                AdminAjax.post('/admin/rapatriements/' + id + '/delete')
+                    .then(function() { return AdminAjax.reloadMain(); })
+                    .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+            });
         }
 
         document.getElementById('form-edit').addEventListener('submit', function(e) {

@@ -447,37 +447,6 @@
         </div>
     </div>
 
-    <!-- Modal Avertissement : renouvellement d'un contrat de remplaçant -->
-    <div class="modal-overlay" id="modal-renew-warning">
-        <div class="modal renew-warning-modal">
-            <div class="modal-header">
-                <div class="modal-title">
-                    <i class="fa-solid fa-triangle-exclamation" style="color:#ffb020;margin-right:8px;"></i>
-                    Renouveler un contrat de remplaçant&nbsp;?
-                </div>
-                <button class="modal-close" onclick="closeModal('modal-renew-warning')">&#10005;</button>
-            </div>
-            <div class="modal-body">
-                <div class="renew-warning-body">
-                    <div class="renew-warning-icon"><i class="fa-solid fa-user-clock"></i></div>
-                    <p>
-                        <strong id="renew-warning-name"></strong> est un <strong>remplaçant</strong>
-                        &mdash; son contrat couvre l'absence de
-                        <strong id="renew-warning-replaces"></strong>.
-                    </p>
-                    <p class="renew-warning-hint">
-                        Renouveler ce contrat ne se justifie que si l'absence se prolonge.
-                        Vérifie la date de retour avant de continuer.
-                    </p>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('modal-renew-warning')">Annuler</button>
-                <button type="button" class="btn-primary" onclick="confirmRenewWarning()"><i class="fa-solid fa-arrow-right"></i> Continuer quand m&ecirc;me</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Modal Récap -->
     <div class="modal-overlay" id="modal-recap">
         <div class="modal" style="width:1100px;">
@@ -651,13 +620,6 @@
             max-height:420px; overflow:auto;
         }
 
-        /* Modal d'avertissement renouvellement d'un remplaçant */
-        .renew-warning-modal { width:520px; max-width:92vw; }
-        .renew-warning-body { text-align:center; padding:6px 10px 2px; }
-        .renew-warning-icon { font-size:46px; color:#ffb020; margin-bottom:14px; }
-        .renew-warning-body p { margin:0 0 12px; line-height:1.55; color:var(--text-primary); }
-        .renew-warning-body p strong { color:#ffb020; }
-        .renew-warning-hint { font-size:13px; color:var(--text-muted); }
 
         /* Badge "Remplace [Nom]" dans la liste salariés */
         .replaces-badge {
@@ -845,24 +807,32 @@
         });
 
         // ── Renouvellement de contrat (bouton coloré sur chaque ligne) ──────
-        var renewState = { employeeId: null, debounceTimer: null, pendingWarningId: null };
+        var renewState = { employeeId: null, debounceTimer: null };
 
-        // Modal d'avertissement quand on tente de renouveler un remplaçant —
-        // ouvre une étape intermédiaire, puis "Continuer" rappelle openRenewModal
-        // avec skipWarning=true pour court-circuiter la garde.
+        // Avertissement quand on tente de renouveler un remplaçant — étape
+        // intercalée via le helper showConfirm. "Continuer quand même" rappelle
+        // openRenewModal avec skipWarning=true pour court-circuiter la garde.
         function showRenewWarning(emp) {
-            var repName = ((emp.replacesFirstName || '') + ' ' + (emp.replacesLastName || '')).trim();
-            document.getElementById('renew-warning-name').textContent = emp.firstName + ' ' + emp.lastName;
-            document.getElementById('renew-warning-replaces').textContent = repName || 'un autre salarié';
-            renewState.pendingWarningId = emp.id;
-            openModal('modal-renew-warning');
-        }
-
-        function confirmRenewWarning() {
-            var id = renewState.pendingWarningId;
-            renewState.pendingWarningId = null;
-            closeModal('modal-renew-warning');
-            if (id != null) openRenewModal(id, true);
+            var repName = ((emp.replacesFirstName || '') + ' ' + (emp.replacesLastName || '')).trim() || 'un autre salarié';
+            var esc = function(s) {
+                return String(s).replace(/[&<>"']/g, function(c) {
+                    return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c];
+                });
+            };
+            showConfirm({
+                title: 'Renouveler un contrat de remplaçant ?',
+                variant: 'warning',
+                icon: 'fa-user-clock',
+                html: true,
+                message:
+                    '<p><strong>' + esc(emp.firstName + ' ' + emp.lastName) + '</strong> est un <strong>remplaçant</strong> &mdash; ' +
+                    'son contrat couvre l\'absence de <strong>' + esc(repName) + '</strong>.</p>' +
+                    '<p class="app-confirm-hint">Renouveler ce contrat ne se justifie que si l\'absence se prolonge. ' +
+                    'Vérifie la date de retour avant de continuer.</p>',
+                confirmText: 'Continuer quand même',
+            }).then(function(ok) {
+                if (ok) openRenewModal(emp.id, true);
+            });
         }
 
         function pad(n) { return String(n).padStart(2, '0'); }
@@ -956,18 +926,26 @@
         function generateContract(employeeId) {
             var emp = employeesData.find(function(e) { return e.id === employeeId; });
             var name = emp ? (emp.firstName + ' ' + emp.lastName) : 'cet employé';
-            if (!confirm('Générer un contrat pour ' + name + ' et envoyer le lien sur Discord ?')) return;
-            fetch('/admin/contracts/generate/' + employeeId, {
-                method: 'POST',
-                credentials: 'same-origin',
-            })
-            .then(function(r) { return r.json().then(function(d) { return { ok:r.ok, data:d }; }); })
-            .then(function(r) {
-                if (!r.ok) throw new Error((r.data && r.data.error) || 'Erreur');
-                showToast('Contrat généré');
-                return AdminAjax.reloadMain();
-            })
-            .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+            showConfirm({
+                title: 'Générer un contrat',
+                message: 'Générer un contrat pour ' + name + ' et envoyer le lien sur Discord ?',
+                variant: 'info',
+                icon: 'fa-file-circle-plus',
+                confirmText: 'Générer',
+            }).then(function(ok) {
+                if (!ok) return;
+                fetch('/admin/contracts/generate/' + employeeId, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                })
+                .then(function(r) { return r.json().then(function(d) { return { ok:r.ok, data:d }; }); })
+                .then(function(r) {
+                    if (!r.ok) throw new Error((r.data && r.data.error) || 'Erreur');
+                    showToast('Contrat généré');
+                    return AdminAjax.reloadMain();
+                })
+                .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+            });
         }
 
         function toggleStatus(id) {
@@ -983,17 +961,26 @@
         }
 
         function deleteEmployee(id) {
-            if (!confirm('Supprimer définitivement cet employé ?')) return;
-            AdminAjax.post('/admin/salaries/' + id + '/delete')
-                .then(function(data) {
-                    if (data && data.botWarning) {
-                        setTimeout(function() {
-                            showToast('Casier Discord non archivé : ' + data.botWarning, 'error');
-                        }, 1500);
-                    }
-                    return AdminAjax.reloadMain();
-                })
-                .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+            var emp = employeesData.find(function(e) { return e.id === id; });
+            var name = emp ? (emp.firstName + ' ' + emp.lastName) : 'cet employé';
+            showConfirm({
+                title: 'Supprimer l\'employé',
+                message: 'Supprimer définitivement ' + name + ' ?',
+                variant: 'danger',
+                confirmText: 'Supprimer définitivement',
+            }).then(function(ok) {
+                if (!ok) return;
+                AdminAjax.post('/admin/salaries/' + id + '/delete')
+                    .then(function(data) {
+                        if (data && data.botWarning) {
+                            setTimeout(function() {
+                                showToast('Casier Discord non archivé : ' + data.botWarning, 'error');
+                            }, 1500);
+                        }
+                        return AdminAjax.reloadMain();
+                    })
+                    .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
+            });
         }
 
         var recapState = { history: [], selectedKey: null };
