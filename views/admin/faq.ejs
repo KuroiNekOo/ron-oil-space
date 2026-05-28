@@ -122,11 +122,6 @@
         </div>
     </div>
 
-    <div class="toast success" id="toast">
-        <i class="fa-solid fa-circle-check"></i>
-        <span id="toast-msg">Action effectu&eacute;e</span>
-    </div>
-
     <style>
         .faq-layout { display:grid; grid-template-columns:320px 1fr; gap:20px; align-items:start; }
         .faq-cats-header, .faq-entries-header {
@@ -309,11 +304,11 @@
         }
         function moveCategory(id, direction) {
             var url = '/admin/faq/categories/' + id + '/move';
-            fetch(url, {
+            withLoader(fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
                 body: 'direction=' + direction,
-            }).then(function(r) { return r.json(); })
+            })).then(function(r) { return r.json(); })
               .then(function() { reload(); })
               .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
         }
@@ -325,11 +320,11 @@
             var name = form.name.value.trim();
             if (!name) return;
             var url = id ? '/admin/faq/categories/' + id + '/edit' : '/admin/faq/categories';
-            fetch(url, {
+            withLoader(fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
                 body: 'name=' + encodeURIComponent(name),
-            }).then(function(r) {
+            })).then(function(r) {
                 return r.json().then(function(d) { return { ok: r.ok, data: d }; });
             }).then(function(res) {
                 if (!res.ok) throw new Error((res.data && res.data.error) || 'Erreur');
@@ -397,11 +392,11 @@
             });
         }
         function moveEntry(id, direction) {
-            fetch('/admin/faq/entries/' + id + '/move', {
+            withLoader(fetch('/admin/faq/entries/' + id + '/move', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
                 body: 'direction=' + direction,
-            }).then(function(r) { return r.json(); })
+            })).then(function(r) { return r.json(); })
               .then(function() { reload(); })
               .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
         }
@@ -429,14 +424,14 @@
         AdminAjax.postForm = function(form, urlOverride) {
             if (!urlOverride) return origPostForm(form);
             var body = new URLSearchParams(new FormData(form));
-            return fetch(urlOverride, {
+            return withLoader(fetch(urlOverride, {
                 method: 'POST',
                 body: body,
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
                 },
-            }).then(function(r) {
+            })).then(function(r) {
                 if (!r.ok) return r.text().then(function(t) {
                     try { var p = JSON.parse(t); throw new Error(p.error || 'HTTP ' + r.status); }
                     catch (_) { throw new Error(t || 'HTTP ' + r.status); }
@@ -477,14 +472,6 @@
             document.getElementById(id).classList.remove('open');
             document.body.style.overflow = '';
         }
-        function showToast(msg, type) {
-            type = type || 'success';
-            var t = document.getElementById('toast');
-            document.getElementById('toast-msg').textContent = msg;
-            t.className = 'toast ' + type + ' show';
-            setTimeout(function() { t.classList.remove('show'); }, 3500);
-        }
-
         // Outside-click-to-close modals
         document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
             var downTarget = null;

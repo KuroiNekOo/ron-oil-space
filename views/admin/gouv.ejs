@@ -172,6 +172,7 @@
                 target.select();
                 try {
                     navigator.clipboard.writeText(target.value);
+                    window.showToast('Copié');
                     btn.classList.add('copied');
                     var icon = btn.querySelector('i');
                     var prev = icon.className;
@@ -182,6 +183,7 @@
                     }, 1200);
                 } catch (e) {
                     document.execCommand('copy');
+                    window.showToast('Copié');
                 }
                 target.type = prevType;
                 window.getSelection().removeAllRanges();

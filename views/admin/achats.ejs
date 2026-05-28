@@ -237,11 +237,6 @@
 
     <!-- (Gestion des types : centralis&eacute;e sur /admin/types, accessible via l'ic&ocirc;ne d'engrenage dans le modal d'ajout) -->
 
-    <div class="toast success" id="toast">
-        <i class="fa-solid fa-circle-check"></i>
-        <span id="toast-msg">Action effectu&eacute;e</span>
-    </div>
-
     <script src="/js/week.js"></script>
     <script src="/js/admin-ajax.js"></script>
     <script>
@@ -253,7 +248,7 @@
             }).then(function(ok) {
                 if (!ok) return;
                 AdminAjax.post('/admin/achats/' + id + '/delete')
-                    .then(function() { return AdminAjax.reloadMain(); })
+                    .then(function() { showToast('Achat supprimé'); return AdminAjax.reloadMain(); })
                     .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
             });
         }
@@ -315,7 +310,7 @@
         // Pas d'injection JSON : on fetch le détail à la demande pour que ça
         // reste viable même avec des dizaines de milliers d'achats.
         function editPurchase(id) {
-            fetch('/admin/achats/' + id, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+            withLoader(fetch('/admin/achats/' + id, { credentials: 'same-origin', headers: { Accept: 'application/json' } }))
                 .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                 .then(function(r) {
                     var form = document.getElementById('form-edit');
@@ -357,13 +352,6 @@
             document.body.style.overflow = '';
         }
 
-        function showToast(msg, type) {
-            type = type || 'success';
-            var t = document.getElementById('toast');
-            document.getElementById('toast-msg').textContent = msg;
-            t.className = 'toast ' + type + ' show';
-            setTimeout(function() { t.classList.remove('show'); }, 3500);
-        }
 
         // Outside-click-to-close modals
         document.querySelectorAll('.modal-overlay').forEach(function(overlay) {

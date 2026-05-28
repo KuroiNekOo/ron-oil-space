@@ -327,11 +327,6 @@
         </div>
     </div>
 
-    <div class="toast success" id="toast">
-        <i class="fa-solid fa-circle-check"></i>
-        <span id="toast-msg">Action effectu&eacute;e</span>
-    </div>
-
     <script src="/js/admin-ajax.js"></script>
     <script src="/js/search-autosubmit.js"></script>
     <script>
@@ -345,24 +340,16 @@
             o.classList.remove('open');
             document.body.style.overflow = '';
         }
-        function showToast(msg, type) {
-            type = type || 'success';
-            var t = document.getElementById('toast');
-            document.getElementById('toast-msg').textContent = msg;
-            t.className = 'toast ' + type + ' show';
-            setTimeout(function() { t.classList.remove('show'); }, 3500);
-        }
-
         // ── Toggle auto-company ─────────────────────────────────────────
         var toggleAuto = document.getElementById('toggle-auto-company');
         toggleAuto.addEventListener('change', function() {
             var enabled = toggleAuto.checked;
-            fetch('/admin/contracts/config/auto-company', {
+            withLoader(fetch('/admin/contracts/config/auto-company', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
                 body: JSON.stringify({ enabled: enabled }),
-            })
+            }))
             .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(function() { showToast(enabled ? 'Signature entreprise auto activée' : 'Signature entreprise auto désactivée'); })
             .catch(function(err) {
@@ -376,12 +363,12 @@
             var greenDays = parseInt(document.getElementById('th-green').value);
             var orangeDays = parseInt(document.getElementById('th-orange').value);
             var redDays = parseInt(document.getElementById('th-red').value);
-            fetch('/admin/contracts/config/thresholds', {
+            withLoader(fetch('/admin/contracts/config/thresholds', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
                 body: JSON.stringify({ greenDays: greenDays, orangeDays: orangeDays, redDays: redDays }),
-            })
+            }))
             .then(function(r) { return r.json().then(function(d) { return { ok:r.ok, data:d }; }); })
             .then(function(r) {
                 if (!r.ok) throw new Error((r.data && r.data.error) || 'Erreur');
@@ -427,12 +414,12 @@
             var input = document.getElementById('lawyer-password');
             var v = (input.value || '').trim();
             if (!v) { showToast('Mot de passe vide', 'error'); return; }
-            fetch('/admin/contracts/lawyer-password', {
+            withLoader(fetch('/admin/contracts/lawyer-password', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
                 body: JSON.stringify({ password: v }),
-            })
+            }))
             .then(function(r) { return r.json().then(function(d) { return { ok:r.ok, data:d }; }); })
             .then(function(r) {
                 if (!r.ok) throw new Error((r.data && r.data.error) || 'Erreur');
@@ -446,7 +433,7 @@
             openModal('modal-detail');
             document.getElementById('detail-body').innerHTML =
                 '<div class="detail-empty"><div class="detail-empty-inner"><i class="fa-solid fa-spinner fa-spin"></i>Chargement…</div></div>';
-            fetch('/admin/contracts/' + id, { credentials: 'same-origin' })
+            withLoader(fetch('/admin/contracts/' + id, { credentials: 'same-origin' }))
                 .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                 .then(function(data) { renderContractDetail(data); })
                 .catch(function(err) {
@@ -548,7 +535,7 @@
         }
 
         function signCompany(id) {
-            fetch('/admin/contracts/' + id + '/sign-company', { method: 'POST', credentials: 'same-origin' })
+            withLoader(fetch('/admin/contracts/' + id + '/sign-company', { method: 'POST', credentials: 'same-origin' }))
                 .then(function(r) { return r.json().then(function(d) { return { ok:r.ok, data:d }; }); })
                 .then(function(r) {
                     if (!r.ok) throw new Error((r.data && r.data.error) || 'Erreur');
@@ -568,7 +555,7 @@
                 cancelText: 'Revenir',
             }).then(function(ok) {
                 if (!ok) return;
-                fetch('/admin/contracts/' + id + '/cancel', { method: 'POST', credentials: 'same-origin' })
+                withLoader(fetch('/admin/contracts/' + id + '/cancel', { method: 'POST', credentials: 'same-origin' }))
                     .then(function(r) { return r.json().then(function(d) { return { ok:r.ok, data:d }; }); })
                     .then(function(r) {
                         if (!r.ok) throw new Error((r.data && r.data.error) || 'Erreur');
@@ -592,7 +579,7 @@
                 confirmText: 'Supprimer définitivement',
             }).then(function(ok) {
                 if (!ok) return;
-                fetch('/admin/contracts/' + id + '/delete', { method: 'POST', credentials: 'same-origin' })
+                withLoader(fetch('/admin/contracts/' + id + '/delete', { method: 'POST', credentials: 'same-origin' }))
                     .then(function(r) { return r.json().then(function(d) { return { ok:r.ok, data:d }; }); })
                     .then(function(r) {
                         if (!r.ok) throw new Error((r.data && r.data.error) || 'Erreur');

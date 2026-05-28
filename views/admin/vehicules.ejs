@@ -222,11 +222,6 @@
         </div>
     </div>
 
-    <div class="toast success" id="toast">
-        <i class="fa-solid fa-circle-check"></i>
-        <span id="toast-msg">Action effectu&eacute;e</span>
-    </div>
-
     <script src="/js/admin-ajax.js"></script>
     <script>
         var currentMaintVehicleId = null;
@@ -289,7 +284,7 @@
             var container = document.getElementById('maint-history');
             var pagination = document.getElementById('maint-pagination');
 
-            fetch('/admin/vehicules/' + currentMaintVehicleId + '/maintenances?page=' + page + '&limit=' + MAINT_PER_PAGE)
+            withLoader(fetch('/admin/vehicules/' + currentMaintVehicleId + '/maintenances?page=' + page + '&limit=' + MAINT_PER_PAGE))
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (!data.maintenances || data.maintenances.length === 0) {
@@ -327,7 +322,7 @@
 
         function toggleVehicle(id) {
             AdminAjax.post('/admin/vehicules/' + id + '/toggle')
-                .then(function() { return AdminAjax.reloadMain(); })
+                .then(function() { showToast('Statut véhicule mis à jour'); return AdminAjax.reloadMain(); })
                 .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
         }
 
@@ -339,7 +334,7 @@
             }).then(function(ok) {
                 if (!ok) return;
                 AdminAjax.post('/admin/vehicules/' + id + '/delete')
-                    .then(function() { return AdminAjax.reloadMain(); })
+                    .then(function() { showToast('Véhicule supprimé'); return AdminAjax.reloadMain(); })
                     .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
             });
         }
@@ -356,13 +351,6 @@
             document.body.style.overflow = '';
         }
 
-        function showToast(msg, type) {
-            type = type || 'success';
-            var t = document.getElementById('toast');
-            document.getElementById('toast-msg').textContent = msg;
-            t.className = 'toast ' + type + ' show';
-            setTimeout(function() { t.classList.remove('show'); }, 3500);
-        }
 
         // Outside-click-to-close modals
         document.querySelectorAll('.modal-overlay').forEach(function(overlay) {

@@ -162,21 +162,9 @@
         </div>
     </main>
 
-    <div class="toast success" id="toast">
-        <i class="fa-solid fa-circle-check"></i>
-        <span id="toast-msg">Enregistré</span>
-    </div>
-
     <script src="/js/admin-ajax.js"></script>
     <script src="/js/auto-refresh.js"></script>
     <script>
-        function showToast(msg, type) {
-            type = type || 'success';
-            var t = document.getElementById('toast');
-            document.getElementById('toast-msg').textContent = msg;
-            t.className = 'toast ' + type + ' show';
-            setTimeout(function () { t.classList.remove('show'); }, 3500);
-        }
 
         // Active/désactive l'input % en fonction de la checkbox Frais
         document.addEventListener('change', function (e) {
@@ -218,14 +206,14 @@
             btn.disabled = true;
             var origHtml = btn.innerHTML;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-            fetch('/admin/types/' + id + '/edit', {
+            withLoader(fetch('/admin/types/' + id + '/edit', {
                 method: 'POST',
                 body: body,
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
                 },
-            }).then(function (r) {
+            })).then(function (r) {
                 if (!r.ok) return r.text().then(function (t) { throw new Error(t || 'HTTP ' + r.status); });
                 return r.json();
             }).then(function () {

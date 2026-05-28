@@ -634,11 +634,6 @@
     <%# Cache complet pour les modals : doit pouvoir éditer un employé même hors page courante. %>
     <script type="application/json" id="employees-data"><%- JSON.stringify(allEmployees).replace(/</g, '\\u003c') %></script>
 
-    <div class="toast success" id="toast">
-        <i class="fa-solid fa-circle-check"></i>
-        <span id="toast-msg">Action effectu&eacute;e</span>
-    </div>
-
     <script src="/js/admin-ajax.js"></script>
     <script>
         var employeesData = JSON.parse(document.getElementById('employees-data').textContent);
@@ -747,12 +742,12 @@
         if (autoDeactivateToggle) {
             autoDeactivateToggle.addEventListener('change', function() {
                 var enabled = autoDeactivateToggle.checked;
-                fetch('/admin/salaries/config/auto-deactivate', {
+                withLoader(fetch('/admin/salaries/config/auto-deactivate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                     credentials: 'same-origin',
                     body: JSON.stringify({ enabled: enabled }),
-                })
+                }))
                 .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                 .then(function() { showToast(enabled ? 'Désactivation auto activée' : 'Désactivation auto désactivée'); })
                 .catch(function(err) {
@@ -899,7 +894,7 @@
             if (!renewState.employeeId) return;
             var btn = this;
             btn.disabled = true;
-            fetch('/admin/contracts/renew/' + renewState.employeeId, {
+            withLoader(fetch('/admin/contracts/renew/' + renewState.employeeId, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
@@ -907,7 +902,7 @@
                     startDate: document.getElementById('renew-start').value,
                     endDate: document.getElementById('renew-end').value,
                 }),
-            })
+            }))
             .then(function(r) { return r.json().then(function(d) { return { ok:r.ok, data:d }; }); })
             .then(function(r) {
                 if (!r.ok) throw new Error((r.data && r.data.error) || 'Erreur');
@@ -934,10 +929,10 @@
                 confirmText: 'Générer',
             }).then(function(ok) {
                 if (!ok) return;
-                fetch('/admin/contracts/generate/' + employeeId, {
+                withLoader(fetch('/admin/contracts/generate/' + employeeId, {
                     method: 'POST',
                     credentials: 'same-origin',
-                })
+                }))
                 .then(function(r) { return r.json().then(function(d) { return { ok:r.ok, data:d }; }); })
                 .then(function(r) {
                     if (!r.ok) throw new Error((r.data && r.data.error) || 'Erreur');
@@ -950,13 +945,13 @@
 
         function toggleStatus(id) {
             AdminAjax.post('/admin/salaries/' + id + '/toggle')
-                .then(function() { return AdminAjax.reloadMain(); })
+                .then(function() { showToast('Statut mis à jour'); return AdminAjax.reloadMain(); })
                 .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
         }
 
         function toggleAdmin(id) {
             AdminAjax.post('/admin/salaries/' + id + '/toggle-admin')
-                .then(function() { return AdminAjax.reloadMain(); })
+                .then(function() { showToast('Accès admin mis à jour'); return AdminAjax.reloadMain(); })
                 .catch(function(err) { showToast('Erreur : ' + err.message, 'error'); });
         }
 
@@ -972,6 +967,7 @@
                 if (!ok) return;
                 AdminAjax.post('/admin/salaries/' + id + '/delete')
                     .then(function(data) {
+                        showToast('Employé supprimé');
                         if (data && data.botWarning) {
                             setTimeout(function() {
                                 showToast('Casier Discord non archivé : ' + data.botWarning, 'error');
@@ -995,7 +991,7 @@
             document.getElementById('recap-body').innerHTML =
                 '<div class="detail-empty"><div class="detail-empty-inner"><i class="fa-solid fa-spinner fa-spin"></i>Chargement…</div></div>';
 
-            fetch('/admin/salaries/' + id + '/recap', { credentials: 'same-origin' })
+            withLoader(fetch('/admin/salaries/' + id + '/recap', { credentials: 'same-origin' }))
                 .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                 .then(function(data) { renderRecap(data); })
                 .catch(function(err) {
@@ -1110,13 +1106,6 @@
             document.body.style.overflow = '';
         }
 
-        function showToast(msg, type) {
-            type = type || 'success';
-            var t = document.getElementById('toast');
-            document.getElementById('toast-msg').textContent = msg;
-            t.className = 'toast ' + type + ' show';
-            setTimeout(function() { t.classList.remove('show'); }, 3500);
-        }
 
         // Outside-click-to-close modals
         document.querySelectorAll('.modal-overlay').forEach(function(overlay) {

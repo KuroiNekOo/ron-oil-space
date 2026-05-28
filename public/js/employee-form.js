@@ -6,36 +6,10 @@
 //  - toast erreur si {error:'...'} (sans reset, l'utilisateur peut corriger)
 //
 // Le serveur doit répondre en JSON. Status 4xx/5xx → toast erreur.
+// Les toasts passent par window.showToast (helper centralisé toast.js).
 
 (function () {
   var SPINNER = '<i class="fa-solid fa-spinner fa-spin"></i>';
-
-  function getOrCreateErrorToast() {
-    var t = document.getElementById('toast-error');
-    if (t) return t;
-    t = document.createElement('div');
-    t.id = 'toast-error';
-    t.className = 'toast error';
-    t.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i><span id="toast-error-msg"></span>';
-    document.body.appendChild(t);
-    return t;
-  }
-
-  function showSuccess(msg) {
-    var t = document.getElementById('toast');
-    if (!t) return;
-    var span = document.getElementById('toast-msg');
-    if (span && msg) span.textContent = msg;
-    t.className = 'toast success show';
-    setTimeout(function () { t.classList.remove('show'); }, 3500);
-  }
-
-  function showError(msg) {
-    var t = getOrCreateErrorToast();
-    document.getElementById('toast-error-msg').textContent = msg || 'Erreur lors de l’envoi';
-    t.className = 'toast error show';
-    setTimeout(function () { t.classList.remove('show'); }, 4500);
-  }
 
   function lockSubmit(form) {
     var btns = form.querySelectorAll('button[type="submit"]');
@@ -86,13 +60,13 @@
         .then(function (res) {
           if (res.ok && res.data && res.data.ok) {
             form.reset();
-            showSuccess(res.data.message || 'Formulaire envoyé avec succès');
+            window.showToast(res.data.message || 'Formulaire envoyé avec succès', 'success');
           } else {
-            showError((res.data && res.data.error) || 'Erreur lors de l’envoi');
+            window.showToast((res.data && res.data.error) || 'Erreur lors de l’envoi', 'error');
           }
         })
         .catch(function (err) {
-          showError(err && err.message ? err.message : 'Erreur réseau');
+          window.showToast(err && err.message ? err.message : 'Erreur réseau', 'error');
         })
         .finally(function () {
           unlock();

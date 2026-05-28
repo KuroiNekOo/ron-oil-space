@@ -535,12 +535,12 @@ body {
 
 /* Toast */
 .toast {
-    position: fixed; bottom: 28px; right: 28px;
+    position: fixed; top: 28px; right: 28px;
     padding: 14px 20px;
     background: var(--bg-card); border: 1px solid var(--border);
     display: flex; align-items: center; gap: 12px;
     font-size: 14px; z-index: 999;
-    transform: translateY(80px); opacity: 0;
+    transform: translateY(-80px); opacity: 0;
     transition: all .3s cubic-bezier(.4,0,.2,1);
     pointer-events: none;
 }

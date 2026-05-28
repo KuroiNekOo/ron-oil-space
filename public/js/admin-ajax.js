@@ -6,6 +6,11 @@
 //                     Émet un événement 'admin:reloaded' pour que les pages réactualisent
 //                     leurs caches JS locaux.
 (function () {
+  // Overlay de chargement global — chargé séparément via loader.js. On dégrade
+  // silencieusement en no-op si le script n'est pas dispo (page legacy / test).
+  function loaderShow() { if (typeof window.showLoader === 'function') window.showLoader(); }
+  function loaderHide() { if (typeof window.hideLoader === 'function') window.hideLoader(); }
+
   function parseResponse(r) {
     if (!r.ok) {
       return r.text().then(function (t) { throw new Error(t || 'HTTP ' + r.status); });
@@ -43,6 +48,7 @@
     form.dataset._busy = '1';
     var unlock = lockSubmits(form);
     var body = new URLSearchParams(new FormData(form));
+    loaderShow();
     return fetch(form.action, {
       method: 'POST',
       body: body,
@@ -53,6 +59,7 @@
     }).then(parseResponse).finally(function () {
       unlock();
       delete form.dataset._busy;
+      loaderHide();
     });
   }
 
@@ -60,10 +67,14 @@
   var pendingPosts = {};
   function post(url) {
     if (pendingPosts[url]) return pendingPosts[url];
+    loaderShow();
     var p = fetch(url, {
       method: 'POST',
       headers: { Accept: 'application/json' },
-    }).then(parseResponse).finally(function () { delete pendingPosts[url]; });
+    }).then(parseResponse).finally(function () {
+      delete pendingPosts[url];
+      loaderHide();
+    });
     pendingPosts[url] = p;
     return p;
   }
@@ -121,6 +132,7 @@
     // dans l'URL, on doit refetch la même page (sinon une action sur la page 2
     // renverrait un patch de la page 1 sans filtre).
     var url = window.location.pathname + window.location.search;
+    loaderShow();
     return fetch(url, { headers: { Accept: 'text/html' } })
       .then(function (r) { return r.text(); })
       .then(function (html) {
@@ -134,7 +146,8 @@
           if (existing && existing.textContent !== s.textContent) existing.textContent = s.textContent;
         });
         window.dispatchEvent(new CustomEvent('admin:reloaded'));
-      });
+      })
+      .finally(loaderHide);
   }
 
   window.AdminAjax = { postForm: postForm, post: post, reloadMain: reloadMain };

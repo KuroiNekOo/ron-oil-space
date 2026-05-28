@@ -172,7 +172,7 @@ body.sidebar-open { overflow: hidden; }
 
     /* Toasts un peu plus serrés et clamp à la largeur dispo. */
     .toast {
-        left: 12px; right: 12px; bottom: 16px;
+        left: 12px; right: 12px; top: 16px;
         font-size: 13px;
     }
 

@@ -54,10 +54,6 @@
         </div>
     </main>
 
-    <div class="toast success" id="toast">
-        <i class="fa-solid fa-circle-check"></i>
-        <span id="toast-msg">R&ocirc;les enregistr&eacute;s</span>
-    </div>
 
     <script src="/js/admin-ajax.js"></script>
     <script>
@@ -107,13 +103,6 @@
             });
         });
 
-        function showToast(msg, type) {
-            type = type || 'success';
-            var t = document.getElementById('toast');
-            document.getElementById('toast-msg').textContent = msg;
-            t.className = 'toast ' + type + ' show';
-            setTimeout(function() { t.classList.remove('show'); }, 3500);
-        }
     </script>
     <script src="/js/auto-refresh.js"></script>
 </body>
