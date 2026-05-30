@@ -331,8 +331,8 @@ html, body {
         <div class="range-tabs">
           <button class="range-tab" data-range="1H">1H</button>
           <button class="range-tab" data-range="6H">6H</button>
-          <button class="range-tab active" data-range="24H">24H</button>
-          <button class="range-tab" data-range="7D">7J</button>
+          <button class="range-tab" data-range="24H">24H</button>
+          <button class="range-tab active" data-range="7D">7J</button>
           <button class="range-tab" data-range="30D">30J</button>
           <button class="range-tab" data-range="60D">60J</button>
         </div>
@@ -395,7 +395,7 @@ const RANGES = {
 // ============ STATE ============
 let state = {
   selectedIds: new Set(),
-  range: '24H',
+  range: '7D',
   chartType: 'line',
   sortBy: 'name',
   search: '',
