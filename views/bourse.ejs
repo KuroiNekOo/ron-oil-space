@@ -417,7 +417,7 @@ function getColorFor(id) {
 }
 
 // ============ FETCH ============
-async function fetchData() {
+async function fetchData({ soft = false } = {}) {
   try {
     const r = await fetch('/api/bourse?range=' + state.range, { cache: 'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -426,7 +426,7 @@ async function fetchData() {
     state.startMs = json.startMs;
     state.endMs = json.endMs;
     state.bucketMs = json.bucketMs;
-    renderAll();
+    renderAll({ soft });
   } catch (e) {
     console.error('[bourse] fetchData failed:', e);
   }
@@ -657,12 +657,14 @@ function softUpdateChart() {
   return true;
 }
 
-function renderChart() {
+// soft=true → tente la mutation en place (refresh auto 30s, pas de flicker)
+// soft=false (défaut) → destroy + rebuild avec animation (interactions utilisateur)
+function renderChart({ soft = false } = {}) {
   const empty = document.getElementById('chart-empty');
   empty.style.display = state.selectedIds.size === 0 ? 'flex' : 'none';
 
-  // Si on peut juste muter le chart existant, le faire et sortir
-  if (softUpdateChart()) return;
+  // Soft update uniquement quand explicitement demandé
+  if (soft && softUpdateChart()) return;
 
   const ctx = document.getElementById('chart').getContext('2d');
   const labels = bucketLabels();
@@ -747,11 +749,11 @@ function tickClock() {
 setInterval(tickClock, 1000); tickClock();
 
 // ============ RENDER ALL ============
-function renderAll() {
+function renderAll({ soft = false } = {}) {
   updateHeaderStats();
   renderStations();
   renderDetail();
-  renderChart();
+  renderChart({ soft });
 }
 
 // ============ EVENTS ============
@@ -917,8 +919,8 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && mapModal
 
 // ============ BOOT ============
 fetchData();
-// Refresh périodique : 30s pour 1H / 6H, sinon 2min
-setInterval(() => fetchData(), 30 * 1000);
+// Refresh périodique en mode soft → mutation en place du chart, pas de flicker
+setInterval(() => fetchData({ soft: true }), 30 * 1000);
 </script>
 </body>
 </html>
