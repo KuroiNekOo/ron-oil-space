@@ -613,32 +613,60 @@ function renderDetail() {
 
 // ============ CHART ============
 let chart;
+function buildDataset(id, fallbackLen) {
+  const s = STATION_BY_KEY.get(id);
+  const color = getColorFor(id);
+  const live = liveOf(id);
+  return {
+    label: s ? s.label : id,
+    data: (live.counts && live.counts.length ? live.counts : new Array(fallbackLen).fill(0)),
+    borderColor: color,
+    backgroundColor: state.chartType === 'area' ? color + '33' : 'transparent',
+    borderWidth: 1.8,
+    tension: 0.25,
+    pointRadius: 0,
+    pointHoverRadius: 4,
+    pointHoverBackgroundColor: color,
+    pointHoverBorderColor: '#000',
+    pointHoverBorderWidth: 2,
+    fill: state.chartType === 'area',
+  };
+}
+
+// Soft update : mute les datasets en place, sans animation, sans flicker.
+// Renvoie true si l'update a pu être appliqué tel quel, false si la structure
+// du chart a changé (nb de datasets différent) → l'appelant doit reconstruire.
+function softUpdateChart() {
+  if (!chart) return false;
+  const selected = [...state.selectedIds];
+  if (chart.data.datasets.length !== selected.length) return false;
+
+  const labels = bucketLabels();
+  chart.data.labels = labels;
+  selected.forEach((id, i) => {
+    const ds = chart.data.datasets[i];
+    const fresh = buildDataset(id, labels.length);
+    // Mute en place les propriétés qui peuvent bouger entre refreshs
+    ds.label = fresh.label;
+    ds.data = fresh.data;
+    ds.borderColor = fresh.borderColor;
+    ds.backgroundColor = fresh.backgroundColor;
+    ds.fill = fresh.fill;
+  });
+  chart.update('none'); // 'none' = pas d'animation, pas de flicker
+  return true;
+}
+
 function renderChart() {
   const empty = document.getElementById('chart-empty');
   empty.style.display = state.selectedIds.size === 0 ? 'flex' : 'none';
 
+  // Si on peut juste muter le chart existant, le faire et sortir
+  if (softUpdateChart()) return;
+
   const ctx = document.getElementById('chart').getContext('2d');
   const labels = bucketLabels();
-
-  const datasets = [...state.selectedIds].map(id => {
-    const s = STATION_BY_KEY.get(id);
-    const color = getColorFor(id);
-    const live = liveOf(id);
-    return {
-      label: s ? s.label : id,
-      data: (live.counts && live.counts.length ? live.counts : new Array(labels.length).fill(0)),
-      borderColor: color,
-      backgroundColor: state.chartType === 'area' ? color + '33' : 'transparent',
-      borderWidth: 1.8,
-      tension: 0.25,
-      pointRadius: 0,
-      pointHoverRadius: 4,
-      pointHoverBackgroundColor: color,
-      pointHoverBorderColor: '#000',
-      pointHoverBorderWidth: 2,
-      fill: state.chartType === 'area',
-    };
-  });
+  const datasets = [...state.selectedIds].map(id => buildDataset(id, labels.length));
 
   if (chart) chart.destroy();
   chart = new Chart(ctx, {
