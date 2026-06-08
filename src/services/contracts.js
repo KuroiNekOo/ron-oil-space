@@ -349,6 +349,13 @@ async function signByLawyer(token, { password, name, ip }) {
   if (contract.status !== 'company-signed') {
     throw new Error('Le contrat n\'est pas encore prêt pour la signature avocat');
   }
+  // Filet de sécurité : employeeId à null = employé supprimé. Normalement ces
+  // contrats sont déjà passés en 'cancelled' à la suppression (voir
+  // admin /salaries/:id/delete), mais on bloque aussi ici car la page de
+  // signature est accessible par lien token direct, hors dashboard.
+  if (contract.employeeId === null || contract.employeeId === undefined) {
+    throw new Error('Cet employé n\'existe plus : ce contrat ne peut pas être signé');
+  }
   if (!name || !String(name).trim()) throw new Error('Le nom est requis');
 
   const account = await prisma.lawyerAccount.findFirst();

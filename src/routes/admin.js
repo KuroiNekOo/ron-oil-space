@@ -578,6 +578,16 @@ router.post('/salaries/:id/delete', async (req, res) => {
     const employee = await prisma.employee.findUnique({ where: { id } });
     if (!employee) return res.status(404).json({ error: 'Not found' });
 
+    // Annule les contrats non finalisés AVANT de supprimer l'employé : sinon
+    // onDelete:SetNull casse le lien employeeId et ces contrats resteraient
+    // orphelins en attente (ex : un company-signed traînerait dans la file
+    // avocat indéfiniment). Les contrats déjà `signed`/`cancelled`/`superseded`
+    // ne sont pas touchés. La désactivation (toggle) ne fait PAS ça volontairement.
+    await prisma.contract.updateMany({
+      where: { employeeId: id, status: { in: ['pending', 'employee-signed', 'company-signed'] } },
+      data: { status: 'cancelled' },
+    });
+
     await prisma.user.deleteMany({ where: { employeeId: id } });
     await prisma.employee.delete({ where: { id } });
 

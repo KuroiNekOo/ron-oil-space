@@ -203,14 +203,18 @@
         var form = document.getElementById('sign-form');
         var btn = document.getElementById('btn-sign');
         var accepted = document.getElementById('lawyer-accepted');
-        var name = document.getElementById('lawyer-name');
+        // NB : ne PAS nommer cette variable `name`. À portée globale, `var name`
+        // alias `window.name`, une propriété spéciale qui coerce sa valeur en
+        // string → l'élément devient "[object HTMLInputElement]", updateBtn
+        // plante et le bouton reste disabled.
+        var nameInput = document.getElementById('lawyer-name');
         var password = document.getElementById('lawyer-password');
         var err = document.getElementById('err-msg');
 
         function updateBtn() {
-            btn.disabled = !accepted.checked || !name.value.trim() || !password.value;
+            btn.disabled = !accepted.checked || !nameInput.value.trim() || !password.value;
         }
-        [accepted, name, password].forEach(function(el) {
+        [accepted, nameInput, password].forEach(function(el) {
             el.addEventListener('input', updateBtn);
             el.addEventListener('change', updateBtn);
         });
@@ -223,7 +227,7 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    name: name.value.trim(),
+                    name: nameInput.value.trim(),
                     password: password.value,
                     accepted: accepted.checked,
                 }),

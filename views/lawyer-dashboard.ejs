@@ -55,6 +55,12 @@
         .lw-table tr:last-child td { border-bottom:none; }
         .lw-table tr:hover td { background:rgba(255,255,255,.02); }
         .lw-emp { font-weight:600; }
+        .lw-orphan {
+            display:inline-block; margin-left:6px; padding:1px 7px;
+            font-size:10px; font-weight:700; letter-spacing:.04em;
+            text-transform:uppercase; border-radius:3px;
+            background:rgba(239,68,68,.15); color:#f87171; border:1px solid #ef4444;
+        }
 
         .lw-status {
             display:inline-block; padding:3px 10px; font-size:10.5px; font-weight:700;
@@ -134,8 +140,16 @@
             </thead>
             <tbody>
                 <% contracts.forEach(function(c) { %>
+                    <% var orphan = (c.employeeId === null || c.employeeId === undefined); %>
                     <tr>
-                        <td class="lw-emp"><%= c.employeeFirstName %> <%= c.employeeLastName %></td>
+                        <td class="lw-emp">
+                            <%= c.employeeFirstName %> <%= c.employeeLastName %>
+                            <% if (orphan) { %>
+                                <span class="lw-orphan" title="L'employé a été supprimé : ce contrat ne doit plus être signé.">
+                                    <i class="fa-solid fa-user-slash"></i> supprimé
+                                </span>
+                            <% } %>
+                        </td>
                         <td><%= c.contractKind %></td>
                         <td class="lw-dates">
                             <%= new Date(c.startDate).toLocaleDateString('fr-FR') %>
@@ -145,7 +159,11 @@
                         <td class="lw-dates"><%= new Date(c.createdAt).toLocaleDateString('fr-FR') %></td>
                         <td style="text-align:right;">
                             <% if (c.lawyerSignToken) { %>
-                                <% if (c.status === 'company-signed') { %>
+                                <% if (c.status === 'company-signed' && orphan) { %>
+                                    <span class="lw-action disabled" title="Employé supprimé — signature interdite">
+                                        <i class="fa-solid fa-user-slash"></i> Employé supprimé
+                                    </span>
+                                <% } else if (c.status === 'company-signed') { %>
                                     <a class="lw-action" href="/lawyer/contract/<%= c.lawyerSignToken %>">
                                         <i class="fa-solid fa-signature"></i> Signer
                                     </a>
