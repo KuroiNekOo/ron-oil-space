@@ -65,7 +65,7 @@
             _form.addEventListener('submit', function(e) {
                 e.preventDefault();
                 AdminAjax.postForm(e.target).then(function() {
-                    showToast('Acc&egrave;s enregistr&eacute;s');
+                    showToast('Accès enregistrés');
                 }).catch(function(err) {
                     showToast('Erreur : ' + err.message, 'error');
                 });
