@@ -1,4 +1,8 @@
 const prisma = require('../db');
+const { isDirectionRole, getRoles } = require('../services/roles');
+const {
+  getRestrictions, allowedPageKeys, isPageAllowed, firstAllowedPath, pageKeyForPath,
+} = require('../services/pageAccess');
 
 // Charge l'utilisateur de la session + son employé rattaché (s'il y en a un).
 // Renvoie null si pas de session valide.
@@ -53,7 +57,43 @@ async function requireAdmin(req, res, next) {
       isPrimary: true,
     };
   }
+
+  // Contexte d'accès aux pages : l'admin primaire (sans Employee) est traité
+  // comme Direction (super-admin). Un admin secondaire dépend de son rôle.
+  const roleName = user.employee ? (user.employee.role || null) : null;
+  const direction = isPrimary || isDirectionRole(roleName, await getRoles());
+  const restrictions = await getRestrictions();
+  const ctx = { roleName, isDirection: direction };
+  res.locals.isDirection = direction;
+  res.locals.adminRole = roleName;
+  res.locals.pageCtx = ctx;
+  res.locals.allowedPages = allowedPageKeys(ctx, restrictions);
   next();
+}
+
+// À monter après requireAdmin : bloque l'accès direct à une page non autorisée
+// pour le rôle courant (la sidebar masque déjà les liens, ceci couvre l'URL).
+async function enforcePageAccess(req, res, next) {
+  const key = pageKeyForPath(req.path);
+  if (!key) return next(); // route hors registre (logout, index, etc.)
+  const ctx = res.locals.pageCtx || { roleName: null, isDirection: false };
+  const restrictions = await getRestrictions();
+  if (isPageAllowed(key, ctx, restrictions)) return next();
+  // Refus : JSON pour les requêtes AJAX/POST, redirection sinon.
+  const wantsJson = req.xhr
+    || req.method !== 'GET'
+    || (req.get('accept') || '').includes('application/json');
+  if (wantsJson) {
+    return res.status(403).json({ error: 'Accès non autorisé pour votre rôle' });
+  }
+  return res.redirect(firstAllowedPath(ctx, restrictions));
+}
+
+// Garde dure pour les écritures sensibles (roles, permissions) : seule la
+// Direction passe, indépendamment de la matrice de restrictions.
+function requireDirection(req, res, next) {
+  if (res.locals.isDirection) return next();
+  return res.status(403).json({ error: 'Réservé à la direction' });
 }
 
 // Panel Gouvernement : accessible à deux profils
@@ -130,4 +170,7 @@ async function requireEmployee(req, res, next) {
   next();
 }
 
-module.exports = { requireAuth, requireAdmin, requireEmployee, requireGov };
+module.exports = {
+  requireAuth, requireAdmin, requireEmployee, requireGov,
+  enforcePageAccess, requireDirection,
+};

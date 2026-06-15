@@ -1,16 +1,23 @@
-<%# Header partagé des 6 pages du groupe Configuration.
+<%# Header partagé des pages du groupe Configuration.
    À inclure en haut du <main> de chaque sous-page, avec activeKey égal à
-   la clé de la page courante (cf. tabs[].key ci-dessous). %>
+   la clé de la page courante (cf. tabs[].key ci-dessous).
+   Les onglets sont filtrés par allowedPages (restriction par rôle) ; Rôles et
+   Accès sont en plus réservés à la direction (directionOnly). %>
+<%
+   const _cfgAllowed = (typeof allowedPages !== 'undefined' && allowedPages) ? allowedPages : null;
+   const _cfgTabs = [
+        { key: 'primes',      label: 'Primes',       href: '/admin/primes',      icon: 'fa-percent' },
+        { key: 'roles',       label: 'Rôles',        href: '/admin/roles',       icon: 'fa-id-badge' },
+        { key: 'permissions', label: 'Accès',        href: '/admin/permissions', icon: 'fa-lock' },
+        { key: 'types',       label: 'Types',        href: '/admin/types',       icon: 'fa-tags' },
+        { key: 'contracts',   label: 'Contrats',     href: '/admin/contracts',   icon: 'fa-file-signature' },
+        { key: 'faq',         label: 'FAQ',          href: '/admin/faq',          icon: 'fa-circle-question' },
+        { key: 'gouv',        label: 'Gouvernement', href: '/admin/gouv',         icon: 'fa-landmark' },
+   ].filter(t => !_cfgAllowed || _cfgAllowed.has(t.key));
+%>
 <%- include('group-tabs', {
     groupTitle: 'Configuration',
-    groupSubtitle: 'Référentiels et paramètres : primes, rôles, types, contrats, FAQ, gouvernement',
+    groupSubtitle: 'Référentiels et paramètres : primes, rôles, accès, types, contrats, FAQ, gouvernement',
     activeKey: typeof activeKey !== 'undefined' ? activeKey : '',
-    tabs: [
-        { key: 'primes',    label: 'Primes',       href: '/admin/primes',    icon: 'fa-percent' },
-        { key: 'roles',     label: 'Rôles',        href: '/admin/roles',     icon: 'fa-id-badge' },
-        { key: 'types',     label: 'Types',        href: '/admin/types',     icon: 'fa-tags' },
-        { key: 'contracts', label: 'Contrats',     href: '/admin/contracts', icon: 'fa-file-signature' },
-        { key: 'faq',       label: 'FAQ',          href: '/admin/faq',       icon: 'fa-circle-question' },
-        { key: 'gouv',      label: 'Gouvernement', href: '/admin/gouv',      icon: 'fa-landmark' },
-    ]
+    tabs: _cfgTabs
 }) %>

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <%- include('../partials/head') %>
+    <title>RON OIL Admin — Acc&egrave;s</title>
+    <link rel="stylesheet" href="/css/admin-shared.css">
+    <link rel="stylesheet" href="/css/responsive.css">
+</head>
+<body>
+    <%- include('../partials/admin-sidebar', { currentPage: 'permissions' }) %>
+    <main class="main-content">
+        <%- include('../partials/configuration-header', { activeKey: 'permissions' }) %>
+
+        <div class="card" style="padding:24px;">
+            <p style="margin:0 0 16px;color:var(--text-secondary);font-size:13px;">
+                Coche les pages accessibles &agrave; chaque r&ocirc;le. Les r&ocirc;les <strong>Direction</strong> ont
+                toujours acc&egrave;s &agrave; tout et n'apparaissent pas ici. Les pages <em>R&ocirc;les</em> et <em>Acc&egrave;s</em>
+                restent r&eacute;serv&eacute;es &agrave; la direction.
+            </p>
+
+            <% if (!roles.length) { %>
+                <p style="color:var(--text-secondary);">Aucun r&ocirc;le non-direction &agrave; configurer. Marque un r&ocirc;le comme Direction (ou non) dans la page <a href="/admin/roles">R&ocirc;les</a>.</p>
+            <% } else { %>
+            <form id="form-permissions" method="POST" action="/admin/permissions">
+                <div class="table-scroll">
+                <table class="admin-table" id="permissions-table" style="margin-bottom:16px;">
+                    <thead>
+                        <tr>
+                            <th style="position:sticky;left:0;background:var(--bg-card,#fff);z-index:1;">Page</th>
+                            <% roles.forEach(function(r) { %>
+                                <th style="text-align:center;white-space:nowrap;"><%= r.name %></th>
+                            <% }); %>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% pages.forEach(function(p) { %>
+                            <tr>
+                                <td style="position:sticky;left:0;background:var(--bg-card,#fff);font-weight:500;"><%= p.label %></td>
+                                <% roles.forEach(function(r) { %>
+                                    <% var denied = (restrictions[r.name] || []).indexOf(p.key) >= 0; %>
+                                    <td style="text-align:center;">
+                                        <input type="checkbox"
+                                               name="allowed[<%= r.name %>][<%= p.key %>]"
+                                               value="on"<%= denied ? '' : ' checked' %>>
+                                    </td>
+                                <% }); %>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+                </div>
+
+                <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;">
+                    <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Enregistrer</button>
+                </div>
+            </form>
+            <% } %>
+        </div>
+    </main>
+
+    <script src="/js/admin-ajax.js"></script>
+    <script>
+        var _form = document.getElementById('form-permissions');
+        if (_form) {
+            _form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                AdminAjax.postForm(e.target).then(function() {
+                    showToast('Acc&egrave;s enregistr&eacute;s');
+                }).catch(function(err) {
+                    showToast('Erreur : ' + err.message, 'error');
+                });
+            });
+        }
+    </script>
+    <script src="/js/auto-refresh.js"></script>
+</body>
+</html>

@@ -11,54 +11,82 @@
        du lien est dérivé de currentPage qui peut valoir n'importe quelle clé
        du groupe. Les onglets internes sont rendus dans la page par
        partials/group-tabs.ejs. %>
-    <% const _configPages = ['primes', 'roles', 'types', 'contracts', 'faq', 'gouv']; %>
+    <% const _configPages = ['primes', 'roles', 'permissions', 'types', 'contracts', 'faq', 'gouv']; %>
     <% const _tracabilitePages = ['standard', 'livraisons', 'facturations', 'entrees-sorties', 'services']; %>
     <% const _isConfig = _configPages.indexOf(currentPage) >= 0; %>
     <% const _isTracabilite = _tracabilitePages.indexOf(currentPage) >= 0; %>
+    <%# allowedPages (Set, exposé par requireAdmin) filtre les liens selon le rôle.
+       En son absence (sécurité) on affiche tout. Les groupes Configuration et
+       Traçabilité utilisent une page key unique ('primes' / 'tracabilite'). %>
+    <% const _allowed = (typeof allowedPages !== 'undefined' && allowedPages) ? allowedPages : null; %>
+    <% function _can(key) { return !_allowed || _allowed.has(key); } %>
+    <% const _configFirst = _configPages.find(p => _can(p)); %>
+    <% const _canConfig = !!_configFirst; %>
+    <% const _canTracabilite = _can('tracabilite'); %>
     <nav class="sidebar-nav">
         <div class="nav-section" data-section="admin-gestion">
             <button type="button" class="nav-section-label">Gestion <i class="fa-solid fa-chevron-down nav-chevron"></i></button>
             <div class="nav-section-items">
+                <% if (_can('salaries')) { %>
                 <a class="nav-item<%= currentPage === 'salaries' ? ' active' : '' %>" id="nav-salaries" href="/admin/salaries">
                     <i class="fa-solid fa-users"></i> Salari&eacute;s
                 </a>
+                <% } %>
+                <% if (_can('vehicules')) { %>
                 <a class="nav-item<%= currentPage === 'vehicules' ? ' active' : '' %>" id="nav-vehicules" href="/admin/vehicules">
                     <i class="fa-solid fa-truck"></i> V&eacute;hicules
                 </a>
+                <% } %>
+                <% if (_can('achats')) { %>
                 <a class="nav-item<%= currentPage === 'achats' ? ' active' : '' %>" id="nav-achats" href="/admin/achats">
                     <i class="fa-solid fa-bag-shopping"></i> Achats
                 </a>
-                <a class="nav-item<%= _isConfig ? ' active' : '' %>" id="nav-configuration" href="/admin/primes">
+                <% } %>
+                <% if (_canConfig) { %>
+                <a class="nav-item<%= _isConfig ? ' active' : '' %>" id="nav-configuration" href="/admin/<%= _configFirst %>">
                     <i class="fa-solid fa-sliders"></i> Configuration
                 </a>
+                <% } %>
             </div>
         </div>
         <div class="nav-section" data-section="admin-formulaires">
             <button type="button" class="nav-section-label">Formulaires <i class="fa-solid fa-chevron-down nav-chevron"></i></button>
             <div class="nav-section-items">
+                <% if (_can('absences')) { %>
                 <a class="nav-item<%= currentPage === 'absences' ? ' active' : '' %>" id="nav-absences" href="/admin/absences">
                     <i class="fa-solid fa-calendar-xmark"></i> Absences
                 </a>
+                <% } %>
+                <% if (_can('frais')) { %>
                 <a class="nav-item<%= currentPage === 'frais' ? ' active' : '' %>" id="nav-frais" href="/admin/frais">
                     <i class="fa-solid fa-receipt"></i> Frais
                 </a>
+                <% } %>
+                <% if (_can('pannes')) { %>
                 <a class="nav-item<%= currentPage === 'pannes' ? ' active' : '' %>" id="nav-pannes" href="/admin/pannes">
                     <i class="fa-solid fa-triangle-exclamation"></i> Pannes
                 </a>
+                <% } %>
+                <% if (_can('rapatriements')) { %>
                 <a class="nav-item<%= currentPage === 'rapatriements' ? ' active' : '' %>" id="nav-rapatriements" href="/admin/rapatriements">
                     <i class="fa-solid fa-truck-arrow-right"></i> Rapatriements
                 </a>
+                <% } %>
             </div>
         </div>
         <div class="nav-section" data-section="admin-donnees">
             <button type="button" class="nav-section-label">Donn&eacute;es <i class="fa-solid fa-chevron-down nav-chevron"></i></button>
             <div class="nav-section-items">
+                <% if (_can('statistiques')) { %>
                 <a class="nav-item<%= currentPage === 'statistiques' ? ' active' : '' %>" id="nav-statistiques" href="/admin/statistiques">
                     <i class="fa-solid fa-chart-line"></i> Statistiques
                 </a>
+                <% } %>
+                <% if (_canTracabilite) { %>
                 <a class="nav-item<%= _isTracabilite ? ' active' : '' %>" id="nav-tracabilite" href="/admin/standard">
                     <i class="fa-solid fa-magnifying-glass-chart"></i> Tra&ccedil;abilit&eacute;
                 </a>
+                <% } %>
             </div>
         </div>
         <% if (session && session.employeeId) { %>

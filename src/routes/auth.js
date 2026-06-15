@@ -91,7 +91,9 @@ router.post('/admin/login', async (req, res) => {
       : 'Admin';
     req.session.govId = undefined;
 
-    res.redirect('/admin/salaries');
+    // Landing via /admin : la route index renvoie vers la première page
+    // autorisée pour le rôle (un Superviseur privé de Salariés ne bloque pas).
+    res.redirect('/admin');
   } catch (err) {
     console.error('Admin login error:', err);
     res.redirect('/admin/login?error=1');

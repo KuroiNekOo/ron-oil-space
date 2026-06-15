@@ -5,11 +5,11 @@ const prisma = require('../db');
 const KEY = 'roles';
 
 const DEFAULT_ROLES = [
-  { name: 'PDG',                     canRapatriement: true  },
-  { name: 'Directeur Général',       canRapatriement: true  },
-  { name: 'Directeur des Activités', canRapatriement: true  },
-  { name: 'Superviseur',             canRapatriement: true  },
-  { name: 'Livreur',                 canRapatriement: false },
+  { name: 'PDG',                     canRapatriement: true,  isDirection: true  },
+  { name: 'Directeur Général',       canRapatriement: true,  isDirection: true  },
+  { name: 'Directeur des Activités', canRapatriement: true,  isDirection: true  },
+  { name: 'Superviseur',             canRapatriement: true,  isDirection: false },
+  { name: 'Livreur',                 canRapatriement: false, isDirection: false },
 ];
 
 let _cache = null;
@@ -26,7 +26,11 @@ function sanitize(input) {
     const name = String((r && r.name) || '').trim();
     if (!name || seen.has(name)) continue;
     seen.add(name);
-    out.push({ name, canRapatriement: toBool(r && r.canRapatriement) });
+    out.push({
+      name,
+      canRapatriement: toBool(r && r.canRapatriement),
+      isDirection: toBool(r && r.isDirection),
+    });
   }
   return out;
 }
@@ -75,8 +79,20 @@ async function canRapatriement(roleName) {
   return isRapatriementRole(roleName, await getRoles());
 }
 
+// Variante sync utilisable dans une vue EJS quand la liste est déjà résolue.
+function isDirectionRole(roleName, roles) {
+  if (!roleName || !Array.isArray(roles)) return false;
+  const r = roles.find(x => x.name === roleName);
+  return !!(r && r.isDirection);
+}
+
+async function isDirection(roleName) {
+  return isDirectionRole(roleName, await getRoles());
+}
+
 module.exports = {
   DEFAULT_ROLES,
   getRoles, setRoles, getRoleNames,
   isRapatriementRole, canRapatriement,
+  isDirectionRole, isDirection,
 };

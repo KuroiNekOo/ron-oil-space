@@ -3,7 +3,10 @@ const router = express.Router();
 const crypto = require('crypto');
 const prisma = require('../db');
 const bcrypt = require('bcrypt');
-const { requireAdmin } = require('../middleware/auth');
+const { requireAdmin, enforcePageAccess, requireDirection } = require('../middleware/auth');
+const {
+  RESTRICTABLE_PAGES, getRestrictions, setRestrictions, firstAllowedPath,
+} = require('../services/pageAccess');
 const { createCasier, archiveCasier, deactivateCasier, reactivateCasier } = require('../services/bot');
 const { computeFrozenWeek } = require('../services/rollover');
 const { getWeekFromTimestamp, getYearFromTimestamp, getWeekAndYear } = require('../services/week');
@@ -94,6 +97,16 @@ async function getFrozenWeekKeys() {
 
 // All routes protected
 router.use(requireAdmin);
+// Restriction des pages par rôle (la sidebar masque déjà les liens ; ceci
+// bloque l'accès direct par URL pour les rôles non autorisés).
+router.use(enforcePageAccess);
+
+// Index admin : renvoie vers la première page autorisée pour le rôle courant.
+// Sert de landing après login (évite de tomber sur une page bloquée).
+router.get('/', async (req, res) => {
+  const restrictions = await getRestrictions();
+  res.redirect(firstAllowedPath(res.locals.pageCtx, restrictions));
+});
 
 // Taille de page par défaut pour les listes admin paginées (salaries, vehicules,
 // achats, absences, frais, pannes, rapatriements). Les pages logs (livraisons,
@@ -1209,9 +1222,11 @@ router.get('/roles', async (req, res) => {
   }
 });
 
-// Body attendu : roles[N][name] + roles[N][canRapatriement] (checkbox).
+// Body attendu : roles[N][name] + roles[N][canRapatriement] + roles[N][isDirection] (checkbox).
 // On reconstruit l'array depuis les indices, on filtre/dédoublonne via sanitize().
-router.post('/roles', async (req, res) => {
+// requireDirection : seule la direction peut modifier les rôles (le flag
+// isDirection conditionne l'accès → garde anti-escalade obligatoire ici).
+router.post('/roles', requireDirection, async (req, res) => {
   try {
     const raw = (req.body && req.body.roles) || {};
     const list = [];
@@ -1226,6 +1241,51 @@ router.post('/roles', async (req, res) => {
     res.json({ ok: true, roles: saved });
   } catch (err) {
     console.error('POST /roles error:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ══════════════════════════════════════
+//  PERMISSIONS / ACCÈS AUX PAGES (Direction uniquement)
+// ══════════════════════════════════════
+
+// Matrice rôles non-direction × pages restreignables. enforcePageAccess bloque
+// déjà l'accès (page directionOnly), mais on double la garde sur le POST.
+router.get('/permissions', async (req, res) => {
+  try {
+    const roles = await getRoles();
+    const restrictableRoles = roles.filter(r => !r.isDirection);
+    const restrictions = await getRestrictions();
+    res.render('admin/permissions', {
+      roles: restrictableRoles,
+      pages: RESTRICTABLE_PAGES,
+      restrictions,
+    });
+  } catch (err) {
+    console.error('GET /permissions error:', err);
+    res.status(500).send('Erreur serveur');
+  }
+});
+
+// Body attendu : allowed[<roleName>][<pageKey>] = 'on' pour chaque case cochée
+// (= page autorisée). On stocke l'INVERSE : la liste des pages interdites.
+router.post('/permissions', requireDirection, async (req, res) => {
+  try {
+    const allowed = (req.body && req.body.allowed) || {};
+    const roles = await getRoles();
+    const restrictableRoles = roles.filter(r => !r.isDirection);
+    const map = {};
+    for (const role of restrictableRoles) {
+      const checked = allowed[role.name] || {};
+      const denied = RESTRICTABLE_PAGES
+        .filter(p => !checked[p.key])
+        .map(p => p.key);
+      if (denied.length) map[role.name] = denied;
+    }
+    const saved = await setRestrictions(map);
+    res.json({ ok: true, restrictions: saved });
+  } catch (err) {
+    console.error('POST /permissions error:', err);
     res.status(400).json({ error: err.message });
   }
 });

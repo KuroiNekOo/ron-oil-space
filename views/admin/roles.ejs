@@ -17,8 +17,9 @@
                 <table class="admin-table" id="roles-table" style="margin-bottom:16px;">
                     <thead>
                         <tr>
-                            <th style="width:60%;">Nom du r&ocirc;le</th>
+                            <th style="width:50%;">Nom du r&ocirc;le</th>
                             <th>Acc&egrave;s rapatriement</th>
+                            <th>Direction</th>
                             <th style="width:60px;"></th>
                         </tr>
                     </thead>
@@ -32,6 +33,12 @@
                                     <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;">
                                         <input type="checkbox" name="roles[<%= i %>][canRapatriement]" value="on"<%= r.canRapatriement ? ' checked' : '' %>>
                                         <span style="font-size:12px;color:var(--text-secondary);">Autoris&eacute;</span>
+                                    </label>
+                                </td>
+                                <td>
+                                    <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;">
+                                        <input type="checkbox" name="roles[<%= i %>][isDirection]" value="on"<%= r.isDirection ? ' checked' : '' %>>
+                                        <span style="font-size:12px;color:var(--text-secondary);">Direction</span>
                                     </label>
                                 </td>
                                 <td>
@@ -74,6 +81,10 @@
                 '<td><label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;">' +
                     '<input type="checkbox" name="roles[' + i + '][canRapatriement]" value="on">' +
                     '<span style="font-size:12px;color:var(--text-secondary);">Autoris&eacute;</span>' +
+                '</label></td>' +
+                '<td><label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;">' +
+                    '<input type="checkbox" name="roles[' + i + '][isDirection]" value="on">' +
+                    '<span style="font-size:12px;color:var(--text-secondary);">Direction</span>' +
                 '</label></td>' +
                 '<td><button type="button" class="btn-delete" onclick="removeRow(this)" title="Supprimer"><i class="fa-solid fa-trash"></i></button></td>';
             tbody.appendChild(tr);
