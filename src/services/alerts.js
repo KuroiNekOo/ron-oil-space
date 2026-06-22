@@ -22,6 +22,9 @@ const RECORDS_REFRESH_INTERVAL_MIN = parseInt(process.env.RECORDS_REFRESH_INTERV
 const ABSENCE_CHECK_INTERVAL_MIN = parseInt(process.env.ABSENCE_CHECK_INTERVAL_MINUTES) || 60;
 const ALERT_LOG_KEY = 'contractAlertLog';
 const WEEKLY_ROLLOVER_KEY = 'lastWeeklyRolloverKey';
+// Payload des stats hebdo dont l'envoi au bot a échoué (bot injoignable) et
+// qui reste à renvoyer. Persisté en Config → survit aux reboots du site.
+const PENDING_WEEKLY_KEY = 'pendingWeeklyStats';
 
 async function getLastWeeklyKey() {
   const row = await prisma.config.findUnique({ where: { key: WEEKLY_ROLLOVER_KEY } });
@@ -54,6 +57,26 @@ async function saveAlertLog(log) {
     create: { key: ALERT_LOG_KEY, value },
     update: { value },
   });
+}
+
+// ── Stats hebdo en attente de renvoi (bot injoignable au moment du rollover) ──
+async function getPendingWeeklyStats() {
+  const row = await prisma.config.findUnique({ where: { key: PENDING_WEEKLY_KEY } });
+  if (!row || !row.value) return null;
+  try { return JSON.parse(row.value); } catch { return null; }
+}
+
+async function setPendingWeeklyStats(payload) {
+  const value = JSON.stringify(payload);
+  await prisma.config.upsert({
+    where: { key: PENDING_WEEKLY_KEY },
+    create: { key: PENDING_WEEKLY_KEY, value },
+    update: { value },
+  });
+}
+
+async function clearPendingWeeklyStats() {
+  await prisma.config.deleteMany({ where: { key: PENDING_WEEKLY_KEY } });
 }
 
 async function getExpiringContracts(hoursThreshold) {
@@ -131,24 +154,52 @@ async function runWeeklyRollover(opts) {
   // Fige la semaine qui vient de se terminer + envoie les embeds aux casiers.
   const result = await rolloverWeek(opts);
   if (result.employees && result.employees.length > 0) {
+    const payload = {
+      week: result.week,
+      year: result.year,
+      period: result.period,
+      employees: result.employees,
+    };
     try {
-      await notifyWeeklyStats({
-        week: result.week,
-        year: result.year,
-        period: result.period,
-        employees: result.employees,
-      });
+      await notifyWeeklyStats(payload);
       console.log('[alerts] rollover S' + result.week + ' ' + result.year + ' → ' + result.employees.length + ' casiers notifiés');
     } catch (err) {
       const tag = 'S' + result.week + ' ' + result.year;
       if (isBotUnreachable(err)) {
-        console.warn('[alerts] bot injoignable — rollover ' + tag + ' figé en BDD mais embeds non envoyés');
+        // La semaine est figée en BDD ; seuls les embeds n'ont pas pu partir.
+        // On met le payload en attente → retenvoyé automatiquement dès que le
+        // bot revient (retryPendingWeeklyStats, tick 60s).
+        await setPendingWeeklyStats(payload).catch(e => console.error('[alerts] setPendingWeeklyStats:', e.message));
+        console.warn('[alerts] bot injoignable — rollover ' + tag + ' figé en BDD, embeds en attente de renvoi');
       } else {
         console.error('[alerts] notifyWeeklyStats failed:', err.message);
       }
     }
   }
   return result;
+}
+
+// Re-tente l'envoi des stats hebdo restées en attente (bot injoignable au
+// rollover). Appelé périodiquement : dès que le bot revient, les embeds
+// partent et le payload en attente est effacé. No-op s'il n'y a rien en attente.
+async function retryPendingWeeklyStats() {
+  const payload = await getPendingWeeklyStats();
+  if (!payload) return;
+  const tag = 'S' + payload.week + ' ' + payload.year;
+  try {
+    await notifyWeeklyStats(payload);
+    await clearPendingWeeklyStats();
+    console.log('[alerts] retry OK — stats ' + tag + ' enfin envoyées (' + (payload.employees?.length || 0) + ' casiers)');
+  } catch (err) {
+    if (isBotUnreachable(err)) {
+      // Toujours injoignable → on garde le payload pour le prochain tick.
+      console.warn('[alerts] retry stats ' + tag + ' : bot toujours injoignable, nouvel essai au prochain tick');
+    } else {
+      // Erreur non réseau (payload invalide ?) : on n'effacera pas en boucle
+      // silencieusement, mais on logge clairement pour investigation.
+      console.error('[alerts] retry stats ' + tag + ' échec non réseau:', err.message);
+    }
+  }
 }
 
 // Vérifie chaque 30s si on est dans la minute pile de dimanche PERIOD_START_HOUR:00.
@@ -184,6 +235,10 @@ async function runRecordsRefresh() {
 function startSchedulers() {
   // Weekly rollover : check chaque 30s (fenêtre 1min)
   setInterval(() => tickWeekly().catch(e => console.error('[alerts] tickWeekly:', e)), 30 * 1000);
+  // Retry des stats hebdo en attente (bot injoignable au rollover) : tick 60s
+  // + un essai au boot (rattrape le cas où le site redémarre avec un payload en attente).
+  setTimeout(() => retryPendingWeeklyStats().catch(e => console.error('[alerts] retry stats:', e)), 8000);
+  setInterval(() => retryPendingWeeklyStats().catch(e => console.error('[alerts] retry stats:', e)), 60 * 1000);
   // Contract alerts : intervalle configurable (défaut 1 jour)
   setInterval(() => runContractAlertCheck(), CONTRACT_CHECK_INTERVAL_MIN * 60 * 1000);
   // Premier check contrats au démarrage
@@ -201,6 +256,7 @@ function startSchedulers() {
 module.exports = {
   startSchedulers,
   runWeeklyRollover,
+  retryPendingWeeklyStats,
   runContractAlertCheck,
   getExpiringContracts,
 };
